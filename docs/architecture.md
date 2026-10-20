@@ -25,7 +25,8 @@ The current Flink output does not contain GPS, payment channel, or historical st
 
 The application drives the Anthropic Messages API client-tool loop manually so it can enforce validation, timeouts, cost accounting, and tool restrictions.
 
-1. Opus Supervisor receives only a validated transaction ID and tools for Geo, Behaviour, and Action.
+1. The configured Supervisor receives only a validated transaction ID and tools for Geo, Behaviour,
+   and Action.
 2. It may request Geo and Behaviour in one response; Python executes parallel tool calls concurrently.
 3. Geo Haiku must call `check_geo_distance`. The handler ignores model-supplied numbers and returns the prevalidated deterministic result.
 4. Behaviour Sonnet must call `get_canonical_behaviour_evidence`. The handler returns immutable Flink fields and separately tagged historical evidence.
@@ -36,6 +37,19 @@ The application drives the Anthropic Messages API client-tool loop manually so i
 Every agent has a restricted registry. Unknown tools, malformed inputs, mismatched identities, excessive iterations and timeouts are rejected. Transaction strings and tool results are treated as untrusted data and never inserted into system instructions.
 
 If the Supervisor omits a mandatory step, a specialist fails, evidence conflicts, or the API is unavailable, Python creates explicit failed evidence and applies `POL-FAILSAFE-INCOMPLETE-EVIDENCE`. Missing required evidence cannot produce approval.
+
+## Supervisor model selection
+
+Opus 5.5 was the original Supervisor configuration and remains the application's configured default.
+Sonnet 5.5 was subsequently evaluated against Opus across the same 30 synthetic scenarios, with the
+specialist models, prompts, tools, deterministic policy and graders held constant. Both configurations
+met all defined quality criteria; Sonnet used less estimated API cost and had lower measured latency.
+
+Sonnet 5.5 is therefore the recommended Supervisor for this evaluated workload. This recommendation
+does not claim that the current default has changed, that the models are statistically equivalent, or
+that the synthetic evaluation establishes production fraud-detection accuracy. The matched results are
+documented in the
+[`live-opus-vs-sonnet-30-v1` report](../agents/evaluation/reports/live-opus-vs-sonnet-30-v1.md).
 
 ## Dry-run flow
 

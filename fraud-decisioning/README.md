@@ -200,9 +200,13 @@ processing latency. PostgreSQL/outbox age, Kafka consumer lag, and measured P50/
 observed together. Full-path latency includes Flink's event-time buffering and has not yet been shown
 to meet a banking authorisation SLA.
 
-Stable transaction, decision, investigation, correlation and event IDs are propagated for future
-OpenTelemetry/Phoenix integration. Authoritative database records remain separate from application
-debug logs. Payload validation errors expose only error classes and sanitised reasons.
+Stable transaction, decision, investigation, correlation and event IDs are propagated into the
+implemented OpenTelemetry/OpenInference tracing for the Claude investigation workflow. Arize Phoenix
+provides execution visibility across workers, agents, model calls and deterministic tools. PostgreSQL
+remains authoritative for immutable payment decisions, investigation records, durable budget
+accounting and audit data; Phoenix has no payment-decision authority. See the
+[observability guide](../observability/README.md) for deployment, redaction and operational details.
+Payload validation errors expose only error classes and sanitised reasons.
 
 ## Remaining limitations
 
@@ -215,5 +219,6 @@ debug logs. Payload validation errors expose only error classes and sanitised re
 - Live calls have an unavoidable external side-effect ambiguity window.
 - The service launchers currently run one consumer loop per process; PostgreSQL claiming supports
   concurrent outbox processes, while investigation concurrency is achieved with multiple workers.
-- Metrics are currently event fields and database/Kafka operational queries; an HTTP metrics exporter
-  and OpenTelemetry are reserved for the governance phase.
+- Metrics are currently event fields and database/Kafka operational queries; a dedicated HTTP metrics
+  exporter remains future work. OpenTelemetry/Phoenix tracing is implemented for the asynchronous
+  Claude investigation path and remains separate from PostgreSQL decision authority.

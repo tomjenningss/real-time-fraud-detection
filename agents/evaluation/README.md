@@ -76,15 +76,30 @@ results, scenario and investigation IDs, model configuration, latency, tokens, c
 traces also carry dataset version, scenario ID and experiment ID and report their trace ID. A Phoenix
 error is appended to the durable local report and does not invalidate or delete local results.
 
-## Later Opus-versus-Sonnet comparison
+## Completed Opus-versus-Sonnet comparison
 
-Live comparison is deliberately unavailable from the CLI. It requires a reviewed driver to construct
-`EvaluationRunner(mode=EvaluationMode.LIVE, live_authorized=True, ...)` and supply a
-`live_supervisor_factory`. That factory must prepare a normal durable investigation attempt and return
-the existing `Supervisor` with `DurableCostController`; bypassing PostgreSQL is rejected by
-`Supervisor`.
+The matched live evaluation ran all 30 versioned synthetic scenarios once with Opus 5.5 and once with
+Sonnet 5.5 as Supervisor. Behaviour remained on Sonnet 5.5, Geo and Action remained on Haiku 5.5, and
+the prompts, tools, deterministic policy, dataset, ground truth and ten graders were held constant.
 
-Before approving a live comparison:
+Both configurations passed **30/30 scenarios and 300/300 grader checks**, with zero hard safety
+failures. Sonnet reduced estimated API cost by **41.5%** and mean investigation latency by **22.2%**.
+The complete matched results are recorded in the
+[`live-opus-vs-sonnet-30-v1` report](reports/live-opus-vs-sonnet-30-v1.md), with the standalone Sonnet
+run in [`live-sonnet-supervisor-30-v1`](reports/live-sonnet-supervisor-30-v1.md).
+
+These are one live trial per model per synthetic case. They do not establish statistical equivalence
+or production fraud-detection accuracy; agreement with deterministic policy remains a governance
+measurement rather than an independent measure of fraud detection.
+
+## Reproducing a controlled live comparison
+
+Live comparison is deliberately unavailable from the general CLI. The reviewed drivers construct
+`EvaluationRunner(mode=EvaluationMode.LIVE, live_authorized=True, ...)` and supply a durable case
+executor backed by the existing worker, PostgreSQL ledger and `DurableCostController`. Bypassing
+PostgreSQL is rejected by `Supervisor`.
+
+Before approving another live comparison:
 
 1. Choose a new experiment ID for each configuration. Put all earlier experiment IDs in
    `protected_experiment_ids`; the runner refuses to reuse them.
@@ -100,8 +115,8 @@ Before approving a live comparison:
 6. Compare per-case paired outcomes, grader scores, calls, latency, tokens and estimated cost. Do not
    claim statistical significance from this small synthetic dataset.
 
-No live run is possible without both explicit `live_authorized=True` and a durable factory. The runner
-also requires its experiment ID to match the PostgreSQL budget configuration.
+No live run is possible without both explicit `live_authorized=True` and a durable executor. The
+runner also requires its experiment ID to match the PostgreSQL budget configuration.
 
 ## Graders and interpretation
 
@@ -113,5 +128,5 @@ compliance only—not whether the system independently detects real fraud accura
 
 Known limitations include synthetic authoring bias, a small sample, no statistical power, no
 model-quality measurement in offline mode, and incomplete representation of transport-level duplicate
-handling. A controlled live comparison additionally requires approval for paid Anthropic calls and
+handling. Any further controlled live comparison requires approval for paid Anthropic calls and
 PostgreSQL writes; Phoenix publication requires approval to create dataset and experiment records.
