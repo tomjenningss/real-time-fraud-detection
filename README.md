@@ -1,105 +1,92 @@
-# real-time-fraud-detection
+# Real-Time Fraud Detection
 
-This repository contains two deliberately separated layers:
+An event-driven banking fraud demonstration that combines low-latency deterministic payment
+decisions with asynchronous, multi-agent Claude investigations.
 
-1. `confluent-flink/` produces canonical, real-time transaction evidence with Kafka and Flink.
-2. `agents/` contains the deterministic payment router and four logical Claude investigation agents.
-3. `fraud-decisioning/` defines the separate PostgreSQL service and Part 3 operational tooling.
+The central design rule is simple: **Claude is not in the payment-authorisation path.** Kafka and
+Flink produce canonical evidence, a versioned policy makes the authoritative payment decision, and
+only selected cases enter a separately governed AI investigation workflow.
+
+## Architecture
 
 ```text
-payments.raw.demo
-       │
-       ├── Flink SQL windows ─────────────────────> fraud.signals.demo
-       │
-       └── Flink DataStream keyed enrichment ─────> payments.enriched.demo
-                                                          │ future integration
-                                                          ▼
-             Supervisor ──┬── Geo Agent ───── deterministic Haversine
-                          └── Behaviour Agent ─ canonical Flink evidence
-                                      │
-                                      ▼
-                               Action Agent
-                                      │
-                             deterministic policy
-                                      │
-                          three-field external verdict
+Synthetic payments
+        │
+        ▼
+Kafka: payments.raw.demo
+        │
+        ├──────────────► Flink SQL ──────────────► fraud.signals.demo
+        │
+        ▼
+Flink DataStream enrichment
+  velocity · merchant hopping · rolling evidence
+        │
+        ▼
+Kafka: payments.enriched.demo
+        │
+        ▼
+Deterministic fraud router ───────────────► PostgreSQL inbox/outbox
+  APPROVED · CHALLENGED · BLOCKED              │
+        │                                       ├── immutable decisions
+        │ selected cases only                   ├── durable deduplication
+        ▼                                       └── budget ledger
+Kafka: fraud.investigations.requested
+        │
+        ▼
+Claude investigation worker
+  Opus supervisor · Geo · Behaviour · Action
+        │
+        ▼
+Kafka: fraud.investigations.completed
+  recommendation kept separate from payment verdict
 ```
 
-The fast-path Python policy is the sole initial payment authority. Claude investigates, interprets and
-orchestrates asynchronously; its deterministic Action policy produces a separate recommendation and
-cannot overwrite the immutable payment decision.
+## What this demonstrates
 
-See [the agent architecture](docs/architecture.md) and [the Flink documentation](confluent-flink/README.md) for detailed boundaries and operational instructions.
-Part 3 setup, recovery guarantees and failure modes are documented in
-[fraud-decisioning/README.md](fraud-decisioning/README.md).
+- Real-time Kafka/Flink enrichment with event-time windows and canonical fraud signals.
+- A zero-Claude fast path with explicit `APPROVED`, `CHALLENGED`, and `BLOCKED` outcomes.
+- Immutable payment authority: an investigation can recommend follow-up action but cannot rewrite
+  the original verdict.
+- PostgreSQL transactional inbox/outbox processing for restart-safe idempotency and at-least-once
+  Kafka publication.
+- A genuine Anthropic SDK tool-use loop across four logical agents, with deterministic policy
+  enforcement at the action boundary.
+- Durable per-investigation usage accounting, paid-attempt tracking, concurrency-safe budget
+  reservations, and live mode disabled by default.
+- Structured provenance for decisions, evidence, model calls, tool calls, retries, and costs.
 
-## Repository security
+## Tested behavior
 
-The following local files are ignored and must never be staged or printed:
+A controlled 16-payment end-to-end run produced 11 approved, 2 challenged, and 3 blocked decisions, with five asynchronous investigations. A separate live Anthropic evaluation completed five investigations across 45 model calls, matching all five predefined policy recommendations at an estimated API cost of $0.146. Original payment verdicts remained immutable throughout, and duplicate-event replay produced no additional decisions or investigations.
 
-- `agents/.env`
-- `anthropic-key.txt`
-- `confluent-flink/.env`
+The platform demonstrates an enterprise-oriented fraud detection architecture, with particular emphasis on streaming analytics, deterministic decision-making, resilient event processing, and governed AI investigations. Fraud thresholds are configurable, and the system uses at-least-once delivery with explicit idempotency controls.
 
-`agents/.env.example` is the non-sensitive template. Do not paste API keys into prompts, source, fixtures, or command arguments.
+## Technology
 
-## Agent setup
+| Area          | Implementation                                    |
+| ------------- | ------------------------------------------------- |
+| Streaming     | Confluent Kafka 8.1.6, Apache Flink 1.20.2        |
+| Decisioning   | Python, deterministic versioned policies          |
+| Investigation | Anthropic SDK, multi-agent tool-use orchestration |
+| Durable state | PostgreSQL 17, SQLAlchemy, Alembic                |
+| Local runtime | Podman Compose                                    |
+| Verification  | Pytest, Ruff, synthetic integration scenarios     |
 
-Python 3.11 or newer is supported.
+## Repository guide
 
-```sh
-cd agents
-python3 -m venv .venv
-.venv/bin/python -m pip install -e '.[dev]'
-```
+- [`confluent-flink/`](confluent-flink/) — Kafka/Flink infrastructure, enrichment job, SQL fraud
+  detection, synthetic generator, and job lifecycle scripts.
+- [`agents/`](agents/) — decision router, investigation worker, Claude agents, deterministic policies,
+  database layer, migrations, fixtures, and tests.
+- [`fraud-decisioning/`](fraud-decisioning/) — PostgreSQL deployment and Part 3 operational guide.
+- [`docs/architecture.md`](docs/architecture.md) — trust boundaries, agent responsibilities, and
+  decision-authority model.
 
-The existing `agents/.env` is loaded with `python-dotenv`. Dry-run remains the default and does not require an API key.
+## Explore further
 
-## Run one dry investigation
+- [Streaming and Flink guide](confluent-flink/README.md)
+- [Decisioning, recovery, and operations](fraud-decisioning/README.md)
+- [Agent architecture and security boundaries](docs/architecture.md)
 
-The CLI reads one stored JSON event. It is intentionally not connected to live Kafka.
-
-```sh
-cd agents
-.venv/bin/fraud-investigate \
-  --input fixtures/normal.json \
-  --mode dry-run
-```
-
-Standard output contains exactly the external contract:
-
-```json
-{"transaction_id":"fixture-normal-001","verdict":"APPROVED","reason":"No qualifying deterministic fraud rule was triggered."}
-```
-
-Audit location and zero-cost usage are written separately to standard error. Audit files default to `agents/audit_records/`, are mode `600`, and are ignored by Git.
-
-## Tests
-
-```sh
-cd agents
-.venv/bin/ruff check .
-.venv/bin/pytest -q
-```
-
-The offline suite covers normal shopping, velocity, merchant hopping, combined risk, geographic anomalies, missing GPS, e-commerce, missing history, duplicates, conflicting evidence, timeouts, prompt injection, malformed arguments, higher-value normal activity, cost limits, audit permissions, and attempted verdict override.
-
-## Live mode
-
-Live mode uses the official Anthropic Python SDK and real client-side tool-use loops. It requires both an explicit mode and acknowledgement flag:
-
-```sh
-cd agents
-.venv/bin/fraud-investigate \
-  --input fixtures/normal.json \
-  --mode live \
-  --approve-live
-```
-
-Do not run this command until paid testing is explicitly approved. A single invocation processes one event. `MAX_INVESTIGATION_COST_USD` is checked before each call using configured pricing metadata, but it is an estimate rather than a provider billing cap.
-
-The configured model IDs and base pricing metadata were checked against the [Anthropic model overview](https://platform.claude.com/docs/en/models/overview) on 19 October 2026. Pricing metadata must be reviewed when model pricing changes.
-
-## Infrastructure safety
-
-Agent development and dry-run tests do not start, stop, rebuild, or consume from the Kafka/Flink deployment. Never run `podman compose down -v`; Kafka data is persistent project state.
+Live Anthropic calls require two explicit enablement flags and durable budget approval. Local
+credentials belong only in ignored `.env` files; the repository contains safe templates instead.
