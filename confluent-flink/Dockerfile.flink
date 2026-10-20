@@ -1,0 +1,17 @@
+FROM docker.io/library/maven:3.9.9-eclipse-temurin-11 AS enrichment-build
+WORKDIR /build
+COPY pom.xml ./
+COPY src ./src
+RUN mvn -B -DskipTests package
+
+FROM flink:1.20.2-scala_2.12
+
+ARG KAFKA_CONNECTOR_VERSION=3.4.0-1.20
+
+RUN set -eux; \
+    curl -fL --retry 3 \
+      "https://repo.maven.apache.org/maven2/org/apache/flink/flink-sql-connector-kafka/${KAFKA_CONNECTOR_VERSION}/flink-sql-connector-kafka-${KAFKA_CONNECTOR_VERSION}.jar" \
+      -o /opt/flink/lib/flink-sql-connector-kafka.jar; \
+    test -s /opt/flink/lib/flink-sql-connector-kafka.jar
+
+COPY --from=enrichment-build /build/target/transaction-enrichment-1.0.0-all.jar /opt/flink/usrlib/transaction-enrichment.jar

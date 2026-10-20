@@ -1,0 +1,36 @@
+{
+  "flink": {
+    "assessment_type": "transaction",
+    "transaction_id": "fixture-normal-001",
+    "user_id": "fixture-customer-normal",
+    "amount": 125.0,
+    "merchant_id": "fixture-shop-local",
+    "transaction_timestamp": "2026-10-19T12:00:00Z",
+    "transactions_1m": 1,
+    "transactions_2m": 2,
+    "transactions_10m": 3,
+    "distinct_merchants_2m": 2,
+    "total_amount_2m": 150.0,
+    "signals": [],
+    "signal_ids": [],
+    "risk_level": "LOW",
+    "assessment_timestamp": "2026-10-19T12:00:03Z",
+    "evidence_source": "flink"
+  },
+  "context": {
+    "payment_channel": "CARD_PRESENT",
+    "device_lat": 51.5074,
+    "device_lon": -0.1278,
+    "merchant_lat": 51.5100,
+    "merchant_lon": -0.1300,
+    "metadata": {}
+  },
+  "historical": {
+    "source": "fixture",
+    "status": "AVAILABLE",
+    "reference_id": "history-normal-001",
+    "mean_amount": 80.0,
+    "standard_deviation": 35.0,
+    "sample_size": 40
+  }
+}

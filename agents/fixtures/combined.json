@@ -1,0 +1,31 @@
+{
+  "flink": {
+    "assessment_type": "transaction",
+    "transaction_id": "fixture-combined-001",
+    "user_id": "fixture-customer-combined",
+    "amount": 25.0,
+    "merchant_id": "fixture-shop-seven",
+    "transaction_timestamp": "2026-10-19T12:00:06Z",
+    "transactions_1m": 7,
+    "transactions_2m": 7,
+    "transactions_10m": 7,
+    "distinct_merchants_2m": 7,
+    "total_amount_2m": 175.0,
+    "signals": ["HIGH_VELOCITY", "MERCHANT_HOPPING"],
+    "signal_ids": [
+      "txn:fixture-combined-001:HIGH_VELOCITY",
+      "txn:fixture-combined-001:MERCHANT_HOPPING"
+    ],
+    "risk_level": "HIGH",
+    "assessment_timestamp": "2026-10-19T12:00:09Z",
+    "evidence_source": "flink"
+  },
+  "context": {
+    "payment_channel": "CARD_PRESENT",
+    "device_lat": 51.5074,
+    "device_lon": -0.1278,
+    "merchant_lat": 48.8566,
+    "merchant_lon": 2.3522,
+    "metadata": {}
+  }
+}
