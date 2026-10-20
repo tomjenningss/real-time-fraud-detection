@@ -13,6 +13,7 @@ from .schemas import (
     InvestigationInput,
     RiskLevel,
 )
+from .telemetry import Telemetry
 
 
 class BehaviourToolInput(BaseModel):
@@ -32,8 +33,14 @@ BEHAVIOUR_TOOL = {
 
 
 class BehaviourAgent:
-    def __init__(self, settings: Settings, runtime: AnthropicToolRuntime | None = None):
+    def __init__(
+        self,
+        settings: Settings,
+        runtime: AnthropicToolRuntime | None = None,
+        telemetry: Telemetry | None = None,
+    ):
         self.settings, self.runtime = settings, runtime
+        self.telemetry = telemetry or Telemetry()
 
     @staticmethod
     def canonical(event: InvestigationInput) -> BehaviourCanonical:
@@ -53,7 +60,15 @@ class BehaviourAgent:
     async def investigate(
         self, event: InvestigationInput
     ) -> tuple[BehaviourAssessment, AgentLoopResult | None]:
-        canonical = self.canonical(event)
+        with self.telemetry.span(
+            "tool get_canonical_behaviour_evidence",
+            "TOOL",
+            {
+                "tool.name": "get_canonical_behaviour_evidence",
+                "fraud.evidence.source": "flink_enrichment",
+            },
+        ):
+            canonical = self.canonical(event)
         risk = RiskLevel.HIGH if canonical.signals else RiskLevel.LOW
         historical_note = " Historical evidence is unavailable." if event.historical is None else ""
         fixture_explanation = (

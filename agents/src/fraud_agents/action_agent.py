@@ -9,6 +9,7 @@ from .config import Settings
 from .evidence import EvidenceRepository
 from .policy_engine import apply_decision_rules
 from .schemas import EvidenceReference, PolicyResult
+from .telemetry import Telemetry
 
 
 class ActionToolInput(BaseModel):
@@ -37,11 +38,13 @@ class ActionAgent:
         settings: Settings,
         repository: EvidenceRepository,
         runtime: AnthropicToolRuntime | None = None,
+        telemetry: Telemetry | None = None,
     ):
         self.settings, self.repository, self.runtime = settings, repository, runtime
+        self.telemetry = telemetry or Telemetry()
 
     async def decide(self, reference: EvidenceReference) -> tuple[PolicyResult, AgentLoopResult | None]:
-        authoritative = apply_decision_rules(reference.transaction_id, reference, self.repository)
+        authoritative = self._apply_policy(reference)
         if self.settings.agent_mode == "dry-run":
             return authoritative, None
         if self.runtime is None:
@@ -59,7 +62,7 @@ class ActionAgent:
             )
             if candidate != reference:
                 raise ValueError("canonical evidence reference mismatch")
-            observed = apply_decision_rules(parsed.transaction_id, candidate, self.repository)
+            observed = self._apply_policy(candidate)
             return {**observed.model_dump(mode="json"), "_audit_source": "policy_engine"}
 
         run = await self.runtime.run(
@@ -80,7 +83,20 @@ class ActionAgent:
         if observed is None or "apply_decision_rules" not in run.called_tools:
             raise RuntimeError("Action Agent did not invoke deterministic policy")
         # Re-evaluate and compare so a model/tool-loop mutation cannot alter the result.
-        verified = apply_decision_rules(reference.transaction_id, reference, self.repository)
+        verified = self._apply_policy(reference)
         if observed != verified or authoritative != verified:
             raise RuntimeError("policy result consistency check failed")
         return verified, run
+
+    def _apply_policy(self, reference: EvidenceReference) -> PolicyResult:
+        with self.telemetry.span(
+            "tool apply_decision_rules",
+            "TOOL",
+            {"tool.name": "apply_decision_rules", "fraud.evidence.source": "policy_engine"},
+        ) as span:
+            result = apply_decision_rules(
+                reference.transaction_id, reference, self.repository
+            )
+            span.set("fraud.policy.version", result.policy_version)
+            span.set("fraud.recommendation", result.verdict.value)
+            return result

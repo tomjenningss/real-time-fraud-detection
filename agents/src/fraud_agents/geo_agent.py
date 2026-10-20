@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from .anthropic_runtime import AgentLoopResult, AnthropicToolRuntime
 from .config import Settings
 from .schemas import GeoAssessment, InvestigationInput
+from .telemetry import Telemetry
 from .tools import check_geo_distance
 
 
@@ -27,17 +28,29 @@ GEO_TOOL = {
 
 
 class GeoAgent:
-    def __init__(self, settings: Settings, runtime: AnthropicToolRuntime | None = None):
+    def __init__(
+        self,
+        settings: Settings,
+        runtime: AnthropicToolRuntime | None = None,
+        telemetry: Telemetry | None = None,
+    ):
         self.settings, self.runtime = settings, runtime
+        self.telemetry = telemetry or Telemetry()
 
     async def investigate(self, event: InvestigationInput) -> tuple[GeoAssessment, AgentLoopResult | None]:
-        canonical = check_geo_distance(
-            event.context.device_lat,
-            event.context.device_lon,
-            event.context.merchant_lat,
-            event.context.merchant_lon,
-            event.context.payment_channel,
-        )
+        with self.telemetry.span(
+            "tool check_geo_distance",
+            "TOOL",
+            {"tool.name": "check_geo_distance", "fraud.evidence.source": "deterministic_haversine"},
+        ) as span:
+            canonical = check_geo_distance(
+                event.context.device_lat,
+                event.context.device_lon,
+                event.context.merchant_lat,
+                event.context.merchant_lon,
+                event.context.payment_channel,
+            )
+            span.set("fraud.evidence.status", canonical.status.value)
         if self.settings.agent_mode == "dry-run":
             return GeoAssessment(
                 status=canonical.status,

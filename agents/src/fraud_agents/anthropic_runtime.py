@@ -11,6 +11,13 @@ from anthropic import AsyncAnthropic
 
 from .config import Settings
 from .schemas import ModelUsage, ToolAudit
+from .telemetry import (
+    LLM_MODEL_NAME,
+    LLM_TOKEN_COUNT_INPUT,
+    LLM_TOKEN_COUNT_OUTPUT,
+    LLM_TOKEN_COUNT_TOTAL,
+    Telemetry,
+)
 
 ToolHandler = Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]
 
@@ -93,9 +100,12 @@ class AgentLoopResult:
 
 
 class AnthropicToolRuntime:
-    def __init__(self, settings: Settings, costs: CostController):
+    def __init__(
+        self, settings: Settings, costs: CostController, telemetry: Telemetry | None = None
+    ):
         self.settings = settings
         self.costs = costs
+        self.telemetry = telemetry or Telemetry()
         self.client = AsyncAnthropic(api_key=settings.api_key, timeout=settings.timeout_seconds)
 
     async def run(
@@ -112,50 +122,74 @@ class AnthropicToolRuntime:
         messages: list[dict[str, Any]] = [{"role": "user", "content": user_content}]
         for call_number in range(1, self.settings.max_tool_iterations + 1):
             approximate = max(1, len(json.dumps(messages) + system + json.dumps(tools)) // 4)
-            reservation = await self.costs.reserve(
-                model,
-                approximate,
-                self.settings.max_output_tokens,
-                agent=agent,
-                call_number=call_number,
-            )
-            started = time.perf_counter()
-            try:
-                response = await self.client.messages.create(
-                    model=model,
-                    max_tokens=self.settings.max_output_tokens,
-                    system=system,
-                    messages=messages,
-                    tools=tools,
-                )
-            except Exception as error:
-                latency_ms = (time.perf_counter() - started) * 1000
-                await self.costs.ambiguous(reservation, latency_ms, type(error).__name__)
-                raise
-            latency_ms = (time.perf_counter() - started) * 1000
-            try:
-                input_tokens = int(response.usage.input_tokens)
-                output_tokens = int(response.usage.output_tokens)
-                if input_tokens < 0 or output_tokens < 0:
-                    raise ValueError("negative Anthropic usage")
-            except Exception as error:
-                await self.costs.ambiguous(reservation, latency_ms, type(error).__name__)
-                raise RuntimeError("Anthropic response usage could not be accounted for") from error
-            cost = await self.costs.settle(
-                model, reservation, input_tokens, output_tokens, latency_ms
-            )
-            result.usages.append(
-                ModelUsage(
+            with self.telemetry.span(
+                f"anthropic.messages {model}",
+                "LLM",
+                {
+                    "fraud.agent.name": agent,
+                    "fraud.model_call.sequence": call_number,
+                    "fraud.model_call.approximate_input_tokens": approximate,
+                    "fraud.model_call.max_output_tokens": self.settings.max_output_tokens,
+                    LLM_MODEL_NAME: model,
+                    **self.telemetry.content_attributes(
+                        input_value={"system": system, "messages": messages, "tools": tools}
+                    ),
+                },
+            ) as model_span:
+                reservation = await self.costs.reserve(
+                    model,
+                    approximate,
+                    self.settings.max_output_tokens,
                     agent=agent,
-                    model=model,
-                    input_tokens=input_tokens,
-                    output_tokens=output_tokens,
-                    latency_ms=latency_ms,
-                    estimated_cost_usd=cost,
                     call_number=call_number,
                 )
-            )
-            blocks = [block.model_dump(mode="json") for block in response.content]
+                started = time.perf_counter()
+                try:
+                    response = await self.client.messages.create(
+                        model=model,
+                        max_tokens=self.settings.max_output_tokens,
+                        system=system,
+                        messages=messages,
+                        tools=tools,
+                    )
+                except Exception as error:
+                    latency_ms = (time.perf_counter() - started) * 1000
+                    await self.costs.ambiguous(reservation, latency_ms, type(error).__name__)
+                    model_span.set("fraud.model_call.latency_ms", latency_ms)
+                    model_span.error(error, ambiguous=True)
+                    raise
+                latency_ms = (time.perf_counter() - started) * 1000
+                try:
+                    input_tokens = int(response.usage.input_tokens)
+                    output_tokens = int(response.usage.output_tokens)
+                    if input_tokens < 0 or output_tokens < 0:
+                        raise ValueError("negative Anthropic usage")
+                except Exception as error:
+                    await self.costs.ambiguous(reservation, latency_ms, type(error).__name__)
+                    model_span.error(error, ambiguous=True)
+                    raise RuntimeError("Anthropic response usage could not be accounted for") from error
+                cost = await self.costs.settle(
+                    model, reservation, input_tokens, output_tokens, latency_ms
+                )
+                blocks = [block.model_dump(mode="json") for block in response.content]
+                model_span.set(LLM_TOKEN_COUNT_INPUT, input_tokens)
+                model_span.set(LLM_TOKEN_COUNT_OUTPUT, output_tokens)
+                model_span.set(LLM_TOKEN_COUNT_TOTAL, input_tokens + output_tokens)
+                model_span.set("fraud.model_call.estimated_cost_usd", cost)
+                model_span.set("fraud.model_call.latency_ms", latency_ms)
+                for key, value in self.telemetry.content_attributes(output_value=blocks).items():
+                    model_span.set(key, value)
+                result.usages.append(
+                    ModelUsage(
+                        agent=agent,
+                        model=model,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        latency_ms=latency_ms,
+                        estimated_cost_usd=cost,
+                        call_number=call_number,
+                    )
+                )
             messages.append({"role": "assistant", "content": blocks})
             text_blocks = [block.get("text", "") for block in blocks if block.get("type") == "text"]
             if text_blocks:
@@ -167,64 +201,89 @@ class AnthropicToolRuntime:
             if not calls:
                 return result
 
-            async def dispatch(call: dict[str, Any]) -> dict[str, Any]:
+            async def dispatch(
+                call: dict[str, Any], sequence: int = call_number
+            ) -> dict[str, Any]:
                 name = str(call.get("name"))
                 result.called_tools.add(name)
                 handler = handlers.get(name)
-                if handler is None:
-                    result.tool_audits.append(
-                        ToolAudit(
-                            agent=agent,
-                            tool_name=name,
-                            status="rejected",
-                            source="tool_registry",
-                            detail={"reason": "tool is not registered for this agent"},
+                with self.telemetry.span(
+                    f"tool {name}",
+                    "TOOL",
+                    {
+                        "fraud.agent.name": agent,
+                        "tool.name": name,
+                        "fraud.model_call.sequence": sequence,
+                        **self.telemetry.content_attributes(input_value=call.get("input", {})),
+                    },
+                ) as tool_span:
+                    if handler is None:
+                        tool_span.set("fraud.tool.status", "rejected")
+                        result.tool_audits.append(
+                            ToolAudit(
+                                agent=agent,
+                                tool_name=name,
+                                status="rejected",
+                                source="tool_registry",
+                                detail={"reason": "tool is not registered for this agent"},
+                            )
                         )
-                    )
-                    return {
-                        "type": "tool_result",
-                        "tool_use_id": call["id"],
-                        "content": "Tool rejected by restricted registry.",
-                        "is_error": True,
-                    }
-                try:
-                    payload = await handler(call.get("input", {}))
-                    audit_source = str(payload.pop("_audit_source", "validated_python_tool"))
-                    audit_detail = {
-                        key: payload[key]
-                        for key in ("status", "canonical_source", "policy_version", "verdict")
-                        if key in payload
-                    }
-                    result.tool_audits.append(
-                        ToolAudit(
-                            agent=agent,
-                            tool_name=name,
-                            status="ok",
-                            source=audit_source,
-                            detail=audit_detail,
+                        return {
+                            "type": "tool_result",
+                            "tool_use_id": call["id"],
+                            "content": "Tool rejected by restricted registry.",
+                            "is_error": True,
+                        }
+                    started_tool = time.perf_counter()
+                    try:
+                        payload = await handler(call.get("input", {}))
+                        audit_source = str(payload.pop("_audit_source", "validated_python_tool"))
+                        audit_detail = {
+                            key: payload[key]
+                            for key in ("status", "canonical_source", "policy_version", "verdict")
+                            if key in payload
+                        }
+                        tool_span.set("fraud.tool.status", "ok")
+                        tool_span.set("fraud.evidence.source", audit_source)
+                        tool_span.set(
+                            "fraud.tool.duration_ms", (time.perf_counter() - started_tool) * 1000
                         )
-                    )
-                    return {
-                        "type": "tool_result",
-                        "tool_use_id": call["id"],
-                        "content": json.dumps(payload, separators=(",", ":")),
-                    }
-                except Exception as error:
-                    result.tool_audits.append(
-                        ToolAudit(
-                            agent=agent,
-                            tool_name=name,
-                            status="error",
-                            source="validated_python_tool",
-                            detail={"error_type": type(error).__name__},
+                        result.tool_audits.append(
+                            ToolAudit(
+                                agent=agent,
+                                tool_name=name,
+                                status="ok",
+                                source=audit_source,
+                                detail=audit_detail,
+                            )
                         )
-                    )
-                    return {
-                        "type": "tool_result",
-                        "tool_use_id": call["id"],
-                        "content": f"Tool error: {type(error).__name__}",
-                        "is_error": True,
-                    }
+                        for key, value in self.telemetry.content_attributes(
+                            output_value=payload
+                        ).items():
+                            tool_span.set(key, value)
+                        return {
+                            "type": "tool_result",
+                            "tool_use_id": call["id"],
+                            "content": json.dumps(payload, separators=(",", ":")),
+                        }
+                    except Exception as error:
+                        tool_span.set("fraud.tool.status", "error")
+                        tool_span.error(error)
+                        result.tool_audits.append(
+                            ToolAudit(
+                                agent=agent,
+                                tool_name=name,
+                                status="error",
+                                source="validated_python_tool",
+                                detail={"error_type": type(error).__name__},
+                            )
+                        )
+                        return {
+                            "type": "tool_result",
+                            "tool_use_id": call["id"],
+                            "content": f"Tool error: {type(error).__name__}",
+                            "is_error": True,
+                        }
 
             tool_results = await asyncio.gather(*(dispatch(call) for call in calls))
             messages.append({"role": "user", "content": list(tool_results)})

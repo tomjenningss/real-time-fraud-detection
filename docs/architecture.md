@@ -60,6 +60,24 @@ The internal audit record contains stable investigation/transaction IDs, timesta
 
 Before each live request, a shared per-investigation controller reserves estimated worst-case output cost plus approximate input cost. Concurrent calls share the same lock and budget. Actual SDK `input_tokens` and `output_tokens` settle the reservation. Provider-side billing can still differ due to pricing changes, caching, tiered Haiku pricing, or token-accounting features; this is not a guaranteed billing cap.
 
+## Observability boundary
+
+Optional OpenTelemetry spans describe the worker, Supervisor, specialists, Anthropic Messages calls,
+deterministic tools, policy result, and PostgreSQL/outbox hand-off using OpenInference span kinds.
+Investigation, attempt, transaction, decision, and correlation identifiers join traces back to durable
+records. PostgreSQL—not Phoenix—remains the source of truth for decisions, retries, cost accounting,
+budgets, provenance, and audit.
+
+Tracing is disabled by default and fails open: collector or exporter failures cannot fail an
+investigation, trigger an Anthropic retry, or change a recommendation. Raw prompt/completion capture is
+off unless an operator explicitly enables the synthetic-data-only option; structured attributes are
+allowlisted and sensitive keys are redacted. The Kafka event schemas remain unchanged, preserving
+event IDs and idempotency. Consequently, router and investigation-worker processes correlate through
+durable IDs rather than continuous propagated trace context.
+
+See [`observability/README.md`](../observability/README.md) for the Phoenix deployment, security model,
+trace interpretation, and no-cost smoke test.
+
 ## Future Payments Engine interface
 
 `PaymentsEngineClient` reserves two validated HTTP boundaries without calling them yet:

@@ -1,0 +1,34 @@
+name: fraud-observability
+
+services:
+  phoenix:
+    image: docker.io/arizephoenix/phoenix:version-20.23.0
+    ports:
+      - "127.0.0.1:${PHOENIX_UI_PORT:-6006}:6006"
+      - "127.0.0.1:${PHOENIX_GRPC_PORT:-4317}:4317"
+    environment:
+      PHOENIX_HOST: 0.0.0.0
+      PHOENIX_PORT: 6006
+      PHOENIX_GRPC_PORT: 4317
+      PHOENIX_WORKING_DIR: /mnt/data
+    volumes:
+      - fraud-phoenix-data:/mnt/data
+    healthcheck:
+      test:
+        - CMD
+        - /usr/bin/python3
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:6006/healthz', timeout=2).read()
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+    mem_limit: 768m
+    cpus: 1.0
+    pids_limit: 300
+    restart: unless-stopped
+
+volumes:
+  fraud-phoenix-data:

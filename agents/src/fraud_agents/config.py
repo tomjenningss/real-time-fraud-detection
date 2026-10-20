@@ -36,6 +36,12 @@ class Settings(BaseModel):
     price_haiku_output: float = Field(default=0.50, ge=0)
     audit_enabled: bool = True
     audit_directory: Path = Path("audit_records")
+    otel_enabled: bool = False
+    otel_service_name: str = "fraud-investigation-worker"
+    otel_exporter_otlp_endpoint: str = "http://127.0.0.1:6006/v1/traces"
+    otel_export_timeout_seconds: float = Field(default=2.0, gt=0, le=30)
+    phoenix_project_name: str = "fraud-investigations"
+    otel_capture_synthetic_content: bool = False
 
     @model_validator(mode="after")
     def validate_mode(self) -> Settings:
@@ -101,5 +107,16 @@ def load_settings(env_file: Path | None = None, mode_override: str | None = None
         "price_haiku_input": os.getenv("PRICE_HAIKU_INPUT_MTOK_USD", "0.10"),
         "price_haiku_output": os.getenv("PRICE_HAIKU_OUTPUT_MTOK_USD", "0.50"),
         "audit_enabled": os.getenv("AUDIT_ENABLED", "true").lower() == "true",
+        "otel_enabled": os.getenv("OTEL_ENABLED", "false").lower() == "true",
+        "otel_service_name": os.getenv("OTEL_SERVICE_NAME", "fraud-investigation-worker"),
+        "otel_exporter_otlp_endpoint": os.getenv(
+            "OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:6006/v1/traces"
+        ),
+        "otel_export_timeout_seconds": os.getenv("OTEL_EXPORT_TIMEOUT_SECONDS", "2"),
+        "phoenix_project_name": os.getenv("PHOENIX_PROJECT_NAME", "fraud-investigations"),
+        "otel_capture_synthetic_content": os.getenv(
+            "OTEL_CAPTURE_SYNTHETIC_CONTENT", "false"
+        ).lower()
+        == "true",
     }
     return Settings.model_validate(raw)
