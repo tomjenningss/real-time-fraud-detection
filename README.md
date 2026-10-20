@@ -1,12 +1,18 @@
 # Real-Time Fraud Detection
 
-An event-driven fraud detection platform combining low-latency, deterministic payment decisions with asynchronous, multi-agent Claude investigations.
+## Why I built this
 
-**Core design principle: Claude is not in the payment-authorisation path.**
+I wanted to explore how real-time data streaming and AI agents could work together to solve a realistic problem, rather than building another standalone AI chatbot.
 
-Confluent Kafka and Apache Flink process transaction streams and generate fraud evidence. A versioned, deterministic policy makes the authoritative payment decision, while selected transactions enter a separately governed AI investigation workflow.
+Fraud detection seemed like an interesting use case because it brings together several different engineering challenges. You need to process transactions as they happen, identify unusual behaviour, make decisions quickly and then investigate the context behind potentially suspicious activity.
 
-This separation allows Claude to investigate suspicious activity and recommend follow-up actions without introducing LLM latency or uncertainty into the initial payment decision.
+I built the streaming side using Kafka and Flink, with a multi-agent investigation workflow using Claude. A Supervisor agent coordinates specialist agents responsible for behavioural analysis, geographic evidence and recommendations.
+
+As the project developed, I became particularly interested in how the different Claude models behave when given the same responsibilities. I wanted to understand when a more capable model actually adds value, how to evaluate the agents' reasoning and what the trade-offs are between quality, latency and cost.
+
+That led to a comparison of Opus and Sonnet across 30 synthetic scenarios. Both passed all ten evaluation checks, but Sonnet was 41.5% cheaper and 22.2% faster on average.
+
+The project has been a practical way for me to explore streaming architectures, agent orchestration and the engineering decisions involved in building reliable AI applications.
 
 ## Architecture
 
@@ -62,12 +68,12 @@ The objective is not to replace deterministic fraud controls with an LLM, but to
 
 The investigation workflow uses a multi-model architecture, matching model capability and cost to each agent's responsibilities. The original configuration placed Opus in the supervisory role; a subsequent matched live evaluation tested Sonnet as a direct substitute.
 
-| Agent | Evaluated model ID(s) | Responsibility |
-| --- | --- | --- |
+| Agent      | Evaluated model ID(s)                                                      | Responsibility                                                                               |
+| ---------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | Supervisor | `claude-opus-5-5` (original) / `claude-sonnet-5-5` (evaluated alternative) | Coordinates specialist investigations, reconciles evidence and manages multi-step reasoning. |
-| Behaviour | `claude-sonnet-5-5` | Interprets Flink-generated transaction velocity, merchant diversity and historical evidence. |
-| Geo | `claude-haiku-5-5` | Assesses geographic evidence with deterministic distance calculations and provenance. |
-| Action | `claude-haiku-5-5` | Invokes the versioned deterministic action policy and returns a governed recommendation. |
+| Behaviour  | `claude-sonnet-5-5`                                                        | Interprets Flink-generated transaction velocity, merchant diversity and historical evidence. |
+| Geo        | `claude-haiku-5-5`                                                         | Assesses geographic evidence with deterministic distance calculations and provenance.        |
+| Action     | `claude-haiku-5-5`                                                         | Invokes the versioned deterministic action policy and returns a governed recommendation.     |
 
 Geographic calculations and final action-policy enforcement remain deterministic tools, not unconstrained model decisions. **Sonnet is now the recommended Supervisor for this evaluated workload**: it matched the ten defined quality checks across 30 synthetic scenarios at lower measured cost and latency. This is an evidence-based recommendation, **not a claim that the deployed default configuration has already changed**, or that the models are equivalent on harder or production workloads. See the [matched live comparison](#live-supervisor-comparison-opus-vs-sonnet).
 
@@ -99,11 +105,11 @@ The illustrated **live investigation** completed in approximately **22.6 seconds
 
 ![Phoenix trace showing the Opus Supervisor delegating to the Geo agent and a deterministic geographic-distance tool, with correlation and provenance attributes](docs/images/phoenix-geographic-investigation-trace.png)
 
-*Geographic investigation: the nested Supervisor and Geo-agent path records the `deterministic_haversine` evidence source, synthetic identifiers and original `APPROVED` payment verdict.*
+_Geographic investigation: the nested Supervisor and Geo-agent path records the `deterministic_haversine` evidence source, synthetic identifiers and original `APPROVED` payment verdict._
 
 ![Phoenix trace showing the Behaviour and Action agent branches, Sonnet model-call telemetry and deterministic policy execution](docs/images/phoenix-behaviour-action-trace.png)
 
-*Behaviour and Action investigations: nested spans expose model selection, latency, token usage and estimated cost alongside canonical evidence retrieval and deterministic tools.*
+_Behaviour and Action investigations: nested spans expose model selection, latency, token usage and estimated cost alongside canonical evidence retrieval and deterministic tools._
 
 Every trace can be correlated with PostgreSQL using investigation and trace identifiers. **Phoenix provides observability; PostgreSQL remains authoritative** for immutable payment decisions, durable cost controls and audit records. Prompts and completions are not exported by default. See the [observability guide](observability/README.md) for deployment, redaction and trace interpretation.
 
@@ -117,14 +123,14 @@ The original mocked baseline passed **27/30 scenarios**. Three failures exposed 
 
 The contract was corrected to preserve uncertainty and distinguish unavailable history from legitimately `NOT_APPLICABLE` history. With the same dataset and unchanged payment policy, the corrected offline evaluation passed **30/30**. The three affected cases changed from `APPROVED` to `CHALLENGED`, while legitimate low-risk approvals remained valid.
 
-| Offline metric | Before | After |
-| --- | ---: | ---: |
-| Scenarios passed | 27/30 | 30/30 |
-| Hard failures | 3 | 0 |
-| Approved | 16 | 13 |
-| Challenged | 12 | 15 |
-| Blocked | 2 | 2 |
-| Anthropic API cost | $0 | $0 |
+| Offline metric     | Before | After |
+| ------------------ | -----: | ----: |
+| Scenarios passed   |  27/30 | 30/30 |
+| Hard failures      |      3 |     0 |
+| Approved           |     16 |    13 |
+| Challenged         |     12 |    15 |
+| Blocked            |      2 |     2 |
+| Anthropic API cost |     $0 |    $0 |
 
 These tests used **mocked Anthropic responses**. They validate the application and grading contract, not live-model accuracy. See the [original baseline](agents/evaluation/reports/offline-baseline-v1.md) and [post-fix report](agents/evaluation/reports/history-status-propagation-v1.md).
 
@@ -132,15 +138,15 @@ These tests used **mocked Anthropic responses**. They validate the application a
 
 The original four-agent configuration was evaluated using **real Anthropic API responses** against all 30 synthetic scenarios. The harness assessed model-authored evidence interpretation, uncertainty and Supervisor synthesis, as well as tool use, policy compliance and decision integrity.
 
-| Metric | Opus-led live baseline |
-| --- | ---: |
-| Scenarios passed | **30/30** |
-| Grader checks passed | **300/300** |
-| Hard safety failures / unscorable cases | 0 / 0 |
-| Model calls / deterministic tool calls | 270 / 180 |
-| Mean investigation latency | 24.36 seconds |
-| Estimated settled API cost | **$1.04718190** |
-| Recommendations | 13 approved, 15 challenged, 2 blocked |
+| Metric                                  |                Opus-led live baseline |
+| --------------------------------------- | ------------------------------------: |
+| Scenarios passed                        |                             **30/30** |
+| Grader checks passed                    |                           **300/300** |
+| Hard safety failures / unscorable cases |                                 0 / 0 |
+| Model calls / deterministic tool calls  |                             270 / 180 |
+| Mean investigation latency              |                         24.36 seconds |
+| Estimated settled API cost              |                       **$1.04718190** |
+| Recommendations                         | 13 approved, 15 challenged, 2 blocked |
 
 All three tested prompt-injection scenarios passed the defined checks. Missing or conflicting evidence retained uncertainty rather than being converted into unjustified low-risk assessments. Original payment verdicts remained immutable.
 
@@ -150,21 +156,21 @@ Two deliberately legitimate high-velocity scenarios were nevertheless challenged
 
 To test whether the more expensive supervisory model was justified, the same **30 synthetic scenarios** were run once with Opus and once with Sonnet as Supervisor. The Behaviour, Geo and Action models, prompts, dataset, graders, orchestration, deterministic tools and payment policy were held constant. Both runs used genuine Anthropic API calls, with matched per-case results and Phoenix traces.
 
-| Metric | Opus 5.5 Supervisor | Sonnet 5.5 Supervisor |
-| --- | ---: | ---: |
-| Scenarios passed | **30/30** | **30/30** |
-| Grader checks passed | **300/300** | **300/300** |
-| Hard safety failures | 0 | 0 |
-| Unscorable cases | 0 | 0 |
-| Model calls | 270 | 270 |
-| Deterministic tool calls | 180 | 180 |
-| Mean latency | 24.36 s | **18.95 s** |
-| Median latency | 24.48 s | **17.33 s** |
-| P95 latency | 32.52 s | **26.67 s** |
-| Input tokens | 210,326 | 210,187 |
-| Output tokens | 52,068 | 48,521 |
-| Estimated settled API cost (30 cases) | $1.04718190 | **$0.61246720** |
-| Estimated cost per case | $0.03490606 | **$0.02041557** |
+| Metric                                | Opus 5.5 Supervisor | Sonnet 5.5 Supervisor |
+| ------------------------------------- | ------------------: | --------------------: |
+| Scenarios passed                      |           **30/30** |             **30/30** |
+| Grader checks passed                  |         **300/300** |           **300/300** |
+| Hard safety failures                  |                   0 |                     0 |
+| Unscorable cases                      |                   0 |                     0 |
+| Model calls                           |                 270 |                   270 |
+| Deterministic tool calls              |                 180 |                   180 |
+| Mean latency                          |             24.36 s |           **18.95 s** |
+| Median latency                        |             24.48 s |           **17.33 s** |
+| P95 latency                           |             32.52 s |           **26.67 s** |
+| Input tokens                          |             210,326 |               210,187 |
+| Output tokens                         |              52,068 |                48,521 |
+| Estimated settled API cost (30 cases) |         $1.04718190 |       **$0.61246720** |
+| Estimated cost per case               |         $0.03490606 |       **$0.02041557** |
 
 **Measured result:** Sonnet matched all recorded scenario passes, grader outcomes, policy recommendations (**13 approved, 15 challenged, 2 blocked**), delegation patterns and model/tool-call counts, while reducing **mean investigation latency by 22.2%** and **estimated API cost by 41.5%** ($0.43471470 across 30 cases). Median latency fell approximately 29.2%, and P95 fell approximately 18.0%.
 
@@ -178,16 +184,16 @@ See the [matched comparison report](agents/evaluation/reports/live-opus-vs-sonne
 
 ## Technology
 
-| Area | Implementation |
-| --- | --- |
-| Streaming | Confluent Kafka 8.1.6, Apache Flink 1.20.2 |
-| Decisioning | Python, deterministic versioned policies |
-| AI investigations | Anthropic SDK, Claude multi-agent tool-use orchestration |
-| Agent observability | Arize Phoenix 20.23.0, OpenTelemetry, OpenInference |
-| Evaluation | Versioned synthetic datasets, deterministic graders, Phoenix Experiments |
-| Durable state | PostgreSQL 17, SQLAlchemy, Alembic |
-| Local runtime | Podman Compose |
-| Verification | Pytest, Ruff, synthetic integration scenarios |
+| Area                | Implementation                                                           |
+| ------------------- | ------------------------------------------------------------------------ |
+| Streaming           | Confluent Kafka 8.1.6, Apache Flink 1.20.2                               |
+| Decisioning         | Python, deterministic versioned policies                                 |
+| AI investigations   | Anthropic SDK, Claude multi-agent tool-use orchestration                 |
+| Agent observability | Arize Phoenix 20.23.0, OpenTelemetry, OpenInference                      |
+| Evaluation          | Versioned synthetic datasets, deterministic graders, Phoenix Experiments |
+| Durable state       | PostgreSQL 17, SQLAlchemy, Alembic                                       |
+| Local runtime       | Podman Compose                                                           |
+| Verification        | Pytest, Ruff, synthetic integration scenarios                            |
 
 ## Repository structure
 
