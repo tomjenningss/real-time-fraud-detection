@@ -9,6 +9,7 @@ from fraud_agents.behaviour_agent import BehaviourAgent
 from fraud_agents.schemas import (
     BehaviourAssessment,
     EvidenceStatus,
+    HistoricalEvidence,
     RiskLevel,
     Verdict,
 )
@@ -76,7 +77,65 @@ async def test_missing_optional_history_is_explicit_but_not_fabricated(normal_ev
     supervisor = Supervisor(dry_settings)
     assessment, _ = await supervisor.behaviour.investigate(normal_event)
     assert assessment.canonical.historical is None
+    assert assessment.status == EvidenceStatus.UNKNOWN
+    assert assessment.risk_level == RiskLevel.UNKNOWN
     assert "unavailable" in assessment.explanation.lower()
+    result = await supervisor.investigate(normal_event)
+    assert result.verdict.verdict == Verdict.CHALLENGED
+    assert result.audit.triggered_rules == ["POL-FAILSAFE-INCOMPLETE-EVIDENCE"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [EvidenceStatus.UNKNOWN, EvidenceStatus.CONFLICTING])
+async def test_uncertain_historical_status_propagates_to_fail_safe(
+    normal_event, dry_settings, status
+):
+    assert normal_event.historical is not None
+    normal_event.historical.status = status
+    supervisor = Supervisor(dry_settings)
+    assessment, _ = await supervisor.behaviour.investigate(normal_event)
+    assert assessment.status == status
+    assert assessment.risk_level == RiskLevel.UNKNOWN
+    result = await supervisor.investigate(normal_event)
+    assert result.verdict.verdict == Verdict.CHALLENGED
+    assert result.audit.triggered_rules == ["POL-FAILSAFE-INCOMPLETE-EVIDENCE"]
+
+
+@pytest.mark.asyncio
+async def test_explicit_new_customer_history_can_still_approve(normal_event, dry_settings):
+    normal_event.historical = HistoricalEvidence(
+        source="fixture",
+        status=EvidenceStatus.NOT_APPLICABLE,
+        reference_id="new-customer-no-history",
+    )
+    supervisor = Supervisor(dry_settings)
+    assessment, _ = await supervisor.behaviour.investigate(normal_event)
+    assert assessment.status == EvidenceStatus.AVAILABLE
+    assert assessment.risk_level == RiskLevel.LOW
+    result = await supervisor.investigate(normal_event)
+    assert result.verdict.verdict == Verdict.APPROVED
+    assert result.audit.triggered_rules == ["POL-APPROVE-NO-QUALIFYING-RISK"]
+
+
+@pytest.mark.asyncio
+async def test_small_available_history_can_still_approve(normal_event, dry_settings):
+    assert normal_event.historical is not None
+    normal_event.historical.sample_size = 1
+    result = await Supervisor(dry_settings).investigate(normal_event)
+    assert result.verdict.verdict == Verdict.APPROVED
+
+
+def test_uncertain_behaviour_cannot_claim_low_risk(normal_event):
+    canonical = BehaviourAgent.canonical(normal_event)
+    with pytest.raises(ValueError, match="requires UNKNOWN risk"):
+        BehaviourAssessment(
+            status=EvidenceStatus.UNKNOWN,
+            risk_level=RiskLevel.LOW,
+            canonical=canonical,
+            explanation="Uncertain evidence.",
+            explanation_source="fixture",
+            source_references=[f"flink:txn:{normal_event.flink.transaction_id}"],
+        )
 
 
 @pytest.mark.asyncio

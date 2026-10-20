@@ -85,6 +85,8 @@ class InvestigationWorker:
             "fraud.correlation.id": str(request.correlation_id),
             "fraud.decision.id": str(request.decision_id),
             "fraud.original_payment_verdict": request.original_payment_verdict.value,
+            "fraud.evaluation.experiment_id": self.settings.live_experiment_id,
+            "fraud.evaluation.scenario_id": self.settings.evaluation_scenario_id,
             "messaging.source.name": position.topic,
             "messaging.kafka.partition": position.partition,
             "messaging.kafka.message.offset": position.offset,
@@ -99,6 +101,7 @@ class InvestigationWorker:
                     outcome = await Supervisor(
                         self.settings, costs=costs, telemetry=self.telemetry
                     ).investigate(event, investigation_id=request.investigation_id)
+                    outcome.audit.trace_id = investigation_span.trace_id
                     recommendation = outcome.recommendation
                     completed = InvestigationCompletedEvent(
                         event_id=stable_uuid(

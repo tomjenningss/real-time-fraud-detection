@@ -136,6 +136,13 @@ class BehaviourAssessment(StrictModel):
     source_references: list[str]
     model: str | None = None
 
+    @model_validator(mode="after")
+    def uncertainty_cannot_be_normalised(self) -> BehaviourAssessment:
+        uncertain = {EvidenceStatus.UNKNOWN, EvidenceStatus.FAILED, EvidenceStatus.CONFLICTING}
+        if self.status in uncertain and self.risk_level != RiskLevel.UNKNOWN:
+            raise ValueError("uncertain behaviour evidence requires UNKNOWN risk")
+        return self
+
 
 class EvidenceBundle(StrictModel):
     investigation_id: UUID
@@ -199,3 +206,7 @@ class AuditRecord(StrictModel):
     estimated_api_cost_usd: float = 0
     latency_ms: float = 0
     failures: list[str] = Field(default_factory=list)
+    geo_assessment: GeoAssessment | None = None
+    behaviour_assessment: BehaviourAssessment | None = None
+    supervisor_summary: str = ""
+    trace_id: str | None = None

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Literal
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, model_validator
@@ -21,9 +22,11 @@ class Settings(BaseModel):
     live_smoke_test_limit: int = Field(default=1, ge=1, le=10)
     live_experiment_id: str = "part3-live-eval-001"
     live_budget_gbp: float = Field(default=1.0, gt=0)
+    live_budget_currency: Literal["GBP", "USD"] = "GBP"
+    live_budget_usd: float | None = Field(default=None, gt=0)
     live_usd_per_gbp: float = Field(default=1.30, gt=0)
     live_baseline_cost_usd: float = Field(default=0.0274, ge=0)
-    live_max_investigations: int = Field(default=5, ge=1, le=10)
+    live_max_investigations: int = Field(default=5, ge=1, le=100)
     live_investigation_reserve_usd: float = Field(default=0.20, gt=0)
     live_max_model_calls: int = Field(default=12, ge=1, le=100)
     live_remaining_call_reserve_usd: float = Field(default=0.005, gt=0)
@@ -42,6 +45,7 @@ class Settings(BaseModel):
     otel_export_timeout_seconds: float = Field(default=2.0, gt=0, le=30)
     phoenix_project_name: str = "fraud-investigations"
     otel_capture_synthetic_content: bool = False
+    evaluation_scenario_id: str | None = None
 
     @model_validator(mode="after")
     def validate_mode(self) -> Settings:
@@ -49,6 +53,8 @@ class Settings(BaseModel):
             raise ValueError("AGENT_MODE must be dry-run or live")
         if self.agent_mode == "live" and not self.api_key:
             raise ValueError("ANTHROPIC_API_KEY is required in live mode")
+        if self.live_budget_currency == "USD" and self.live_budget_usd is None:
+            raise ValueError("LIVE_EXPERIMENT_BUDGET_USD is required for a USD experiment")
         return self
 
     @property
@@ -87,6 +93,8 @@ def load_settings(env_file: Path | None = None, mode_override: str | None = None
         "live_smoke_test_limit": os.getenv("LIVE_SMOKE_TEST_LIMIT", "1"),
         "live_experiment_id": os.getenv("LIVE_EXPERIMENT_ID", "part3-live-eval-001"),
         "live_budget_gbp": os.getenv("LIVE_EXPERIMENT_BUDGET_GBP", "1.00"),
+        "live_budget_currency": os.getenv("LIVE_EXPERIMENT_BUDGET_CURRENCY", "GBP"),
+        "live_budget_usd": os.getenv("LIVE_EXPERIMENT_BUDGET_USD"),
         "live_usd_per_gbp": os.getenv("LIVE_USD_PER_GBP", "1.30"),
         "live_baseline_cost_usd": os.getenv("LIVE_BASELINE_COST_USD", "0.0274"),
         "live_max_investigations": os.getenv("LIVE_MAX_INVESTIGATIONS", "5"),

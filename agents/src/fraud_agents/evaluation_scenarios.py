@@ -31,6 +31,14 @@ def _scenario(name: str, signals: list[str], merchants: int, context: dict) -> I
             "evidence_source": "flink",
         },
         "context": context,
+        "historical": {
+            "source": "fixture",
+            "status": "NOT_APPLICABLE",
+            "reference_id": f"live-eval-history-{name}",
+            "mean_amount": None,
+            "standard_deviation": None,
+            "sample_size": None,
+        },
     }
     return InvestigationInput.model_validate(payload)
 

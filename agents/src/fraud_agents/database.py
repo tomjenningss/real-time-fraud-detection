@@ -19,7 +19,14 @@ from .events import (
     KafkaPosition,
     PaymentDecisionEvent,
 )
-from .schemas import HistoricalEvidence, InvestigationInput, TransactionContext
+from .schemas import (
+    AuditRecord,
+    ExternalVerdict,
+    HistoricalEvidence,
+    InvestigationInput,
+    TransactionContext,
+)
+from .supervisor import InvestigationResult
 
 
 class IdentityConflict(RuntimeError):
@@ -339,10 +346,19 @@ class FraudStore:
         )
 
     def configure_live_experiment(self, settings) -> None:
-        budget_usd = Decimal(str(settings.live_budget_gbp)) * Decimal(
-            str(settings.live_usd_per_gbp)
-        )
+        if settings.live_budget_currency == "USD":
+            budget_usd = Decimal(str(settings.live_budget_usd)).quantize(Decimal("0.00000001"))
+            budget_gbp = (budget_usd / Decimal(str(settings.live_usd_per_gbp))).quantize(
+                Decimal("0.000001")
+            )
+        else:
+            budget_gbp = Decimal(str(settings.live_budget_gbp)).quantize(Decimal("0.000001"))
+            budget_usd = (
+                budget_gbp * Decimal(str(settings.live_usd_per_gbp))
+            ).quantize(Decimal("0.00000001"))
         configuration = {
+            "budget_currency": settings.live_budget_currency,
+            "budget_limit_usd": str(budget_usd),
             "investigation_reserve_usd": settings.live_investigation_reserve_usd,
             "max_model_calls": settings.live_max_model_calls,
             "remaining_call_reserve_usd": settings.live_remaining_call_reserve_usd,
@@ -357,7 +373,7 @@ class FraudStore:
                 (settings.live_experiment_id,),
             ).fetchone()
             expected = (
-                Decimal(str(settings.live_budget_gbp)),
+                budget_gbp,
                 Decimal(str(settings.live_usd_per_gbp)),
                 budget_usd,
                 Decimal(str(settings.live_baseline_cost_usd)),
@@ -601,3 +617,82 @@ class FraudStore:
                 result["accounted_total_cost_usd"] / row["usd_per_gbp"]
             )
             return result
+
+    def load_completed_result(self, investigation_id: UUID) -> InvestigationResult:
+        with self.connection() as connection:
+            row = connection.execute(
+                """SELECT i.status,i.recommended_action,a.audit_payload
+                   FROM investigations i JOIN audit_records a USING(investigation_id)
+                   WHERE i.investigation_id=%s""",
+                (investigation_id,),
+            ).fetchone()
+        if not row or row["status"] != "COMPLETED":
+            raise RuntimeError("investigation is not durably completed")
+        audit = AuditRecord.model_validate(row["audit_payload"])
+        return InvestigationResult(
+            recommendation=ExternalVerdict(
+                transaction_id=audit.transaction_id,
+                verdict=row["recommended_action"],
+                reason=audit.deterministic_reason or "",
+            ),
+            audit=audit,
+        )
+
+    def inspect_live_investigation(self, investigation_id: UUID) -> dict[str, Any] | None:
+        """Return durable resume state without changing or locking the investigation."""
+        with self.connection() as connection:
+            row = connection.execute(
+                """SELECT i.status AS investigation_status,a.experiment_id,
+                   a.status AS allocation_status,a.actual_cost_usd,t.status AS attempt_status,
+                   EXISTS (SELECT 1 FROM audit_records r WHERE r.investigation_id=i.investigation_id)
+                     AS has_audit
+                   FROM investigations i
+                   LEFT JOIN live_investigation_allocations a USING(investigation_id)
+                   LEFT JOIN investigation_attempts t ON t.attempt_id=a.attempt_id
+                   WHERE i.investigation_id=%s""",
+                (investigation_id,),
+            ).fetchone()
+            if not row:
+                return None
+            usage = connection.execute(
+                """SELECT count(*) AS calls,
+                   count(*) FILTER (WHERE status='SUCCEEDED') AS succeeded,
+                   count(*) FILTER (WHERE status='AMBIGUOUS') AS ambiguous,
+                   count(*) FILTER (WHERE status='RESERVED') AS unsettled
+                   FROM model_call_usage WHERE investigation_id=%s""",
+                (investigation_id,),
+            ).fetchone()
+        return {**dict(row), **dict(usage)}
+
+    def verify_live_investigation(self, investigation_id: UUID, experiment_id: str) -> dict[str, Any]:
+        with self.connection() as connection:
+            allocation = connection.execute(
+                """SELECT a.status,a.actual_cost_usd,t.status AS attempt_status
+                   FROM live_investigation_allocations a
+                   JOIN investigation_attempts t USING(attempt_id)
+                   WHERE a.investigation_id=%s AND a.experiment_id=%s""",
+                (investigation_id, experiment_id),
+            ).fetchone()
+            usage = connection.execute(
+                """SELECT count(*) AS calls,
+                   count(*) FILTER (WHERE status='SUCCEEDED') AS succeeded,
+                   count(*) FILTER (WHERE status='AMBIGUOUS') AS ambiguous,
+                   count(*) FILTER (WHERE status='RESERVED') AS unsettled,
+                   coalesce(sum(input_tokens),0) AS input_tokens,
+                   coalesce(sum(output_tokens),0) AS output_tokens,
+                   coalesce(sum(accounted_cost_usd),0) AS cost_usd
+                   FROM model_call_usage WHERE investigation_id=%s""",
+                (investigation_id,),
+            ).fetchone()
+        if not allocation:
+            raise RuntimeError("live allocation is missing")
+        result = {**dict(allocation), **dict(usage)}
+        if (
+            result["status"] != "COMPLETED"
+            or result["attempt_status"] != "SUCCEEDED"
+            or result["ambiguous"]
+            or result["unsettled"]
+            or result["calls"] != result["succeeded"]
+        ):
+            raise RuntimeError("live investigation ledger is incomplete or ambiguous")
+        return result

@@ -46,6 +46,8 @@ data/
 checkpoints/
 savepoints/
 audit_records/
+*.checkpoint.json
+/phoenix-tracing*.png
 fraud-decisioning/.env
 
 # Terraform, for later AWS deployment

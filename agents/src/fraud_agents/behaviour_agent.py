@@ -69,8 +69,19 @@ class BehaviourAgent:
             },
         ):
             canonical = self.canonical(event)
-        risk = RiskLevel.HIGH if canonical.signals else RiskLevel.LOW
-        historical_note = " Historical evidence is unavailable." if event.historical is None else ""
+        status = self._assessment_status(event)
+        uncertain = {EvidenceStatus.UNKNOWN, EvidenceStatus.FAILED, EvidenceStatus.CONFLICTING}
+        risk = RiskLevel.UNKNOWN if status in uncertain else (
+            RiskLevel.HIGH if canonical.signals else RiskLevel.LOW
+        )
+        if event.historical is None:
+            historical_note = " Historical evidence is unavailable."
+        elif event.historical.status == EvidenceStatus.NOT_APPLICABLE:
+            historical_note = " Historical evidence is explicitly not applicable."
+        elif event.historical.status != EvidenceStatus.AVAILABLE:
+            historical_note = f" Historical evidence status is {event.historical.status.value}."
+        else:
+            historical_note = ""
         fixture_explanation = (
             f"Flink reported {canonical.transactions_2m} transactions across "
             f"{canonical.distinct_merchants_2m} merchants in two minutes.{historical_note}"
@@ -80,7 +91,7 @@ class BehaviourAgent:
             references.append(f"{event.historical.source}:{event.historical.reference_id}")
         if self.settings.agent_mode == "dry-run":
             return BehaviourAssessment(
-                status=EvidenceStatus.AVAILABLE,
+                status=status,
                 risk_level=risk,
                 canonical=canonical,
                 explanation=fixture_explanation,
@@ -112,7 +123,7 @@ class BehaviourAgent:
         if "get_canonical_behaviour_evidence" not in run.called_tools:
             raise RuntimeError("Behaviour Agent did not call its mandatory canonical evidence tool")
         return BehaviourAssessment(
-            status=EvidenceStatus.AVAILABLE,
+            status=status,
             risk_level=risk,
             canonical=canonical,
             explanation=run.final_text or fixture_explanation,
@@ -120,3 +131,17 @@ class BehaviourAgent:
             source_references=references,
             model=self.settings.behaviour_model,
         ), run
+
+    @staticmethod
+    def _assessment_status(event: InvestigationInput) -> EvidenceStatus:
+        if event.historical is None:
+            return EvidenceStatus.UNKNOWN
+        if event.historical.status in {
+            EvidenceStatus.UNKNOWN,
+            EvidenceStatus.FAILED,
+            EvidenceStatus.CONFLICTING,
+        }:
+            return event.historical.status
+        # AVAILABLE and explicit NOT_APPLICABLE history both leave the independently
+        # sourced Flink behavioural evidence usable.
+        return EvidenceStatus.AVAILABLE
