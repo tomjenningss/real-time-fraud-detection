@@ -43,6 +43,7 @@ target/
 *.log
 logs/
 data/
+artifacts/
 checkpoints/
 savepoints/
 audit_records/

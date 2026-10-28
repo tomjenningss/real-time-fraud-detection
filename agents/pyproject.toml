@@ -12,6 +12,8 @@ dependencies = [
   "anthropic>=0.79,<1",
   "confluent-kafka>=2.6,<3",
   "httpx>=0.27,<1",
+  "lightgbm>=4.5,<5",
+  "numpy>=2.0,<3",
   "openinference-semantic-conventions>=0.1.25,<1",
   "opentelemetry-api>=1.38,<2",
   "opentelemetry-exporter-otlp-proto-http>=1.38,<2",
@@ -19,6 +21,7 @@ dependencies = [
   "psycopg[binary]>=3.2,<4",
   "pydantic>=2.9,<3",
   "python-dotenv>=1.0,<2",
+  "scikit-learn>=1.5,<2",
 ]
 
 [project.optional-dependencies]
@@ -30,6 +33,8 @@ fraud-investigate = "fraud_agents.cli:main"
 fraud-router = "fraud_agents.router_service:main"
 fraud-investigation-worker = "fraud_agents.worker_service:main"
 fraud-outbox-publisher = "fraud_agents.outbox_service:main"
+fraud-ml = "fraud_agents.ml.cli:main"
+fraud-shadow-scorer = "fraud_agents.ml.consumer:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/fraud_agents"]
