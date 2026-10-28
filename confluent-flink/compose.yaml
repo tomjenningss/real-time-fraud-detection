@@ -22,6 +22,24 @@ services:
       - kafka-data:/var/lib/kafka/data
     restart: unless-stopped
 
+  control-center:
+    image: docker.io/confluentinc/cp-enterprise-control-center-next-gen:2.6.0
+    ports:
+      - "127.0.0.1:9021:9021"
+    environment:
+      CONTROL_CENTER_BOOTSTRAP_SERVERS: kafka:29092
+      CONTROL_CENTER_REST_LISTENERS: http://0.0.0.0:9021
+      CONTROL_CENTER_REPLICATION_FACTOR: 1
+      CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1
+      CONTROL_CENTER_MODE_ENABLE: management
+      CONTROL_CENTER_PROMETHEUS_ENABLE: "false"
+      CONTROL_CENTER_SCHEMA_REGISTRY_ENABLE: "false"
+    ulimits:
+      nofile:
+        soft: 16384
+        hard: 16384
+    restart: unless-stopped
+
   jobmanager:
     image: localhost/local/flink-kafka:1.20.2
     build:

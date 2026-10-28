@@ -109,6 +109,41 @@ Example fields for the sixth same-merchant payment are:
 {"assessment_type":"transaction","transaction_id":"velocity-5","transactions_1m":6,"transactions_2m":6,"transactions_10m":6,"distinct_merchants_2m":1,"signals":["HIGH_VELOCITY"],"signal_ids":["txn:velocity-5:HIGH_VELOCITY"],"risk_level":"HIGH","evidence_source":"flink"}
 ```
 
+## Browse Kafka with Control Center
+
+The Compose stack includes Confluent Control Center 2.6.0 in reduced-infrastructure (`management`)
+mode. It connects to Kafka at `kafka:29092`; Prometheus monitoring and alerting are disabled.
+Schema Registry integration is also disabled because this stack does not run Schema Registry. This
+mode provides Kafka management and topic message inspection without Schema Registry, Prometheus,
+Alertmanager, or ZooKeeper.
+
+Start only Control Center, without starting or recreating its dependencies:
+
+```sh
+podman compose up -d --no-deps control-center
+```
+
+Open [http://localhost:9021](http://localhost:9021), select the Kafka cluster, then open
+**Topics**, select a topic, and use its **Messages** view. Useful project topics include
+`payments.raw.demo`, `payments.enriched.demo`, `fraud.signals.demo`,
+`fraud.investigations.requested`, and `fraud.investigations.completed`.
+
+Inspect status and startup logs:
+
+```sh
+podman compose ps control-center
+podman compose logs --tail=200 control-center
+```
+
+Stop only Control Center (its container is retained):
+
+```sh
+podman compose stop control-center
+```
+
+Control Center requires a Confluent Enterprise license after its 30-day trial. Do not use
+`podman compose down -v`; the existing `kafka-data` volume contains retained Kafka data.
+
 ## Tests
 
 Run fast generator/unit tests and the Maven build:

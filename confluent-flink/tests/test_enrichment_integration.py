@@ -63,7 +63,7 @@ class EnrichmentKafkaTests(unittest.TestCase):
             consumed = subprocess.run([
                 "podman", "compose", "exec", "-T", "kafka", "kafka-console-consumer",
                 "--bootstrap-server", "kafka:29092", "--topic", "payments.enriched.demo",
-                "--partition", "0", "--offset", "0", "--timeout-ms", "3000",
+                "--partition", "0", "--from-beginning", "--timeout-ms", "3000",
             ], text=True, capture_output=True)
             parsed = []
             for line in consumed.stdout.splitlines():
