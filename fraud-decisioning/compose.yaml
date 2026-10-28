@@ -25,5 +25,55 @@ services:
     pids_limit: 200
     restart: unless-stopped
 
+  fraud-assessment-correlator:
+    build:
+      context: ../fraud-assessment-correlator
+    profiles: ["correlator"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      CORRELATOR_GROUP_ID: fraud-assessment-correlator-v1
+      CORRELATOR_AUTO_OFFSET_RESET: earliest
+      HTTP_PORT: "8080"
+    ports:
+      - "127.0.0.1:${CORRELATOR_HTTP_PORT:-8082}:8080"
+    restart: unless-stopped
+    networks:
+      - default
+      - confluent-flink
+
+  fraud-decision-engine:
+    build:
+      context: ../fraud-decision-engine
+    profiles: ["shadow-engine"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SHADOW_DECISION_GROUP_ID: fraud-decision-engine-v1
+      SHADOW_DECISION_AUTO_OFFSET_RESET: earliest
+      ACTION_POLICY_VERSION: fraud-action-policy-v1
+      ACTION_CHALLENGE_THRESHOLD: "0.24"
+      ACTION_BLOCK_THRESHOLD: "0.70"
+      ACTION_SUPPORTED_MODEL_VERSION_PREFIX: lgbm-baseline-
+      ACTION_SUPPORTED_FEATURE_SCHEMA_VERSION: fraud-features-1.0.0
+      HTTP_PORT: "8080"
+    ports:
+      - "127.0.0.1:${SHADOW_ENGINE_HTTP_PORT:-8083}:8080"
+    restart: unless-stopped
+    networks:
+      - default
+      - confluent-flink
+
 volumes:
   fraud-postgres-data:
+
+networks:
+  confluent-flink:
+    external: true
+    name: confluent-flink_default

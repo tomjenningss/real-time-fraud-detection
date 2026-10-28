@@ -21,7 +21,8 @@ risk thresholds. Normal-payment sampling defaults to zero.
 
 ## Database and delivery model
 
-Alembic migrations through `0003_investigation_context` create:
+Alembic migrations through `0005_shadow_decision_engine` create the original decisioning tables plus
+the correlator and shadow-engine state:
 
 - `consumed_events`: physical Kafka positions plus stable logical event IDs.
 - `payment_decisions`: immutable initial decisions.
@@ -33,6 +34,8 @@ Alembic migrations through `0003_investigation_context` create:
 - `live_investigation_allocations`: durable paid-investigation count and cost envelopes.
 - `model_call_usage`: per-request reservations, tokens, latency, tools, provenance and cost.
 - `investigation_context`: optional immutable, provenance-labelled context for selected cases.
+- `fraud_assessment_*`: correlator source, latest/history, rejected-event and outbox state.
+- `fraud_shadow_*`: assessment-revision ordering, policy history, rejected-event and outbox state.
 
 The router commits its inbox row, decision and all required outbox rows in one PostgreSQL transaction.
 Kafka offsets are committed only after that durable commit. Publishers claim rows in short
@@ -191,6 +194,37 @@ The existing synthetic generator remains the controlled scenario:
 cd confluent-flink
 python3 scripts/generate_payments.py
 ```
+
+## Fraud assessment correlator
+
+The additive Go correlator consumes decisions, shadow ML scores, and investigation lifecycle events;
+it does not participate in payment authorisation. Apply the latest Alembic migration and create the
+new topics with `scripts/create_topics.sh`, then either run it directly or use the optional Compose
+profile:
+
+```sh
+podman compose --env-file .env --profile correlator up -d --build fraud-assessment-correlator
+```
+
+This joins the existing `part3_default` network and leaves Kafka, Flink, PostgreSQL volumes, and
+consumer offsets intact. See [`fraud-assessment-correlator/README.md`](../fraud-assessment-correlator/README.md)
+for contracts, durability semantics, health endpoints, inspection queries, and tests.
+
+## Shadow Fraud Decision Engine
+
+The additive Go engine consumes correlated assessment revisions and publishes only to
+`fraud.decisions.shadow.demo`. It does not update `payment_decisions`, publish authorisation events, or
+trigger Claude. Apply migration `0005_shadow_decision_engine`, create the additive topics, and start the
+optional profile without restarting stateful services:
+
+```sh
+podman compose --env-file .env --profile shadow-engine up -d --build fraud-decision-engine
+curl -fsS http://localhost:8083/readyz
+curl -fsS http://localhost:8083/evaluation-report
+```
+
+See [`fraud-decision-engine/README.md`](../fraud-decision-engine/README.md) for the policy matrix,
+experimental threshold rationale, event contract, metrics and recovery semantics.
 
 ## Latency and observability
 
