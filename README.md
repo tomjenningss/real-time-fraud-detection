@@ -30,6 +30,7 @@ Flink DataStream enrichment
         │
         ▼
 Kafka: payments.enriched.demo
+        ├──────────────► optional CPU LightGBM shadow scorer ─► fraud.risk.baseline.demo
         │
         ▼
 Deterministic fraud router ───────────────► PostgreSQL inbox/outbox
@@ -46,7 +47,22 @@ Claude investigation worker
         ▼
 Kafka: fraud.investigations.completed
   recommendation kept separate from payment verdict
+        │
+        └──────────────► Go fraud assessment correlator ◄── fraud.risk.baseline.demo
+                               │
+                               ├── PostgreSQL latest/history/source-event/outbox state
+                               └── Kafka: fraud.assessments.correlated.demo
+                                              │
+                                              ▼
+                               Go shadow fraud decision engine
+                                 versioned Action Selection Control
+                                              │
+                                              └──► fraud.decisions.shadow.demo
 ```
+
+The LightGBM output is experimental and non-authoritative. It is disabled by default and cannot mutate
+the deterministic verdict. Reproduction, evaluation metrics, and operating instructions are in
+[`agents/README.md`](agents/README.md).
 
 ## Design decisions
 
@@ -203,12 +219,15 @@ See the [matched comparison report](agents/evaluation/reports/live-opus-vs-sonne
 - [`fraud-decisioning/`](fraud-decisioning/) — PostgreSQL deployment, operational workflows and recovery documentation.
 - [`docs/architecture.md`](docs/architecture.md) — Architecture, trust boundaries, agent responsibilities and decision-authority model.
 - [`observability/`](observability/) — Optional Phoenix deployment, OpenTelemetry configuration, trace interpretation and no-cost smoke test.
+- [`fraud-assessment-correlator/`](fraud-assessment-correlator/) — Additive Go service for durable, asynchronous correlation outside authorisation.
+- [`fraud-decision-engine/`](fraud-decision-engine/) — Versioned Go Action Selection Control and durable shadow-decision publisher.
 
 ## Documentation
 
 - [Streaming and Flink guide](confluent-flink/README.md)
 - [Decisioning, recovery and operations](fraud-decisioning/README.md)
 - [Agent architecture and security boundaries](docs/architecture.md)
+- [Architecture evolution and historical tags](docs/evolution.md)
 - [Phoenix and OpenTelemetry observability](observability/README.md)
 - [Fraud-agent evaluation harness](agents/evaluation/README.md)
 
