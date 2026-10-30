@@ -44,7 +44,9 @@ preserved.
 
 The Flink lifecycle client reaches `jobmanager` only over the private Compose network and deliberately bypasses
 host HTTP proxy settings. This prevents workstation or corporate proxy variables propagated by Podman from
-intercepting Flink REST planning and health requests.
+intercepting Flink REST planning and health requests. Startup also normalizes TTY line endings and selects only
+the exact `java` and `sql` planner records, so external Compose provider notices cannot hide fresh-install job
+submissions. A failed Java or SQL submission reports its command exit status and preserves the command's stderr.
 
 Before Alembic runs, startup opens a short connection from the migrations image to this Compose project's
 `postgres` service using the same `DATABASE_URL` as the migration and application containers. An

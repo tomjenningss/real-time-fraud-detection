@@ -11,21 +11,30 @@ if [ -f "$manifest" ]; then
 fi
 
 attempt=0
+plan_output="$repo_dir/.runtime/flink-plan.stdout"
 plan_error="$repo_dir/.runtime/flink-plan.stderr"
+plan_status=0
 while [ "$attempt" -lt 30 ]; do
-  if missing=$(compose run --rm --no-deps platform-cli \
-    python /flink-scripts/flink_jobs.py plan --url http://jobmanager:8081 2>"$plan_error")
+  if compose run --rm --no-deps platform-cli \
+    python /flink-scripts/flink_jobs.py plan --url http://jobmanager:8081 \
+      >"$plan_output" 2>"$plan_error"
   then
-    rm -f "$plan_error"
+    # podman-compose can allocate a TTY for `run`, producing CRLF, and Podman's
+    # external-provider notice can share stdout with the container. Accept only
+    # the planner's exact identifiers after removing carriage returns.
+    missing=$(tr -d '\r' <"$plan_output" | awk '$0 == "java" || $0 == "sql"')
+    rm -f "$plan_output" "$plan_error"
     break
+  else
+    plan_status=$?
   fi
   attempt=$((attempt + 1))
   sleep 2
 done
 if [ "$attempt" -ge 30 ]; then
-  echo "Flink planning failed after the cluster readiness window. Last error:" >&2
+  echo "Flink planning failed with status $plan_status after the cluster readiness window. Last error:" >&2
   sed 's/^/  /' "$plan_error" >&2
-  rm -f "$plan_error"
+  rm -f "$plan_output" "$plan_error"
   exit 1
 fi
 
@@ -38,13 +47,25 @@ $missing
 java
 "*)
     if [ -n "$java_savepoint" ]; then
-      compose exec -T -e ENRICHMENT_STARTUP_MODE=latest jobmanager \
+      if compose exec -T -e ENRICHMENT_STARTUP_MODE=latest jobmanager \
         /opt/flink/bin/flink run -d -s "$java_savepoint" \
         /opt/flink/usrlib/transaction-enrichment.jar
+      then :
+      else
+        result=$?
+        echo "Java Flink job submission failed with status $result" >&2
+        exit "$result"
+      fi
       java_mode="restored:$java_savepoint"
     else
-      compose exec -T -e ENRICHMENT_STARTUP_MODE=latest jobmanager \
+      if compose exec -T -e ENRICHMENT_STARTUP_MODE=latest jobmanager \
         /opt/flink/bin/flink run -d /opt/flink/usrlib/transaction-enrichment.jar
+      then :
+      else
+        result=$?
+        echo "Java Flink job submission failed with status $result" >&2
+        exit "$result"
+      fi
       java_mode=fresh
     fi
     ;;
@@ -57,14 +78,26 @@ $missing
 sql
 "*)
     if [ -n "$sql_savepoint" ]; then
-      compose run --rm --entrypoint /opt/flink/bin/sql-client.sh sql-client \
+      if compose run --rm --entrypoint /opt/flink/bin/sql-client.sh sql-client \
         embedded -Drest.address=jobmanager -Drest.port=8081 \
         -Dexecution.savepoint.path="$sql_savepoint" -f /workspace/sql/fraud_signals.sql
+      then :
+      else
+        result=$?
+        echo "SQL Flink job submission failed with status $result" >&2
+        exit "$result"
+      fi
       sql_mode="restored:$sql_savepoint"
     else
-      compose run --rm --entrypoint /opt/flink/bin/sql-client.sh sql-client \
+      if compose run --rm --entrypoint /opt/flink/bin/sql-client.sh sql-client \
         embedded -Drest.address=jobmanager -Drest.port=8081 \
         -f /workspace/sql/fraud_signals.sql
+      then :
+      else
+        result=$?
+        echo "SQL Flink job submission failed with status $result" >&2
+        exit "$result"
+      fi
       sql_mode=fresh
     fi
     ;;

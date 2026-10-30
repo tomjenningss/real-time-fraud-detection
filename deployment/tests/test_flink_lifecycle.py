@@ -31,7 +31,14 @@ class FlinkLifecycleTests(unittest.TestCase):
             "  printf '%s\\n' \"$*\" >>\"$COMMAND_LOG\"\n"
             "  case \" $* \" in\n"
             "    *' /flink-scripts/flink_jobs.py plan '*)\n"
-            "      case \"$FAKE_PLAN\" in both) printf 'java\\nsql\\n' ;; none) : ;; esac\n"
+            "      case \"$FAKE_PLAN\" in\n"
+            "        both) printf 'java\\nsql\\n' ;;\n"
+            "        provider-crlf)\n"
+            "          printf '>>>> Executing external compose provider podman-compose. <<<<\\r\\n\\r\\n'\n"
+            "          printf 'java\\r\\nsql\\r\\n'\n"
+            "          ;;\n"
+            "        none) : ;;\n"
+            "      esac\n"
             "      ;;\n"
             "    *' /flink-scripts/flink_jobs.py check '*) return 0 ;;\n"
             "  esac\n"
@@ -61,6 +68,14 @@ class FlinkLifecycleTests(unittest.TestCase):
         self.assertIn("/opt/flink/bin/flink run -d /opt/flink/usrlib/transaction-enrichment.jar", commands)
         self.assertIn("/opt/flink/bin/sql-client.sh sql-client embedded", commands)
         self.assertNotIn("execution.savepoint.path", commands)
+        self.assertEqual(status["java"], "fresh")
+        self.assertEqual(status["sql"], "fresh")
+
+    def test_provider_notice_and_tty_crlf_do_not_hide_planned_jobs(self) -> None:
+        commands, status, _ = self.run_lifecycle("provider-crlf")
+
+        self.assertIn("/opt/flink/bin/flink run -d /opt/flink/usrlib/transaction-enrichment.jar", commands)
+        self.assertIn("/opt/flink/bin/sql-client.sh sql-client embedded", commands)
         self.assertEqual(status["java"], "fresh")
         self.assertEqual(status["sql"], "fresh")
 
