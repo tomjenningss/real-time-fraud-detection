@@ -16,7 +16,11 @@ REQUIRED_REGISTERED_SLOTS = 2
 
 
 def fetch(base_url: str, path: str) -> dict:
-    with urllib.request.urlopen(base_url.rstrip("/") + path, timeout=5) as response:
+    # Flink is reached over the private Compose network. Podman can propagate host
+    # proxy variables into containers, so urlopen() must not route this request to
+    # a workstation or corporate HTTP proxy.
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    with opener.open(base_url.rstrip("/") + path, timeout=5) as response:
         return json.load(response)
 
 
@@ -56,6 +60,24 @@ def load(base_url: str) -> dict:
     return assess(fetch(base_url, "/overview"), fetch(base_url, "/jobs/overview"))
 
 
+def report(command: str, status: dict) -> int:
+    if status["errors"]:
+        for error in status["errors"]:
+            print(error, file=sys.stderr)
+        return 1
+    missing = [key for key, value in status["expected_jobs"].items() if value["running"] == 0]
+    if command == "plan":
+        print("\n".join(missing))
+        return 0
+    if command == "ids":
+        for key, value in status["expected_jobs"].items():
+            if value["job_id"]:
+                print(f"{key}={value['job_id']}")
+        return 0
+    print(json.dumps(status, separators=(",", ":"), sort_keys=True))
+    return 0 if not missing else 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=("check", "plan", "ids"))
@@ -66,21 +88,7 @@ def main() -> int:
     except (OSError, urllib.error.URLError, ValueError, json.JSONDecodeError) as error:
         print(f"Flink REST unavailable: {type(error).__name__}", file=sys.stderr)
         return 2
-    if status["errors"]:
-        for error in status["errors"]:
-            print(error, file=sys.stderr)
-        return 1
-    missing = [key for key, value in status["expected_jobs"].items() if value["running"] == 0]
-    if args.command == "plan":
-        print("\n".join(missing))
-        return 0
-    if args.command == "ids":
-        for key, value in status["expected_jobs"].items():
-            if value["job_id"]:
-                print(f"{key}={value['job_id']}")
-        return 0
-    print(json.dumps(status, separators=(",", ":"), sort_keys=True))
-    return 0 if not missing else 1
+    return report(args.command, status)
 
 
 if __name__ == "__main__":

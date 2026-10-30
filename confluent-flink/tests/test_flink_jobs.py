@@ -1,6 +1,9 @@
 import importlib.util
+import io
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 
 MODULE_PATH = Path(__file__).parents[1] / "scripts" / "flink_jobs.py"
@@ -28,6 +31,47 @@ class FlinkJobHealthTests(unittest.TestCase):
         status = flink_jobs.assess(self.overview(), {"jobs": []})
         self.assertEqual(status["errors"], [])
         self.assertEqual(status["expected_jobs"]["java"]["matches"], 0)
+
+    def test_fresh_install_plan_returns_both_jobs_with_success(self):
+        status = flink_jobs.assess(self.overview(), {"jobs": []})
+        output = io.StringIO()
+
+        with redirect_stdout(output):
+            result = flink_jobs.report("plan", status)
+
+        self.assertEqual(result, 0)
+        self.assertEqual(output.getvalue().splitlines(), ["java", "sql"])
+
+    def test_restart_plan_with_both_jobs_running_is_idempotent(self):
+        status = flink_jobs.assess(
+            self.overview(),
+            {
+                "jobs": [
+                    {"jid": "java-id", "name": flink_jobs.EXPECTED["java"], "state": "RUNNING"},
+                    {"jid": "sql-id", "name": flink_jobs.EXPECTED["sql"], "state": "RUNNING"},
+                ]
+            },
+        )
+        output = io.StringIO()
+
+        with redirect_stdout(output):
+            result = flink_jobs.report("plan", status)
+
+        self.assertEqual(result, 0)
+        self.assertEqual(output.getvalue(), "\n")
+
+    def test_internal_rest_fetch_disables_environment_proxies(self):
+        response = mock.MagicMock()
+        response.__enter__.return_value = io.StringIO('{"taskmanagers":1}')
+        opener = mock.MagicMock()
+        opener.open.return_value = response
+
+        with mock.patch.object(flink_jobs.urllib.request, "build_opener", return_value=opener) as build:
+            payload = flink_jobs.fetch("http://jobmanager:8081", "/overview")
+
+        proxy_handler = build.call_args.args[0]
+        self.assertEqual(proxy_handler.proxies, {})
+        self.assertEqual(payload, {"taskmanagers": 1})
 
     def test_duplicate_is_rejected_and_failed_job_is_missing(self):
         name = flink_jobs.EXPECTED["java"]

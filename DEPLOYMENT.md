@@ -42,6 +42,10 @@ both explicitly and through `COMPOSE_PROFILES`, including when Podman delegates 
 services available without exporting `COMPOSE_PROFILES`; any additional profiles supplied by the caller are
 preserved.
 
+The Flink lifecycle client reaches `jobmanager` only over the private Compose network and deliberately bypasses
+host HTTP proxy settings. This prevents workstation or corporate proxy variables propagated by Podman from
+intercepting Flink REST planning and health requests.
+
 Before Alembic runs, startup opens a short connection from the migrations image to this Compose project's
 `postgres` service using the same `DATABASE_URL` as the migration and application containers. An
 authentication failure stops startup with a non-secret diagnostic; it never changes the database role or

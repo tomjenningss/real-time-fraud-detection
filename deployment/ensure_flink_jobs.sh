@@ -11,17 +11,21 @@ if [ -f "$manifest" ]; then
 fi
 
 attempt=0
+plan_error="$repo_dir/.runtime/flink-plan.stderr"
 while [ "$attempt" -lt 30 ]; do
   if missing=$(compose run --rm --no-deps platform-cli \
-    python /flink-scripts/flink_jobs.py plan --url http://jobmanager:8081)
+    python /flink-scripts/flink_jobs.py plan --url http://jobmanager:8081 2>"$plan_error")
   then
+    rm -f "$plan_error"
     break
   fi
   attempt=$((attempt + 1))
   sleep 2
 done
 if [ "$attempt" -ge 30 ]; then
-  echo "Flink TaskManager did not register two slots" >&2
+  echo "Flink planning failed after the cluster readiness window. Last error:" >&2
+  sed 's/^/  /' "$plan_error" >&2
+  rm -f "$plan_error"
   exit 1
 fi
 
