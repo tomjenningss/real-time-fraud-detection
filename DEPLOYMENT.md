@@ -48,6 +48,10 @@ intercepting Flink REST planning and health requests. Startup also normalizes TT
 the exact `java` and `sql` planner records, so external Compose provider notices cannot hide fresh-install job
 submissions. A failed Java or SQL submission reports its command exit status and preserves the command's stderr.
 
+Status uses the provider-portable `compose ps` form. Required services are then resolved independently with
+project and service labels through `podman ps -a`, so stopped containers remain visible even on older
+`podman-compose` releases that do not support `compose ps --all`.
+
 Before Alembic runs, startup opens a short connection from the migrations image to this Compose project's
 `postgres` service using the same `DATABASE_URL` as the migration and application containers. An
 authentication failure stops startup with a non-secret diagnostic; it never changes the database role or

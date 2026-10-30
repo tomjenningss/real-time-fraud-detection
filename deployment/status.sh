@@ -5,7 +5,10 @@ set -u
 failures=0
 echo "Compose project: $project"
 echo "Containers (HTTP readiness is checked separately below):"
-compose ps --all
+# Older podman-compose releases do not implement `ps --all`. The portable
+# running-container summary is followed by label-based checks below; those use
+# `podman ps -a`, so a stopped required service is still reported as stopped.
+compose ps
 
 check_health() {
   service=$1
