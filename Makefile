@@ -1,9 +1,9 @@
 SHELL := /bin/sh
 
 export COMPOSE_PROJECT_NAME ?= fraud-platform-dev
-COMPOSE = podman compose -p $(COMPOSE_PROJECT_NAME) -f compose.yaml
+COMPOSE = ./deployment/compose.sh
 
-.PHONY: build up down restart status smoke-test logs reset prepare config
+.PHONY: build up down restart status smoke-test logs reset prepare config test-deployment
 
 prepare:
 	@./deployment/ensure_env.sh
@@ -33,4 +33,7 @@ logs: prepare
 
 reset: prepare
 	@./deployment/reset.sh
+
+test-deployment:
+	python3 -m unittest discover -s deployment/tests -v
 

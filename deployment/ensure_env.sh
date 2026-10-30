@@ -45,6 +45,7 @@ if [ ! -f "$runtime_dir/offsets.env" ]; then
   {
     echo "ROUTER_EXPECTED_START_OFFSETS=0:0"
     echo "FRAUD_ML_EXPECTED_START_OFFSETS=0:0"
+    echo "FRESH_BOUNDARY_CAPTURED=false"
   } >"$runtime_dir/offsets.env"
 fi
 

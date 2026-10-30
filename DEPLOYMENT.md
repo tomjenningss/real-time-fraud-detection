@@ -26,10 +26,18 @@ make smoke-test
 also creates the ignored `.runtime/` directory used for Kafka startup boundaries and Flink recovery records.
 The committed `.env.example` documents every setting but contains no deployed credential.
 
+All Compose commands use `deployment/compose.sh`. The wrapper always enables the internal `tools` profile
+both explicitly and through `COMPOSE_PROFILES`, including when Podman delegates Compose to the external
+`podman-compose` provider on macOS. This makes the one-shot migration, checkpoint, Flink client, and smoke-test
+services available without exporting `COMPOSE_PROFILES`; any additional profiles supplied by the caller are
+preserved.
+
 `make up` starts Kafka and PostgreSQL first, waits for them, runs Alembic migrations, creates all Kafka topics
 idempotently, fixes the Flink checkpoint volume to UID/GID 9999 with mode 0750, starts Flink, ensures exactly
 one current instance of each required job is running, captures fresh Python consumer boundaries, and only
-then starts the application services. Re-running it does not reset offsets or submit duplicate running jobs.
+then starts the application services. The fresh boundary is captured once and retained across partial or
+subsequent startups. Re-running `make up` does not reset offsets, recreate consumers merely because the topic
+advanced, or submit duplicate running jobs.
 
 Live Anthropic investigations remain disabled. The deployment runs only the deterministic router, outbox
 publisher, checked-in LightGBM scorer, Go correlator, and Go shadow decision engine requested by this local

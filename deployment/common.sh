@@ -3,10 +3,9 @@ set -eu
 
 repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 project=${COMPOSE_PROJECT_NAME:-fraud-platform-dev}
-compose_file="$repo_dir/compose.yaml"
 
 compose() {
-  podman compose -p "$project" -f "$compose_file" "$@"
+  "$repo_dir/deployment/compose.sh" "$@"
 }
 
 env_value() {

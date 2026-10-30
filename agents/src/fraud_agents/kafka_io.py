@@ -29,7 +29,7 @@ def await_assignment_and_validate(
     buffered_messages: list | None = None,
     role: str = "router",
     expected_offsets_variable: str = "ROUTER_EXPECTED_START_OFFSETS",
-    timeout_seconds: float = 30,
+    timeout_seconds: float = 60,
 ) -> dict[int, int]:
     """Wait for assignment; validate only a brand-new group's initial latest boundary."""
     deadline = time.monotonic() + timeout_seconds
