@@ -73,7 +73,7 @@ def report(command: str, status: dict) -> int:
         for key, value in status["expected_jobs"].items():
             if value["job_id"]:
                 print(f"{key}={value['job_id']}")
-        return 0
+        return 0 if not missing else 1
     print(json.dumps(status, separators=(",", ":"), sort_keys=True))
     return 0 if not missing else 1
 

@@ -60,6 +60,23 @@ class FlinkJobHealthTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(output.getvalue(), "\n")
 
+    def test_ids_fails_when_a_required_running_job_is_missing(self):
+        status = flink_jobs.assess(
+            self.overview(),
+            {
+                "jobs": [
+                    {"jid": "java-id", "name": flink_jobs.EXPECTED["java"], "state": "RUNNING"},
+                ]
+            },
+        )
+        output = io.StringIO()
+
+        with redirect_stdout(output):
+            result = flink_jobs.report("ids", status)
+
+        self.assertEqual(result, 1)
+        self.assertEqual(output.getvalue(), "java=java-id\n")
+
     def test_internal_rest_fetch_disables_environment_proxies(self):
         response = mock.MagicMock()
         response.__enter__.return_value = io.StringIO('{"taskmanagers":1}')

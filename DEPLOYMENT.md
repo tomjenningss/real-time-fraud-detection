@@ -129,6 +129,10 @@ savepoints live in the project-scoped `flink-checkpoints` volume.
 If a savepoint command fails, shutdown stops before Compose is taken down. This avoids silently replacing a
 stateful job with a fresh submission. Consumer groups are never reset by lifecycle commands.
 
+Job IDs and savepoint results are normalized for TTY line endings before validation. Shutdown requires both
+named RUNNING jobs to have distinct 32-character hexadecimal IDs, and verifies each returned savepoint directory
+inside the JobManager before writing the recovery manifest or stopping any container.
+
 ## Smoke test
 
 `make smoke-test` creates a unique run ID, establishes output boundaries, and publishes 16 payments plus an
