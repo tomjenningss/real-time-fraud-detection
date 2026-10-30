@@ -29,10 +29,8 @@ def assess(overview: dict, jobs_payload: dict) -> dict:
     for key, name in EXPECTED.items():
         matches = [job for job in jobs if job.get("name") == name]
         running = [job for job in matches if job.get("state") == "RUNNING"]
-        if len(matches) > 1:
-            errors.append(f"duplicate expected job: {name} ({len(matches)} matches)")
-        elif matches and not running:
-            errors.append(f"expected job is not RUNNING: {name} ({matches[0].get('state')})")
+        if len(running) > 1:
+            errors.append(f"duplicate running expected job: {name} ({len(running)} running matches)")
         expected[key] = {
             "name": name,
             "matches": len(matches),
@@ -60,7 +58,7 @@ def load(base_url: str) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=("check", "plan"))
+    parser.add_argument("command", choices=("check", "plan", "ids"))
     parser.add_argument("--url", default="http://localhost:8081")
     args = parser.parse_args()
     try:
@@ -72,9 +70,14 @@ def main() -> int:
         for error in status["errors"]:
             print(error, file=sys.stderr)
         return 1
-    missing = [key for key, value in status["expected_jobs"].items() if value["matches"] == 0]
+    missing = [key for key, value in status["expected_jobs"].items() if value["running"] == 0]
     if args.command == "plan":
         print("\n".join(missing))
+        return 0
+    if args.command == "ids":
+        for key, value in status["expected_jobs"].items():
+            if value["job_id"]:
+                print(f"{key}={value['job_id']}")
         return 0
     print(json.dumps(status, separators=(",", ":"), sort_keys=True))
     return 0 if not missing else 1

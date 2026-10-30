@@ -1,0 +1,85 @@
+{
+  "created_at": "2026-10-28T11:58:24.034346+00:00",
+  "dataset": {
+    "path": "data/ml/synthetic-v1.jsonl",
+    "sha256": "abfd893e33af1c81f5d5261f1026bac2595405b1bb4b8856a9303b2296538e18"
+  },
+  "feature_importance_gain": {
+    "amount": 14569.299459815025,
+    "distinct_merchants_2m": 3977.170707166195,
+    "mean_amount_2m": 7303.372328877449,
+    "merchant_diversity_2m": 901.091641664505,
+    "total_amount_2m": 4380.097104668617,
+    "transactions_10m": 4204.883696436882,
+    "transactions_1m": 5337.0349796414375,
+    "transactions_2m": 49805.75162267685
+  },
+  "feature_names": [
+    "amount",
+    "transactions_1m",
+    "transactions_2m",
+    "transactions_10m",
+    "distinct_merchants_2m",
+    "total_amount_2m",
+    "mean_amount_2m",
+    "merchant_diversity_2m"
+  ],
+  "feature_schema_version": "fraud-features-1.0.0",
+  "mean_batch_inference_ms_per_record": 0.0008923666000000001,
+  "model_version": "lgbm-baseline-20261028T115824Z-abfd893e",
+  "test_metrics": {
+    "brier_score": 0.008211309699975971,
+    "confusion_matrix": [
+      [
+        4819,
+        31
+      ],
+      [
+        21,
+        129
+      ]
+    ],
+    "f1": 0.832258064516129,
+    "false_positive_rate": 0.006391752577319588,
+    "pr_auc": 0.8475993658899482,
+    "precision": 0.80625,
+    "recall": 0.86,
+    "roc_auc": 0.9604962199312715,
+    "threshold": 0.24
+  },
+  "threshold": 0.24,
+  "threshold_selection": "maximum F1 on validation split",
+  "training_config": {
+    "colsample_bytree": 0.9,
+    "device_type": "cpu",
+    "learning_rate": 0.04,
+    "min_child_samples": 40,
+    "n_estimators": 300,
+    "n_jobs": 6,
+    "num_leaves": 31,
+    "random_state": 20261028,
+    "subsample": 0.9,
+    "verbosity": -1
+  },
+  "training_seconds": 0.43385679100174457,
+  "validation_metrics": {
+    "brier_score": 0.006104580942662043,
+    "confusion_matrix": [
+      [
+        9683,
+        41
+      ],
+      [
+        21,
+        255
+      ]
+    ],
+    "f1": 0.8916083916083916,
+    "false_positive_rate": 0.004216371863430687,
+    "pr_auc": 0.8327109679134308,
+    "precision": 0.8614864864864865,
+    "recall": 0.9239130434782609,
+    "roc_auc": 0.9762940863484342,
+    "threshold": 0.24
+  }
+}

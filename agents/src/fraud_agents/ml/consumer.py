@@ -7,7 +7,8 @@ from pathlib import Path
 from confluent_kafka import Consumer, KafkaException, Producer
 
 from fraud_agents.events import KafkaPosition
-from fraud_agents.kafka_io import consumer_config
+from fraud_agents.kafka_io import await_assignment_and_validate, consumer_config
+from fraud_agents.service_config import _offsets
 
 from .inference import ShadowScorer, serialise
 from .model import BaselineModel
@@ -31,14 +32,28 @@ def main() -> None:
     )
     consumer = Consumer(consumer_config(brokers, group, auto_offset_reset="latest"))
     consumer.subscribe([input_topic])
+    buffered_messages = []
+    positions = await_assignment_and_validate(
+        consumer,
+        expected_start_offsets=_offsets(os.getenv("FRAUD_ML_EXPECTED_START_OFFSETS", "")),
+        buffered_messages=buffered_messages,
+        role="shadow scorer",
+        expected_offsets_variable="FRAUD_ML_EXPECTED_START_OFFSETS",
+    )
     print(
         json.dumps(
-            {"event": "shadow_scorer_ready", "group": group, "model_version": model.metadata["model_version"]}
+            {
+                "event": "shadow_scorer_ready",
+                "group": group,
+                "model_version": model.metadata["model_version"],
+                "positions": positions,
+            }
         )
     )
     try:
+        pending = list(buffered_messages)
         while True:
-            message = consumer.poll(1.0)
+            message = pending.pop(0) if pending else consumer.poll(1.0)
             if message is None:
                 continue
             if message.error():

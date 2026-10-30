@@ -44,8 +44,13 @@ target/
 logs/
 data/
 artifacts/
+!agents/artifacts/
+!agents/artifacts/baseline/
+!agents/artifacts/baseline/model.txt
+!agents/artifacts/baseline/metadata.json
 checkpoints/
 savepoints/
+.runtime/
 audit_records/
 *.checkpoint.json
 /phoenix-tracing*.png

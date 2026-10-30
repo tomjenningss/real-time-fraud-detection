@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import time
 from datetime import datetime
@@ -20,6 +21,7 @@ def main() -> None:
         Producer({"bootstrap.servers": config.brokers}),
         created_after=created_after,
     )
+    print(json.dumps({"event": "outbox_ready"}, separators=(",", ":")))
     try:
         while True:
             if publisher.publish_batch() == 0:

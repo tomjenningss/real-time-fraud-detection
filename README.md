@@ -224,12 +224,14 @@ See the [matched comparison report](agents/evaluation/reports/live-opus-vs-sonne
 
 ## Documentation
 
+- [Self-contained local deployment](DEPLOYMENT.md)
 - [Streaming and Flink guide](confluent-flink/README.md)
 - [Decisioning, recovery and operations](fraud-decisioning/README.md)
 - [Agent architecture and security boundaries](docs/architecture.md)
 - [Architecture evolution and historical tags](docs/evolution.md)
 - [Phoenix and OpenTelemetry observability](observability/README.md)
 - [Fraud-agent evaluation harness](agents/evaluation/README.md)
+- [Mac mini golden-reference inventory](docs/golden-reference.md)
 
 ## Security and execution controls
 

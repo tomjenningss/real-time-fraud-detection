@@ -1,0 +1,284 @@
+x-python-environment: &python-environment
+  DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+  KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+  ROUTER_GROUP_ID: fraud-platform-dev-router-v1
+  ROUTER_AUTO_OFFSET_RESET: latest
+  INVESTIGATION_GROUP_ID: fraud-platform-dev-investigation-v1
+  INVESTIGATION_AUTO_OFFSET_RESET: latest
+  NORMAL_INVESTIGATION_SAMPLE_RATE: "0"
+  LIVE_INVESTIGATIONS_ENABLED: "false"
+  LIVE_INVESTIGATIONS_APPROVED: "false"
+
+x-python-service: &python-service
+  image: localhost/fraud-platform-dev-agents:latest
+  build:
+    context: ./agents
+    dockerfile: Dockerfile
+  depends_on:
+    kafka:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+  restart: unless-stopped
+
+services:
+  kafka:
+    image: docker.io/confluentinc/cp-kafka:8.1.6
+    hostname: kafka
+    ports:
+      - "127.0.0.1:${KAFKA_HOST_PORT}:9092"
+    environment:
+      CLUSTER_ID: ${CLUSTER_ID}
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:29093,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:${KAFKA_HOST_PORT}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_HEAP_OPTS: ${KAFKA_HEAP_OPTS}
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:29092 >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 20s
+    mem_limit: 768m
+    restart: unless-stopped
+
+  postgres:
+    image: docker.io/library/postgres:17-alpine
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 10s
+    mem_limit: 256m
+    restart: unless-stopped
+
+  checkpoint-init:
+    image: localhost/fraud-platform-dev-flink:1.20.2
+    build:
+      context: ./confluent-flink
+      dockerfile: Dockerfile.flink
+    user: "0"
+    entrypoint: ["/bin/sh", "-ec"]
+    command: ["install -d -o 9999 -g 9999 -m 0750 /checkpoints /checkpoints/savepoints"]
+    volumes:
+      - flink-checkpoints:/checkpoints
+    profiles: [tools]
+
+  jobmanager:
+    image: localhost/fraud-platform-dev-flink:1.20.2
+    build:
+      context: ./confluent-flink
+      dockerfile: Dockerfile.flink
+    command: jobmanager
+    ports:
+      - "127.0.0.1:${FLINK_HOST_PORT}:8081"
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: jobmanager
+        rest.address: jobmanager
+        jobmanager.memory.process.size: ${JOBMANAGER_MEMORY}
+        state.checkpoints.dir: file:///checkpoints
+        state.savepoints.dir: file:///checkpoints/savepoints
+        execution.checkpointing.externalized-checkpoint-retention: RETAIN_ON_CANCELLATION
+        parallelism.default: 1
+    volumes:
+      - flink-checkpoints:/checkpoints
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/overview >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 10s
+    mem_limit: 896m
+    restart: unless-stopped
+
+  taskmanager:
+    image: localhost/fraud-platform-dev-flink:1.20.2
+    build:
+      context: ./confluent-flink
+      dockerfile: Dockerfile.flink
+    command: taskmanager
+    depends_on:
+      jobmanager:
+        condition: service_healthy
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: jobmanager
+        taskmanager.numberOfTaskSlots: 2
+        taskmanager.memory.process.size: ${TASKMANAGER_MEMORY}
+        state.checkpoints.dir: file:///checkpoints
+        state.savepoints.dir: file:///checkpoints/savepoints
+    volumes:
+      - flink-checkpoints:/checkpoints
+    mem_limit: 1536m
+    restart: unless-stopped
+
+  sql-client:
+    image: localhost/fraud-platform-dev-flink:1.20.2
+    depends_on:
+      jobmanager:
+        condition: service_healthy
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: jobmanager
+        rest.address: jobmanager
+    volumes:
+      - ./confluent-flink/sql:/workspace/sql:ro
+      - flink-checkpoints:/checkpoints
+    profiles: [tools]
+
+  migrations:
+    <<: *python-service
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    restart: "no"
+    profiles: [tools]
+
+  fraud-router:
+    <<: *python-service
+    command: ["fraud-router"]
+    env_file:
+      - ./.runtime/offsets.env
+    environment: *python-environment
+    healthcheck:
+      test: ["CMD", "python", "-m", "fraud_agents.healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    mem_limit: 256m
+
+  outbox-publisher:
+    <<: *python-service
+    command: ["fraud-outbox-publisher"]
+    environment: *python-environment
+    healthcheck:
+      test: ["CMD", "python", "-m", "fraud_agents.healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    mem_limit: 256m
+
+  lightgbm-scorer:
+    <<: *python-service
+    command: ["fraud-shadow-scorer"]
+    env_file:
+      - ./.runtime/offsets.env
+    environment:
+      <<: *python-environment
+      FRAUD_SHADOW_SCORING_ENABLED: "true"
+      FRAUD_ML_MODEL_DIR: /app/artifacts/baseline
+      FRAUD_ML_GROUP_ID: fraud-platform-dev-lightgbm-v1
+      HEALTHCHECK_DATABASE: "false"
+    healthcheck:
+      test: ["CMD", "python", "-m", "fraud_agents.healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    mem_limit: 512m
+
+  fraud-assessment-correlator:
+    image: localhost/fraud-platform-dev-correlator:latest
+    build:
+      context: ./fraud-assessment-correlator
+      dockerfile: Dockerfile
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      CORRELATOR_GROUP_ID: fraud-platform-dev-correlator-v1
+      CORRELATOR_AUTO_OFFSET_RESET: earliest
+      HTTP_PORT: "8080"
+    ports:
+      - "127.0.0.1:${CORRELATOR_HOST_PORT}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/readyz >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    mem_limit: 128m
+    restart: unless-stopped
+
+  fraud-decision-engine:
+    image: localhost/fraud-platform-dev-decision-engine:latest
+    build:
+      context: ./fraud-decision-engine
+      dockerfile: Dockerfile
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SHADOW_DECISION_GROUP_ID: fraud-platform-dev-decision-engine-v1
+      SHADOW_DECISION_AUTO_OFFSET_RESET: earliest
+      ACTION_POLICY_VERSION: fraud-action-policy-v1
+      ACTION_CHALLENGE_THRESHOLD: "0.24"
+      ACTION_BLOCK_THRESHOLD: "0.70"
+      ACTION_SUPPORTED_MODEL_VERSION_PREFIX: lgbm-baseline-
+      ACTION_SUPPORTED_FEATURE_SCHEMA_VERSION: fraud-features-1.0.0
+      HTTP_PORT: "8080"
+    ports:
+      - "127.0.0.1:${SHADOW_ENGINE_HOST_PORT}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/readyz >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    mem_limit: 128m
+    restart: unless-stopped
+
+  platform-cli:
+    image: localhost/fraud-platform-dev-agents:latest
+    volumes:
+      - ./confluent-flink/scripts:/flink-scripts:ro
+      - ./deployment:/deployment:ro
+    profiles: [tools]
+
+  smoke-runner:
+    image: localhost/fraud-platform-dev-agents:latest
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    volumes:
+      - ./deployment:/deployment:ro
+    profiles: [tools]
+
+volumes:
+  kafka-data:
+  postgres-data:
+  flink-checkpoints:
+
