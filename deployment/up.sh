@@ -8,6 +8,8 @@ compose up -d kafka postgres
 wait_for_health kafka 48
 wait_for_health postgres 36
 
+"$repo_dir/deployment/check_postgres_credentials.sh"
+
 echo "Applying idempotent PostgreSQL migrations"
 compose run --rm migrations
 

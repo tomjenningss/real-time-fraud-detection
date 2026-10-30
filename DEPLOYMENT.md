@@ -24,13 +24,28 @@ make smoke-test
 
 `make build` creates an ignored, mode-600 `.env` on first use with a random local PostgreSQL password. It
 also creates the ignored `.runtime/` directory used for Kafka startup boundaries and Flink recovery records.
-The committed `.env.example` documents every setting but contains no deployed credential.
+The committed `.env.example` documents every setting but contains no deployed credential. Credential
+generation occurs only when `.env` and the project PostgreSQL volume are both absent. If the volume exists,
+startup refuses to invent a replacement credential and reports the non-destructive recovery choices.
+Generated passwords are hexadecimal and therefore safe in the PostgreSQL URL. Existing configuration is
+validated to contain only URL-unreserved password characters instead of guessing how a custom secret should
+be encoded.
+
+The repository `.env` is authoritative for deployment settings. The Compose wrapper reloads it before every
+provider call so exported `POSTGRES_DB`, `POSTGRES_USER`, or `POSTGRES_PASSWORD` shell variables cannot
+silently override the credentials used by PostgreSQL, migrations, or application services. The project name
+and additional Compose profiles remain explicit shell-level overrides.
 
 All Compose commands use `deployment/compose.sh`. The wrapper always enables the internal `tools` profile
 both explicitly and through `COMPOSE_PROFILES`, including when Podman delegates Compose to the external
 `podman-compose` provider on macOS. This makes the one-shot migration, checkpoint, Flink client, and smoke-test
 services available without exporting `COMPOSE_PROFILES`; any additional profiles supplied by the caller are
 preserved.
+
+Before Alembic runs, startup opens a short connection from the migrations image to this Compose project's
+`postgres` service using the same `DATABASE_URL` as the migration and application containers. An
+authentication failure stops startup with a non-secret diagnostic; it never changes the database role or
+deletes the retained volume.
 
 `make up` starts Kafka and PostgreSQL first, waits for them, runs Alembic migrations, creates all Kafka topics
 idempotently, fixes the Flink checkpoint volume to UID/GID 9999 with mode 0750, starts Flink, ensures exactly
@@ -71,6 +86,14 @@ host `localhost`.
 Do not change `POSTGRES_PASSWORD` after PostgreSQL has initialized. Migrations deliberately fail before
 workers start if the configured password no longer matches the persisted database. Use the confirmed reset
 workflow for a disposable development database instead.
+
+If an ignored `.env` is lost while `${COMPOSE_PROJECT_NAME}_postgres-data` remains, restore the original
+`.env` (preferred) or edit the current file to use the original password. If the old password is unavailable
+but local socket administration is still permitted, connect interactively inside the PostgreSQL container and
+use psql's `\\password fraud_app` command; it prompts without putting the password in shell history. This is an
+explicit credential reconciliation, not an automatic deployment action. If neither route is available,
+restore from backup or obtain approval for a deliberate destructive reset; normal startup will not remove the
+volume.
 
 ## Normal operation
 
