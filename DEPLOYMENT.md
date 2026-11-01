@@ -10,8 +10,10 @@ default project name is `fraud-platform-dev`; it does not use the existing `conf
 - a Compose provider available through `podman compose`
 - `make`, `openssl`, and the standard macOS command-line tools
 
-No host Java, Maven, Go, PostgreSQL, or Python environment is required. Image builds compile the Flink JAR,
-install the Python package and exact checked-in LightGBM artifact, and compile both Go services.
+No host Java, Maven, Go, PostgreSQL, or application Python environment is required for the core stack. Image
+builds compile the Flink JAR, install the Python package and exact checked-in LightGBM artifact, compile both
+Go services, and build the Glaramara Next.js application. The bounded Glaramara acceptance probe uses host
+Python's standard library only.
 
 ## First startup
 
@@ -24,9 +26,11 @@ make smoke-test
 
 `make build` creates an ignored, mode-600 `.env` on first use with a random local PostgreSQL password. It
 also creates the ignored `.runtime/` directory used for Kafka startup boundaries and Flink recovery records.
-The committed `.env.example` documents every setting but contains no deployed credential. Credential
-generation occurs only when `.env` and the project PostgreSQL volume are both absent. If the volume exists,
-startup refuses to invent a replacement credential and reports the non-destructive recovery choices.
+The committed `.env.example` documents every setting but contains no deployed credential. Credential and
+Glaramara session-secret generation occurs only in the ignored mode-600 `.env`; existing deployment files
+are upgraded additively without changing their PostgreSQL credential. PostgreSQL credential generation occurs
+only when `.env` and the project PostgreSQL volume are both absent. If the volume exists, startup refuses to
+invent a replacement credential and reports the non-destructive recovery choices.
 Generated passwords are hexadecimal and therefore safe in the PostgreSQL URL. Existing configuration is
 validated to contain only URL-unreserved password characters instead of guessing how a custom secret should
 be encoded.
@@ -60,9 +64,9 @@ deletes the retained volume.
 `make up` starts Kafka and PostgreSQL first, waits for them, runs Alembic migrations, creates all Kafka topics
 idempotently, fixes the Flink checkpoint volume to UID/GID 9999 with mode 0750, starts Flink, ensures exactly
 one current instance of each required job is running, captures fresh Python consumer boundaries, and only
-then starts the application services. The fresh boundary is captured once and retained across partial or
-subsequent startups. Re-running `make up` does not reset offsets, recreate consumers merely because the topic
-advanced, or submit duplicate running jobs.
+then starts the application services, including Glaramara. The fresh boundary is captured once and retained
+across partial or subsequent startups. Re-running `make up` does not reset offsets, recreate consumers merely
+because the topic advanced, or submit duplicate running jobs.
 
 Live Anthropic investigations remain disabled. The deployment runs only the deterministic router, outbox
 publisher, checked-in LightGBM scorer, Go correlator, and Go shadow decision engine requested by this local
@@ -79,6 +83,10 @@ Edit the ignored `.env` before first startup to change ports or resource sizes:
 | `FLINK_HOST_PORT` | `18081` | Flink REST/UI |
 | `CORRELATOR_HOST_PORT` | `18082` | correlator HTTP |
 | `SHADOW_ENGINE_HOST_PORT` | `18083` | shadow engine HTTP |
+| `GLARAMARA_HOST_PORT` | `13000` | fictional banking HTTP |
+| `GLARAMARA_PUBLIC_ORIGIN` | `http://127.0.0.1:13000` | exact mutation origin |
+| `GLARAMARA_SESSION_SECRET` | generated | signed demo-session secret |
+| `GLARAMARA_COOKIE_SECURE` | `false` | localhost-only HTTP cookie override |
 | `KAFKA_HEAP_OPTS` | `-Xms256m -Xmx512m` | development broker heap |
 | `JOBMANAGER_MEMORY` | `768m` | Flink JobManager process memory |
 | `TASKMANAGER_MEMORY` | `1280m` | Flink TaskManager process memory |
@@ -116,9 +124,9 @@ make down
 ```
 
 `make status` reports container state and configured health checks, performs Kafka/PostgreSQL protocol checks,
-checks the two required current Flink jobs independently, performs the Go HTTP readiness checks, and prints
-consumer offsets/lag. Historical failed Flink executions do not make the platform unhealthy when one current
-job with the required name is running.
+checks the two required current Flink jobs independently, performs the Go and Glaramara HTTP readiness checks,
+and prints consumer offsets/lag. Historical failed Flink executions do not make the platform unhealthy when
+one current job with the required name is running.
 
 `make down` creates a savepoint for each running required Flink job, records its exact path under `.runtime/`,
 and runs Compose down without `--volumes`. `make up` passes those savepoints to the Java and SQL submissions
@@ -147,6 +155,18 @@ event-time watermark marker to this deployment's broker. It requires all 16 tran
 It also verifies the deterministic 11/2/3 approved/challenged/blocked distribution and independently requires
 `HIGH_VELOCITY` and `MERCHANT_HOPPING` records from the Flink SQL job. The generator reads the last raw-topic
 event time before choosing its next timestamp, so repeated runs remain ahead of the previous test watermark.
+
+`make glaramara-smoke-test` is a second opt-in, publishing acceptance probe. It creates a signed fictional
+banking session, submits one unique payment, verifies same-key replay and conflicting-key rejection, and waits
+for the authoritative deterministic verdict plus independent ML/correlation/shadow provenance. It also proves
+the fictional account balance is unchanged. The probe persists its immutable payment attempt and Kafka events;
+it never creates a booked transaction or ledger effect.
+
+The 16-payment probe and Glaramara reserve raw event time under the same PostgreSQL advisory lock. This lets the
+SQL probe publish a later window-closing marker without making a payment submitted immediately afterward late
+to the Java evidence job. The marker payload retains that future event time, but its outbox row becomes
+available after three seconds of processing time; migration `0009_release_banking_watermarks` repairs pending
+rows created before those clocks were separated.
 
 ## Destructive reset
 

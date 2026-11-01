@@ -175,11 +175,22 @@ class FraudStore:
         """Claim briefly; caller publishes only after this transaction has committed."""
         with self.connection() as connection, connection.transaction():
             rows = connection.execute(
-                """SELECT event_id, destination_topic, message_key, payload FROM outbox_events
-                   WHERE (status='PENDING' OR (status='CLAIMED' AND claim_until < now()))
-                     AND available_at <= now()
-                     AND (%s::timestamptz IS NULL OR created_at >= %s::timestamptz)
-                   ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT %s""",
+                """SELECT event.event_id, event.destination_topic, event.message_key, event.payload
+                   FROM outbox_events event
+                   WHERE (event.status='PENDING'
+                          OR (event.status='CLAIMED' AND event.claim_until < now()))
+                     AND event.available_at <= now()
+                     AND (%s::timestamptz IS NULL OR event.created_at >= %s::timestamptz)
+                     AND (
+                       event.aggregate_type <> 'banking_payment_watermark'
+                       OR EXISTS (
+                         SELECT 1 FROM outbox_events prerequisite
+                         WHERE prerequisite.aggregate_id = event.aggregate_id
+                           AND prerequisite.aggregate_type = 'banking_payment_raw'
+                           AND prerequisite.status = 'PUBLISHED'
+                       )
+                     )
+                   ORDER BY event.created_at FOR UPDATE OF event SKIP LOCKED LIMIT %s""",
                 (created_after, created_after, limit),
             ).fetchall()
             ids = [row["event_id"] for row in rows]

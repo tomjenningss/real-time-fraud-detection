@@ -1,38 +1,80 @@
-# Repository Guidelines
+# Repository context
 
-## Project Structure & Module Organization
+## Purpose
 
-- `confluent-flink/` contains Kafka/Flink infrastructure, Compose configuration, Flink SQL, the Java DataStream job, Python generators, and streaming tests.
-- `agents/src/fraud_agents/` contains the deterministic router, Claude investigation orchestration, PostgreSQL persistence, budget controls, and Kafka workers. Its tests live in `agents/tests/`; Alembic migrations are in `agents/migrations/`.
-- `fraud-decisioning/` owns the PostgreSQL Compose service and operational scripts.
-- `docs/architecture.md` documents trust boundaries and decision authority. Update the nearest README when changing setup or operational behavior.
+This repository is a local, auditable fraud-platform demonstration. Kafka and Flink derive real-time
+behavioural evidence; deterministic Python policy owns the initial payment verdict; optional Claude agents
+investigate asynchronously; a CPU LightGBM model and Go policy evaluate an experimental shadow action.
+`glaramara-bank/` is the fictional customer-facing banking application. Phase B submits simulated payments
+through the existing fraud platform without ledger effects.
 
-## Build, Test, and Development Commands
+## Directory map and ownership
 
-Run commands from the component directory unless stated otherwise.
+- `confluent-flink/`: generators, Java per-transaction enrichment, Flink SQL aggregate signals, tests.
+- `agents/`: Python router, inbox/outbox, investigations, budgets, LightGBM scorer, migrations, tests.
+- `fraud-assessment-correlator/`: Go correlator for deterministic, ML and investigation events.
+- `fraud-decision-engine/`: Go shadow Action Selection Control; it is not payment authority.
+- `fraud-decisioning/`: legacy/component Compose and Kafka operational scripts.
+- `glaramara-bank/`: Next.js fictional banking UI and PostgreSQL-backed Phase B APIs.
+- `deployment/`, root `compose.yaml`, `Makefile`: isolated `fraud-platform-dev` lifecycle.
+- `observability/`: optional Phoenix/OpenTelemetry stack. `docs/`: design, evidence and handoffs.
+
+## Stack and service boundaries
+
+Kafka 8.1/KRaft, Flink 1.20/Java 11, Python 3.11/Pydantic/PostgreSQL 17/Alembic, LightGBM,
+Go, and Next.js/TypeScript/Tailwind/Playwright. PostgreSQL is authoritative for durable decisions,
+deduplication, outboxes, budgets, correlated/shadow history, and fictional banking data. Kafka delivery is
+at least once; stable event IDs and database constraints are the logical deduplication boundary.
+
+## Non-negotiable constraints
+
+- The deterministic fast path alone writes immutable `payment_decisions`. Claude recommendations and Go
+  shadow actions must never overwrite or relax that verdict.
+- LightGBM is synthetic, experimental, non-authoritative, and must remain explicitly enabled/shadow-only.
+- Live Anthropic calls are disabled unless separately approved; tests must never make paid calls.
+- Preserve provenance, deterministic/versioned IDs, schemas, policies, retries, idempotency and budgets.
+- Never commit `.env` files, credentials, API keys or sensitive payment data.
+- Do not reset Kafka offsets, cancel/reseed Flink state, recreate volumes, mutate decisions/balances, or
+  stop protected golden projects during routine work.
+- Preserve the approved Glaramara prototype/UI. Phase B payment attempts remain simulated with no ledger effect.
+- Preserve IBM TechZone and AskOrchestrate; Orchestrate is outside Phase B and blocked until Phase C.
+- Integration tests are opt-in and can publish. Read component READMEs and use isolated IDs/databases.
+  Validate Compose changes with `make config` or `podman compose config` first.
+
+## Common commands
 
 ```sh
-cd agents && .venv/bin/python -m pip install -e '.[dev]'
-cd agents && .venv/bin/pytest
-cd agents && .venv/bin/ruff check .
+# Isolated root deployment (stateful; read DEPLOYMENT.md first)
+make config                 # render only
+make status                 # read-only health, jobs and lag
+make build && make up       # build/start only when explicitly required
+make smoke-test             # publishes a unique 16-payment fixture
+
+cd agents && .venv/bin/pytest && .venv/bin/ruff check .
 cd confluent-flink && scripts/build_enrichment.sh
 cd confluent-flink && python3 -m unittest discover -s tests -v
+cd fraud-assessment-correlator && go test ./... && go vet ./...
+cd fraud-decision-engine && go test ./... && go vet ./...
+cd glaramara-bank && npm test && npm run typecheck && npm run build && npm run test:e2e
+python3 -m unittest discover -s deployment/tests -v
 ```
 
-`pytest` covers decisioning and agent behavior; Ruff checks Python style. The build script compiles the Flink Java artifact in Maven. Integration tests are opt-in because they publish to local Kafka; follow each component README before running them. Use `podman compose config` to validate Compose edits without changing running services.
+Never run `make reset` without explicit approval. `make down` is state-aware but changes the runtime.
 
-## Coding Style & Naming Conventions
+Python targets 3.11, four-space indentation, type hints and 110-character lines; Ruff enforces `E`, `F`,
+`I`, `UP`, `B` and `ASYNC`. Use deterministic fixtures and fake model responses. Routing, persistence
+and investigation changes should cover retries, idempotency, immutable verdicts and budgets where relevant.
 
-Python targets 3.11, uses four-space indentation, type hints, and a 110-character line limit. Ruff enforces `E`, `F`, `I`, `UP`, `B`, and `ASYNC` rules. Use `snake_case` for modules/functions, `PascalCase` for classes, and explicit versioned names for policies and schemas. Keep Kafka event IDs deterministic and preserve provenance fields. Follow existing Java formatting and Maven package layout under `confluent-flink/src/`.
+## Read before changing the system
 
-## Testing Guidelines
+- Verified architecture: `docs/architecture/system-overview.md`
+- Milestone handoff and next-phase boundary: `docs/implementation/current-state.md`
+- Deployment lifecycle/isolation: `DEPLOYMENT.md`, `docs/golden-reference.md`
+- Decision authority/trust boundaries: `docs/architecture.md`
+- Component details: each component's `README.md`
+- Phase evidence: `docs/implementation/glaramara-phase-0-baseline.md` and
+  `docs/implementation/glaramara-phase-a-summary.md`
 
-Name Python tests `test_*.py` and test functions `test_<behavior>`. Prefer deterministic fixtures, fake Anthropic responses, and isolated identifiers. Never make paid model calls from tests. Changes to routing, persistence, or investigations must cover retries, idempotency, immutable payment verdicts, and budget enforcement where applicable.
-
-## Commit & Pull Request Guidelines
-
-History is small and uses short imperative summaries (for example, `update readme`). Keep commits focused and describe the outcome in the subject. Pull requests should explain the affected data flow, list verification commands and results, link relevant issues, and call out migrations, configuration changes, API costs, or operational risk. Include screenshots only for UI-visible changes.
-
-## Security & Operational Safety
-
-Never commit `.env` files, API keys, database credentials, or sensitive payment data. Keep live investigations disabled unless explicitly approved. Do not reset Kafka offsets, recreate stateful containers, or alter immutable payment decisions as part of routine development.
+At every major milestone, update `docs/implementation/current-state.md`, the verified system overview when
+flows/contracts changed, and the nearest component README. Record commands/results and distinguish observed
+evidence from plans; do not turn handoff files into chronological logs.

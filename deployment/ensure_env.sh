@@ -29,6 +29,7 @@ if [ ! -f "$env_file" ]; then
   esac
   umask 077
   password=$(openssl rand -hex 24)
+  session_secret=$(openssl rand -hex 32)
   tmp="$env_file.tmp.$$"
   {
     echo "POSTGRES_DB=fraud_demo"
@@ -40,6 +41,10 @@ if [ ! -f "$env_file" ]; then
     echo "FLINK_HOST_PORT=18081"
     echo "CORRELATOR_HOST_PORT=18082"
     echo "SHADOW_ENGINE_HOST_PORT=18083"
+    echo "GLARAMARA_HOST_PORT=13000"
+    echo "GLARAMARA_PUBLIC_ORIGIN=http://127.0.0.1:13000"
+    echo "GLARAMARA_COOKIE_SECURE=false"
+    echo "GLARAMARA_SESSION_SECRET=$session_secret"
     echo 'KAFKA_HEAP_OPTS="-Xms256m -Xmx512m"'
     echo "JOBMANAGER_MEMORY=768m"
     echo "TASKMANAGER_MEMORY=1280m"
@@ -48,8 +53,27 @@ if [ ! -f "$env_file" ]; then
   echo "Created private deployment configuration at .env"
 fi
 
+# Phase B settings are additive and do not affect retained PostgreSQL credentials.
+# Upgrade an existing private deployment file in place without exposing its secret.
+if ! grep -q '^GLARAMARA_HOST_PORT=' "$env_file"; then
+  echo "GLARAMARA_HOST_PORT=13000" >>"$env_file"
+fi
+if ! grep -q '^GLARAMARA_PUBLIC_ORIGIN=' "$env_file"; then
+  echo "GLARAMARA_PUBLIC_ORIGIN=http://127.0.0.1:13000" >>"$env_file"
+fi
+if ! grep -q '^GLARAMARA_SESSION_SECRET=' "$env_file"; then
+  umask 077
+  session_secret=$(openssl rand -hex 32)
+  echo "GLARAMARA_SESSION_SECRET=$session_secret" >>"$env_file"
+  echo "Added a private Glaramara session secret to .env"
+fi
+if ! grep -q '^GLARAMARA_COOKIE_SECURE=' "$env_file"; then
+  echo "GLARAMARA_COOKIE_SECURE=false" >>"$env_file"
+fi
+
 for key in POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD CLUSTER_ID KAFKA_HOST_PORT \
   POSTGRES_HOST_PORT FLINK_HOST_PORT CORRELATOR_HOST_PORT SHADOW_ENGINE_HOST_PORT \
+  GLARAMARA_HOST_PORT GLARAMARA_PUBLIC_ORIGIN GLARAMARA_SESSION_SECRET GLARAMARA_COOKIE_SECURE \
   KAFKA_HEAP_OPTS JOBMANAGER_MEMORY TASKMANAGER_MEMORY
 do
   if ! grep -q "^${key}=" "$env_file"; then

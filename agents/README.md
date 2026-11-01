@@ -102,5 +102,35 @@ RUN_ML_KAFKA_INTEGRATION=1 KAFKA_BOOTSTRAP_SERVERS=localhost:9092 \
   .venv/bin/pytest tests/test_ml_kafka_integration.py -q
 ```
 
+## Glaramara Phase B banking schema and outbox
+
+Alembic revision `0006_glaramara_banking` adds persistent fictional customers, accounts, beneficiaries,
+allowlisted demo locations, immutable booked transactions and immutable simulated payment-attempt records.
+It seeds deterministic Alex Morgan, Priya Shah and Daniel Evans fixtures. Demo balances, booked rows and
+payment attempts are protected from mutation; every payment attempt is constrained to
+`ledger_effect='NONE'` and `is_simulated=true`.
+
+Apply the normal migration chain only to the intended environment:
+
+```sh
+DATABASE_URL=postgresql://... .venv/bin/alembic upgrade head
+```
+
+The PostgreSQL checks are opt-in so routine tests never connect to a running platform database:
+
+```sh
+RUN_PART3_POSTGRES_TESTS=1 DATABASE_URL=postgresql://... \
+  .venv/bin/pytest -q tests/test_banking_schema_integration.py
+```
+
+Revision `0007_glaramara_phase_b` adds the `banking_payment_status` projection and an outbox aggregate index.
+Revision `0008_raw_event_time_clock` adds the singleton event clock shared by interactive and root regression
+producers. Revision `0009_release_banking_watermarks` releases pending markers scheduled against future event
+time before publication delay was separated into processing time. Glaramara atomically inserts immutable
+attempts plus `banking_payment_raw` and `banking_payment_watermark` rows into the existing outbox.
+`FraudStore.claim_outbox` withholds a watermark
+until its raw sibling is `PUBLISHED`; the existing lease, retry and Kafka-acknowledgement behaviour otherwise
+remains unchanged. Terminal banking status is derived only from immutable `payment_decisions`.
+
 Phase 1 is this baseline shadow model. Later phases may add Claude-based customer-evidence extraction and
 evidence-enriched ML, but neither is implemented here; a dashboard is also out of scope.

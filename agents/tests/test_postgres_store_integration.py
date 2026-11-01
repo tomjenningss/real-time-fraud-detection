@@ -34,3 +34,48 @@ def test_router_replay_is_durable_and_outbox_claim_is_concurrent_safe(normal_eve
     second = store.claim_outbox("test-worker-b", 10, lease_seconds=60)
     first_ids = {item.event_id for item in first}
     assert first_ids.isdisjoint(item.event_id for item in second)
+
+
+def test_banking_watermark_waits_for_raw_payment_acknowledgement():
+    from psycopg.types.json import Jsonb
+
+    from fraud_agents.database import FraudStore
+
+    store = FraudStore(os.environ["DATABASE_URL"])
+    aggregate_id = uuid4()
+    raw_id = uuid4()
+    watermark_id = uuid4()
+    created_after = datetime.now(UTC)
+    with store.connection() as connection, connection.transaction():
+        connection.execute(
+            """
+            INSERT INTO outbox_events
+              (event_id, aggregate_type, aggregate_id, destination_topic, message_key,
+               schema_version, payload)
+            VALUES
+              (%s, 'banking_payment_raw', %s, 'payments.raw.demo', %s, '1.0.0', %s),
+              (%s, 'banking_payment_watermark', %s, 'payments.raw.demo', '__watermark__',
+               '1.0.0', %s)
+            """,
+            (
+                raw_id,
+                aggregate_id,
+                str(aggregate_id),
+                Jsonb({"transaction_id": str(aggregate_id)}),
+                watermark_id,
+                aggregate_id,
+                Jsonb({"user_id": "__watermark__"}),
+            ),
+        )
+    try:
+        first = store.claim_outbox("banking-order-test", 10, created_after=created_after)
+        assert [message.event_id for message in first] == [raw_id]
+        store.mark_published(raw_id, "banking-order-test")
+        second = store.claim_outbox("banking-order-test", 10, created_after=created_after)
+        assert [message.event_id for message in second] == [watermark_id]
+    finally:
+        with store.connection() as connection, connection.transaction():
+            connection.execute(
+                "DELETE FROM outbox_events WHERE event_id = ANY(%s)",
+                ([raw_id, watermark_id],),
+            )

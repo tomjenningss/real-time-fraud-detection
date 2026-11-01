@@ -262,6 +262,31 @@ services:
     mem_limit: 128m
     restart: unless-stopped
 
+  glaramara-bank:
+    image: localhost/fraud-platform-dev-glaramara-bank:latest
+    build:
+      context: ./glaramara-bank
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      GLARAMARA_SESSION_SECRET: ${GLARAMARA_SESSION_SECRET}
+      GLARAMARA_PUBLIC_ORIGIN: ${GLARAMARA_PUBLIC_ORIGIN}
+      GLARAMARA_COOKIE_SECURE: ${GLARAMARA_COOKIE_SECURE}
+      NODE_ENV: production
+    ports:
+      - "127.0.0.1:${GLARAMARA_HOST_PORT}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/v1/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    mem_limit: 512m
+    restart: unless-stopped
+
   platform-cli:
     image: localhost/fraud-platform-dev-agents:latest
     volumes:
@@ -273,6 +298,7 @@ services:
     image: localhost/fraud-platform-dev-agents:latest
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     volumes:
       - ./deployment:/deployment:ro
     profiles: [tools]

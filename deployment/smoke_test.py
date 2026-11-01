@@ -10,6 +10,7 @@ from collections import Counter
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
+import psycopg
 from confluent_kafka import Consumer, KafkaException, Producer, TopicPartition
 
 RAW_TOPIC = "payments.raw.demo"
@@ -21,6 +22,7 @@ OUTPUT_TOPICS = (
     "fraud.decisions.shadow.demo",
 )
 SIGNALS_TOPIC = "fraud.signals.demo"
+EVENT_TIME_LOCK = "payments.raw.demo:event-time"
 
 
 def payment(tx: str, user: str, merchant: str, amount: float, at: datetime) -> dict:
@@ -58,7 +60,11 @@ def last_raw_event_time(brokers: str) -> datetime | None:
                 raise KafkaException(message.error())
             value = json.loads(message.value())
             raw = value.get("event_time")
-            return datetime.strptime(raw, "%Y-%m-%d %H:%M:%S.%f") if raw else None
+            return (
+                datetime.strptime(raw, "%Y-%m-%d %H:%M:%S.%f").replace(tzinfo=UTC)
+                if raw
+                else None
+            )
         raise TimeoutError("could not read the latest raw-topic event-time boundary")
     finally:
         consumer.close()
@@ -146,12 +152,35 @@ def publish(brokers: str, rows: list[dict]) -> None:
 
 def main() -> None:
     brokers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:29092")
+    database_url = os.environ["DATABASE_URL"]
     run_id = uuid4().hex[:12]
     prefix = f"smoke-{run_id}"
-    now = datetime.now(UTC).replace(tzinfo=None) - timedelta(seconds=2)
-    previous = last_raw_event_time(brokers)
-    base = max(now, previous + timedelta(seconds=5)) if previous else now
-    rows = fixture(run_id, base)
+    with psycopg.connect(database_url, autocommit=True) as connection:
+        connection.execute("SELECT pg_advisory_lock(hashtextextended(%s, 0))", (EVENT_TIME_LOCK,))
+        try:
+            previous = last_raw_event_time(brokers)
+            clock = connection.execute(
+                "SELECT last_event_time FROM raw_event_time_clock "
+                "WHERE stream_name = 'payments.raw.demo'"
+            ).fetchone()
+            candidates = [datetime.now(UTC) - timedelta(seconds=2)]
+            if previous:
+                candidates.append(previous + timedelta(seconds=5))
+            if clock:
+                candidates.append(clock[0] + timedelta(seconds=5))
+            base = max(candidates)
+            rows = fixture(run_id, base)
+            boundary = base + timedelta(minutes=3)
+            connection.execute(
+                "INSERT INTO raw_event_time_clock (stream_name, last_event_time) "
+                "VALUES ('payments.raw.demo', %s) "
+                "ON CONFLICT (stream_name) DO UPDATE "
+                "SET last_event_time = EXCLUDED.last_event_time, updated_at = now()",
+                (boundary,),
+            )
+            publish(brokers, rows)
+        finally:
+            connection.execute("SELECT pg_advisory_unlock(hashtextextended(%s, 0))", (EVENT_TIME_LOCK,))
     payments = rows[:-1]
     expected_ids = {row["transaction_id"] for row in payments}
     consumers = {
@@ -164,7 +193,6 @@ def main() -> None:
     hopping_user = f"{prefix}-hopping-user"
 
     try:
-        publish(brokers, rows)
         deadline = time.monotonic() + 180
         while time.monotonic() < deadline:
             for topic, consumer in consumers.items():
@@ -177,7 +205,10 @@ def main() -> None:
                 if topic == SIGNALS_TOPIC:
                     if value.get("user_id") == velocity_user and value.get("signal_type") == "HIGH_VELOCITY":
                         sql_rules.add("HIGH_VELOCITY")
-                    if value.get("user_id") == hopping_user and value.get("signal_type") == "MERCHANT_HOPPING":
+                    if (
+                        value.get("user_id") == hopping_user
+                        and value.get("signal_type") == "MERCHANT_HOPPING"
+                    ):
                         sql_rules.add("MERCHANT_HOPPING")
                     continue
                 transaction_id = value.get("transaction_id", "")

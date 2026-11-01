@@ -38,6 +38,7 @@ check_health outbox-publisher "Python outbox publisher"
 check_health lightgbm-scorer "LightGBM scorer"
 check_health fraud-assessment-correlator "Go assessment correlator"
 check_health fraud-decision-engine "Go shadow decision engine"
+check_health glaramara-bank "Glaramara bank"
 
 if compose exec -T kafka kafka-broker-api-versions --bootstrap-server kafka:29092 >/dev/null 2>&1; then
   echo "Kafka protocol readiness: ready"
@@ -69,6 +70,7 @@ fi
 
 correlator_port=$(env_value CORRELATOR_HOST_PORT)
 engine_port=$(env_value SHADOW_ENGINE_HOST_PORT)
+glaramara_port=$(env_value GLARAMARA_HOST_PORT)
 if curl -fsS "http://127.0.0.1:$correlator_port/readyz" >/dev/null 2>&1; then
   echo "Go assessment correlator HTTP readiness: ready"
 else
@@ -79,6 +81,12 @@ if curl -fsS "http://127.0.0.1:$engine_port/readyz" >/dev/null 2>&1; then
   echo "Go shadow decision engine HTTP readiness: ready"
 else
   echo "Go shadow decision engine HTTP readiness: unavailable"
+  failures=$((failures + 1))
+fi
+if curl -fsS "http://127.0.0.1:$glaramara_port/api/v1/health" >/dev/null 2>&1; then
+  echo "Glaramara HTTP readiness: ready"
+else
+  echo "Glaramara HTTP readiness: unavailable"
   failures=$((failures + 1))
 fi
 
