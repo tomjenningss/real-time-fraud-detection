@@ -3,10 +3,13 @@ SHELL := /bin/sh
 export COMPOSE_PROJECT_NAME ?= fraud-platform-dev
 COMPOSE = ./deployment/compose.sh
 
-.PHONY: build up down restart status smoke-test glaramara-smoke-test logs reset prepare config test-deployment
+.PHONY: build up down restart status smoke-test glaramara-smoke-test logs reset prepare configure-orchestrate config test-deployment
 
 prepare:
 	@./deployment/ensure_env.sh
+
+configure-orchestrate: prepare
+	@./deployment/configure_orchestrate.sh
 
 config: prepare
 	@$(COMPOSE) config >/dev/null

@@ -157,7 +157,7 @@ results are not production accuracy evidence.
 
 Required and implemented mode is **fictional, simulated, shadow-only, no ledger effect**. The immutable
 deterministic verdict remains payment authority; LightGBM and the Go action remain experimental shadow
-evidence. Claude stays asynchronous and live calls remain disabled. Existing offsets, restored Flink state,
+evidence. Existing offsets, restored Flink state,
 PostgreSQL volumes, the approved prototype and AskOrchestrate were preserved.
 
 Do not begin ML-active selection under this milestone. That work is Phase B.1 and requires separate approval.

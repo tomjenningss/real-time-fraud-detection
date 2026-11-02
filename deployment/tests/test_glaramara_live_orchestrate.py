@@ -4,6 +4,7 @@ import unittest
 
 SCRIPT = Path(__file__).parents[1] / "run_glaramara_live_orchestrate.sh"
 CHALLENGE = Path(__file__).parents[1] / "glaramara_phase_c_challenge.py"
+CONFIGURE = Path(__file__).parents[1] / "configure_orchestrate.sh"
 
 
 class GlaramaraLiveOrchestrateLauncherTests(unittest.TestCase):
@@ -33,6 +34,14 @@ class GlaramaraLiveOrchestrateLauncherTests(unittest.TestCase):
         self.assertIn('decision.get("source") == "deterministic_fast_path"', source)
         self.assertIn('decision.get("policyVersion") == "fast-path-policy/1.0.0"', source)
         self.assertIn('"fictional balance changed while creating the challenge"', source)
+
+    def test_interactive_orchestrate_configuration_hides_the_api_key(self) -> None:
+        source = CONFIGURE.read_text()
+
+        self.assertIn("stty -echo", source)
+        self.assertIn("FRAUD_INTELLIGENCE_PROVIDER=orchestrate", source)
+        self.assertIn("WATSONX_ORCHESTRATE_API_KEY", source)
+        self.assertNotIn('echo "$orchestrate_api_key"', source)
 
 
 if __name__ == "__main__":

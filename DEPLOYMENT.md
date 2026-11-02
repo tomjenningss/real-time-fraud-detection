@@ -25,10 +25,9 @@ git clone <repository-url> fraud-detection
 cd fraud-detection
 podman machine init --cpus 4 --memory 8192 --disk-size 60  # first Podman setup only
 podman machine start
-cp .env.example .env
-# Replace POSTGRES_PASSWORD and GLARAMARA_SESSION_SECRET with local random values,
-# or remove .env and let `make prepare` generate both on a brand-new deployment.
-chmod 600 .env
+make prepare
+# Optional: securely configure the live provider; otherwise the offline mock is used.
+# make configure-orchestrate
 make build
 make up
 make status
@@ -36,11 +35,13 @@ make smoke-test
 ```
 
 Open [http://localhost:3000](http://localhost:3000) after startup. No separate host Next.js process is
-required. Do not reuse the placeholder secrets in `.env.example`; for example, generate local hexadecimal
-values with `openssl rand -hex 24` and `openssl rand -hex 32`. If Podman already has a machine, adjust its
-resources through Podman Desktop or `podman machine set` instead of creating a second machine.
+required. `make prepare` generates the ignored, mode-600 `.env` with random local PostgreSQL and session
+secrets. `make configure-orchestrate` is optional: it prompts for the service-instance URL and hides API-key
+input, then writes only to that ignored file. If Podman already has a machine, adjust its resources through
+Podman Desktop or `podman machine set` instead of creating a second machine.
 
-`make build` creates an ignored, mode-600 `.env` on first use with a random local PostgreSQL password. It
+`make prepare` (and therefore `make build` or `make up`) creates an ignored, mode-600 `.env` on first use with
+a random local PostgreSQL password. It
 also creates the ignored `.runtime/` directory used for Kafka startup boundaries and Flink recovery records.
 The committed `.env.example` documents every setting but contains no deployed credential. Credential and
 Glaramara session-secret generation occurs only in the ignored mode-600 `.env`; existing deployment files
@@ -84,9 +85,8 @@ then starts the application services, including Glaramara. The fresh boundary is
 across partial or subsequent startups. Re-running `make up` does not reset offsets, recreate consumers merely
 because the topic advanced, or submit duplicate running jobs.
 
-Live Anthropic investigations remain disabled. The deployment runs only the deterministic router, outbox
-publisher, checked-in LightGBM scorer, Go correlator, and Go shadow decision engine requested by this local
-pipeline.
+The deployment runs the deterministic router, outbox publisher, checked-in LightGBM scorer, Go correlator,
+Go shadow decision engine, and Glaramara. The deterministic verdict remains payment authority throughout.
 
 ## Configuration
 
@@ -123,9 +123,9 @@ volumes. Service-to-service traffic uses Compose DNS names (`kafka`, `postgres`,
 host `localhost`.
 
 The default `mock` provider is fully offline and requires no IBM credential. To use the existing Orchestrate
-agent, set `FRAUD_INTELLIGENCE_PROVIDER=orchestrate`, `WATSONX_ORCHESTRATE_API_KEY`,
-`WATSONX_ORCHESTRATE_URL`, and the live model name in the ignored mode-600 root `.env`, then run `make up`.
-These values are injected at runtime into the server container; they are not build arguments, image layers,
+agent, run `make configure-orchestrate` from an interactive terminal, then run `make up`. It securely prompts
+for the service-instance URL and hides API-key input while updating the ignored mode-600 root `.env`. These
+values are injected at runtime into the server container; they are not build arguments, image layers,
 `NEXT_PUBLIC_` values, or browser data. Authentication, timeout, network, non-2xx and schema failures are
 recorded as a simulated `REQUIRES_FURTHER_REVIEW` outcome. The server never falls back to mock when
 `orchestrate` is selected.

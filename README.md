@@ -1,240 +1,105 @@
 # Real-Time Fraud Detection
 
-## Why I built this
+An auditable local fraud-platform demonstration for fictional banking payments. Kafka and Flink produce
+real-time behavioural evidence; deterministic Python policy owns the initial payment verdict; LightGBM and
+Go provide explicitly non-authoritative shadow evidence; and Glaramara presents a simulated banking journey.
 
-I wanted to explore how real-time data streaming and AI agents could work together to solve a realistic problem, rather than building another standalone AI chatbot.
-
-Fraud detection seemed like an interesting use case because it brings together several different engineering challenges. You need to process transactions as they happen, identify unusual behaviour, make decisions quickly and then investigate the context behind potentially suspicious activity.
-
-I built the streaming side using Kafka and Flink, with a multi-agent investigation workflow using Claude. A Supervisor agent coordinates specialist agents responsible for behavioural analysis, geographic evidence and recommendations.
-
-As the project developed, I became particularly interested in how the different Claude models behave when given the same responsibilities. I wanted to understand when a more capable model actually adds value, how to evaluate the agents' reasoning and what the trade-offs are between quality, latency and cost.
-
-That led to a comparison of Opus and Sonnet across 30 synthetic scenarios. Both passed all ten evaluation checks, but Sonnet was 41.5% cheaper and 22.2% faster on average.
-
-The project has been a practical way for me to explore streaming architectures, agent orchestration and the engineering decisions involved in building reliable AI applications.
+The platform is designed to be reproducible on a Mac with Podman. All payment attempts are fictional and
+simulated: they never book a transaction, change a balance, or create a ledger effect.
 
 ## Architecture
 
 ```text
-Synthetic payments
-        │
-        ▼
-Kafka: payments.raw.demo
-        │
-        ├──────────────► Flink SQL ──────────────► fraud.signals.demo
-        │
-        ▼
-Flink DataStream enrichment
-  velocity · merchant hopping · rolling evidence
-        │
-        ▼
-Kafka: payments.enriched.demo
-        ├──────────────► optional CPU LightGBM shadow scorer ─► fraud.risk.baseline.demo
-        │
-        ▼
-Deterministic fraud router ───────────────► PostgreSQL inbox/outbox
-  APPROVED · CHALLENGED · BLOCKED                 │
-        │                                        ├── immutable decisions
-        │ selected cases only                    ├── durable deduplication
-        ▼                                        └── budget ledger
-Kafka: fraud.investigations.requested
-        │
-        ▼
-Claude investigation worker
-  Configurable Supervisor · Geo · Behaviour · Action
-        │
-        ▼
-Kafka: fraud.investigations.completed
-  recommendation kept separate from payment verdict
-        │
-        └──────────────► Go fraud assessment correlator ◄── fraud.risk.baseline.demo
-                               │
-                               ├── PostgreSQL latest/history/source-event/outbox state
-                               └── Kafka: fraud.assessments.correlated.demo
-                                              │
-                                              ▼
-                               Go shadow fraud decision engine
-                                 versioned Action Selection Control
-                                              │
-                                              └──► fraud.decisions.shadow.demo
+Glaramara Next.js app                         Synthetic fixture
+    │ simulated payment                            │
+    ▼                                              ▼
+PostgreSQL attempt + durable outbox ──────► Kafka: payments.raw.demo
+                                                    │
+                                                    ▼
+                                          Flink enrichment + SQL signals
+                                                    │
+                                                    ▼
+                                         Kafka: payments.enriched.demo
+                                           │                       │
+                                           ▼                       ▼
+                         Deterministic Python router         LightGBM shadow scorer
+                           APPROVED / CHALLENGED / BLOCKED       experimental only
+                                           │                       │
+                                           └────► PostgreSQL ◄─────┘
+                                              immutable decisions
+                                              inbox/outbox/audit
+                                                    │
+                                                    ▼
+                                 Go correlator ──► Go shadow decision engine
+                                                    │
+                                                    ▼
+                                      experimental shadow action/event
+
+CHALLENGED Glaramara payment ─► versioned security questionnaire
+                                      │
+                                      ▼
+                    Fraud Intelligence adapter: mock or watsonx Orchestrate
+                    (server-side IAM/REST; optional bounded clarification)
+                                      │
+                                      ▼
+                       simulated reassessment: never changes payment verdict
 ```
 
-The LightGBM output is experimental and non-authoritative. It is disabled by default and cannot mutate
-the deterministic verdict. Reproduction, evaluation metrics, and operating instructions are in
-[`agents/README.md`](agents/README.md).
+The deterministic fast path is the sole payment authority. It writes immutable `payment_decisions`; no
+model score, shadow action, or customer-evidence result can relax or overwrite that verdict. Kafka delivery
+is at least once, with stable event IDs and PostgreSQL constraints as the deduplication boundary.
 
-## Design decisions
+For challenged Glaramara payments, the customer can complete a versioned, durable security questionnaire.
+The optional server-side Fraud Intelligence adapter uses either a credential-free deterministic `mock` or the
+existing IBM watsonx Orchestrate agent through IAM and REST. Its reassessment is simulated and append-only;
+missing, invalid, or unavailable live evidence conservatively becomes `REQUIRES_FURTHER_REVIEW`.
 
-### Why Claude does not authorise payments
+## Run the unified demo
 
-Payment authorisation and fraud investigation have different latency, reliability and governance requirements. The payment-authorisation path uses Apache Flink to generate behavioural evidence and a deterministic, versioned policy to produce an `APPROVED`, `CHALLENGED` or `BLOCKED` decision. Claude operates asynchronously, investigating selected transactions after the initial verdict has been recorded.
+Install Podman and a Compose provider, then from a fresh clone:
 
-This separation provides several advantages:
+```sh
+make prepare
+# Optional: securely configure live watsonx Orchestrate; mock mode needs nothing else.
+# make configure-orchestrate
+make build
+make up
+make status
+make smoke-test
+```
 
-- **Predictable latency:** Payment decisions do not wait for multi-step LLM reasoning or external model API responses.
-- **Deterministic outcomes:** The same evidence and policy version produce the same initial decision.
-- **Clear accountability:** Every payment verdict can be traced to the evidence and policy that produced it.
-- **Fault isolation:** Model latency, API failures or investigation backlogs do not block the payment-decision path.
-- **Enforced authority:** PostgreSQL prevents modifications to original payment verdicts. Claude's recommendations are stored separately.
+Open <http://localhost:3000>. The default `FRAUD_INTELLIGENCE_PROVIDER=mock` works offline and requires no
+IBM credentials. `make glaramara-smoke-test` submits one additional simulated banking payment and verifies
+idempotency, immutable authority, downstream shadow provenance, and no balance movement.
 
-The objective is not to replace deterministic fraud controls with an LLM, but to use Claude where contextual reasoning adds value: interpreting behavioural anomalies, assessing geographical evidence, identifying uncertainty and recommending further investigation.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for clean-machine setup, resource requirements, runtime configuration,
+state-preserving shutdown, and the live `orchestrate` configuration.
 
-### Why different Claude models are used
+## What is included
 
-The investigation workflow uses a multi-model architecture, matching model capability and cost to each agent's responsibilities. The original configuration placed Opus in the supervisory role; a subsequent matched live evaluation tested Sonnet as a direct substitute.
+- Real-time event processing with Kafka 8.1 and Flink 1.20.
+- Versioned deterministic fast-path policy and immutable PostgreSQL decisions.
+- CPU LightGBM and Go Action Selection Control in experimental shadow-only mode.
+- PostgreSQL inbox/outbox, idempotency, retries, and durable correlation history.
+- Glaramara: a Next.js fictional bank UI with customer sessions, beneficiaries, simulated payment attempts,
+  status polling, and adaptive security checks.
+- Optional Phoenix/OpenTelemetry infrastructure for local observability.
 
-| Agent      | Evaluated model ID(s)                                                      | Responsibility                                                                               |
-| ---------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Supervisor | `claude-opus-5-5` (original) / `claude-sonnet-5-5` (evaluated alternative) | Coordinates specialist investigations, reconciles evidence and manages multi-step reasoning. |
-| Behaviour  | `claude-sonnet-5-5`                                                        | Interprets Flink-generated transaction velocity, merchant diversity and historical evidence. |
-| Geo        | `claude-haiku-5-5`                                                         | Assesses geographic evidence with deterministic distance calculations and provenance.        |
-| Action     | `claude-haiku-5-5`                                                         | Invokes the versioned deterministic action policy and returns a governed recommendation.     |
+## Repository layout
 
-Geographic calculations and final action-policy enforcement remain deterministic tools, not unconstrained model decisions. **Sonnet is now the recommended Supervisor for this evaluated workload**: it matched the ten defined quality checks across 30 synthetic scenarios at lower measured cost and latency. This is an evidence-based recommendation, **not a claim that the deployed default configuration has already changed**, or that the models are equivalent on harder or production workloads. See the [matched live comparison](#live-supervisor-comparison-opus-vs-sonnet).
+- [confluent-flink/](confluent-flink/) — generators, Java enrichment, SQL signals, and Flink lifecycle tools.
+- [agents/](agents/) — deterministic router, outbox, migrations, LightGBM scorer, and tests.
+- [fraud-assessment-correlator/](fraud-assessment-correlator/) — Go evidence correlator.
+- [fraud-decision-engine/](fraud-decision-engine/) — Go experimental shadow action policy.
+- [glaramara-bank/](glaramara-bank/) — fictional banking UI and server APIs.
+- [docs/architecture/system-overview.md](docs/architecture/system-overview.md) — verified component and data-flow detail.
+- [docs/architecture.md](docs/architecture.md) — decision authority and trust boundaries.
 
-## What this demonstrates
+## Safety boundaries
 
-- **Real-time streaming analytics:** Kafka and Flink process transactions using event-time windows, behavioural enrichment and canonical fraud signals.
-- **Deterministic payment authority:** A zero-Claude authorisation path produces `APPROVED`, `CHALLENGED` or `BLOCKED` decisions using versioned policies.
-- **Governed AI investigations:** Four logical Claude agents collaborate through Anthropic SDK tool-use orchestration, with deterministic policy enforcement at the action boundary.
-- **Immutable decisions:** AI investigations can recommend follow-up actions but cannot overwrite original payment verdicts.
-- **Reliable event processing:** PostgreSQL transactional inbox/outbox patterns, durable deduplication and idempotent consumers support at-least-once Kafka delivery.
-- **Cost-controlled AI execution:** PostgreSQL-backed budget reservations enforce investigation limits across concurrent workers and process restarts, with live API access disabled by default.
-- **End-to-end auditability:** Structured provenance captures transaction evidence, policy decisions, model usage, tool calls, investigation outcomes and estimated costs.
-
-## Validated end-to-end behaviour
-
-A controlled test through Kafka, both Flink jobs, deterministic decisioning, PostgreSQL and the dry-run investigation worker processed **16 synthetic payments**: 11 approved, 2 challenged and 3 blocked, with five asynchronous investigations. Replaying the same fixture produced no additional enriched payments, decisions or investigations.
-
-A separate initial live Anthropic evaluation completed **eight investigations and 72 model calls** in two batches, at a combined estimated API cost of **$0.2359784**. All eight predefined policy recommendations matched. The original payment verdicts remained unchanged, even where Claude recommended a different action.
-
-These investigations operate asynchronously, independently of the initial payment decision. The eight-case cost excludes an earlier $0.02740 smoke-test baseline.
-
-Fraud thresholds are configurable examples. The platform uses at-least-once event delivery with explicit idempotency controls rather than assuming end-to-end exactly-once processing.
-
-## Agent Observability — Phoenix & OpenTelemetry
-
-Arize Phoenix provides execution visibility into the existing Python orchestration built directly on the Anthropic SDK. OpenTelemetry carries trace context through the investigation worker, Supervisor, specialist agents and deterministic tools, while OpenInference conventions identify agent, model and tool spans.
-
-The illustrated **live investigation** completed in approximately **22.6 seconds**, with an estimated API cost of **$0.03**.
-
-![Phoenix trace showing the Opus Supervisor delegating to the Geo agent and a deterministic geographic-distance tool, with correlation and provenance attributes](docs/images/phoenix-geographic-investigation-trace.png)
-
-_Geographic investigation: the nested Supervisor and Geo-agent path records the `deterministic_haversine` evidence source, synthetic identifiers and original `APPROVED` payment verdict._
-
-![Phoenix trace showing the Behaviour and Action agent branches, Sonnet model-call telemetry and deterministic policy execution](docs/images/phoenix-behaviour-action-trace.png)
-
-_Behaviour and Action investigations: nested spans expose model selection, latency, token usage and estimated cost alongside canonical evidence retrieval and deterministic tools._
-
-Every trace can be correlated with PostgreSQL using investigation and trace identifiers. **Phoenix provides observability; PostgreSQL remains authoritative** for immutable payment decisions, durable cost controls and audit records. Prompts and completions are not exported by default. See the [observability guide](observability/README.md) for deployment, redaction and trace interpretation.
-
-## Agent evaluation & regression testing
-
-The evaluation harness uses **30 versioned synthetic fraud scenarios**, independent reference data and **ten model-quality and safety graders**. It supports deterministic offline tests, sanitised response replay and explicitly authorised live Anthropic evaluations, with results recorded locally and in Phoenix Datasets & Experiments.
-
-### Offline regression: discovering an evidence-handling defect
-
-The original mocked baseline passed **27/30 scenarios**. Three failures exposed an evidence-contract problem: missing, unknown or conflicting historical data could be converted into an `AVAILABLE` Behaviour assessment with low risk, allowing the deterministic policy to approve a transaction without acknowledging uncertainty.
-
-The contract was corrected to preserve uncertainty and distinguish unavailable history from legitimately `NOT_APPLICABLE` history. With the same dataset and unchanged payment policy, the corrected offline evaluation passed **30/30**. The three affected cases changed from `APPROVED` to `CHALLENGED`, while legitimate low-risk approvals remained valid.
-
-| Offline metric     | Before | After |
-| ------------------ | -----: | ----: |
-| Scenarios passed   |  27/30 | 30/30 |
-| Hard failures      |      3 |     0 |
-| Approved           |     16 |    13 |
-| Challenged         |     12 |    15 |
-| Blocked            |      2 |     2 |
-| Anthropic API cost |     $0 |    $0 |
-
-These tests used **mocked Anthropic responses**. They validate the application and grading contract, not live-model accuracy. See the [original baseline](agents/evaluation/reports/offline-baseline-v1.md) and [post-fix report](agents/evaluation/reports/history-status-propagation-v1.md).
-
-### Live model evaluation: Opus-led baseline
-
-The original four-agent configuration was evaluated using **real Anthropic API responses** against all 30 synthetic scenarios. The harness assessed model-authored evidence interpretation, uncertainty and Supervisor synthesis, as well as tool use, policy compliance and decision integrity.
-
-| Metric                                  |                Opus-led live baseline |
-| --------------------------------------- | ------------------------------------: |
-| Scenarios passed                        |                             **30/30** |
-| Grader checks passed                    |                           **300/300** |
-| Hard safety failures / unscorable cases |                                 0 / 0 |
-| Model calls / deterministic tool calls  |                             270 / 180 |
-| Mean investigation latency              |                         24.36 seconds |
-| Estimated settled API cost              |                       **$1.04718190** |
-| Recommendations                         | 13 approved, 15 challenged, 2 blocked |
-
-All three tested prompt-injection scenarios passed the defined checks. Missing or conflicting evidence retained uncertainty rather than being converted into unjustified low-risk assessments. Original payment verdicts remained immutable.
-
-Two deliberately legitimate high-velocity scenarios were nevertheless challenged by **deterministic policy**, illustrating a possible false-positive and customer-friction trade-off. This is not evidence that Opus independently detected fraud.
-
-### Live Supervisor comparison: Opus vs Sonnet
-
-To test whether the more expensive supervisory model was justified, the same **30 synthetic scenarios** were run once with Opus and once with Sonnet as Supervisor. The Behaviour, Geo and Action models, prompts, dataset, graders, orchestration, deterministic tools and payment policy were held constant. Both runs used genuine Anthropic API calls, with matched per-case results and Phoenix traces.
-
-| Metric                                | Opus 5.5 Supervisor | Sonnet 5.5 Supervisor |
-| ------------------------------------- | ------------------: | --------------------: |
-| Scenarios passed                      |           **30/30** |             **30/30** |
-| Grader checks passed                  |         **300/300** |           **300/300** |
-| Hard safety failures                  |                   0 |                     0 |
-| Unscorable cases                      |                   0 |                     0 |
-| Model calls                           |                 270 |                   270 |
-| Deterministic tool calls              |                 180 |                   180 |
-| Mean latency                          |             24.36 s |           **18.95 s** |
-| Median latency                        |             24.48 s |           **17.33 s** |
-| P95 latency                           |             32.52 s |           **26.67 s** |
-| Input tokens                          |             210,326 |               210,187 |
-| Output tokens                         |              52,068 |                48,521 |
-| Estimated settled API cost (30 cases) |         $1.04718190 |       **$0.61246720** |
-| Estimated cost per case               |         $0.03490606 |       **$0.02041557** |
-
-**Measured result:** Sonnet matched all recorded scenario passes, grader outcomes, policy recommendations (**13 approved, 15 challenged, 2 blocked**), delegation patterns and model/tool-call counts, while reducing **mean investigation latency by 22.2%** and **estimated API cost by 41.5%** ($0.43471470 across 30 cases). Median latency fell approximately 29.2%, and P95 fell approximately 18.0%.
-
-Human review found one substantive difference in assessment wording: in `eval-v1-insufficient-with-velocity`, Opus described a high-velocity signal and `UNKNOWN` Behaviour status as a conflict; Sonnet described an unresolved indicator without implying a contradiction. Both retained uncertainty and returned `CHALLENGED`. Three other cases differed in uncertainty wording without changing the interpreted evidence.
-
-**Engineering decision:** For this synthetic workload and these graders, the comparison provides **no measured justification for Opus's higher supervisory cost**. Sonnet is the preferred candidate for the Supervisor role, with Opus retained as a configurable option for harder cases and future re-evaluation.
-
-**Evaluation limits:** These are **one live trial per model per synthetic case**, not statistically established model equivalence or production fraud-detection accuracy. The suite may be too easy to separate their reasoning performance. Deterministic policy governs the final recommendations, so recommendation parity alone does not establish equal fraud-detection intelligence. Broader adversarial scenarios and repeated trials are future work; analyst review/disposition would be a further operational integration step, not a feature claimed here.
-
-See the [matched comparison report](agents/evaluation/reports/live-opus-vs-sonnet-30-v1.md), [Sonnet live evaluation report](agents/evaluation/reports/live-sonnet-supervisor-30-v1.md), [initial six-case Opus report](agents/evaluation/reports/live-opus-baseline-v1.md) and [evaluation harness guide](agents/evaluation/README.md) for methodology and case-level results. The Opus 30-case baseline was assembled from the original six-case pilot and a separate 24-case experiment; neither historical record was modified for this comparison.
-
-## Technology
-
-| Area                | Implementation                                                           |
-| ------------------- | ------------------------------------------------------------------------ |
-| Streaming           | Confluent Kafka 8.1.6, Apache Flink 1.20.2                               |
-| Decisioning         | Python, deterministic versioned policies                                 |
-| AI investigations   | Anthropic SDK, Claude multi-agent tool-use orchestration                 |
-| Agent observability | Arize Phoenix 20.23.0, OpenTelemetry, OpenInference                      |
-| Evaluation          | Versioned synthetic datasets, deterministic graders, Phoenix Experiments |
-| Durable state       | PostgreSQL 17, SQLAlchemy, Alembic                                       |
-| Local runtime       | Podman Compose                                                           |
-| Verification        | Pytest, Ruff, synthetic integration scenarios                            |
-
-## Repository structure
-
-- [`confluent-flink/`](confluent-flink/) — Kafka and Flink infrastructure, Java DataStream enrichment, SQL fraud signals, synthetic transaction generator and lifecycle scripts.
-- [`agents/`](agents/) — Decision router, Claude investigation agents, asynchronous worker, budget enforcement, database models, migrations and tests.
-- [`agents/evaluation/`](agents/evaluation/) — Versioned synthetic dataset, graders, offline/replay/live evaluation runner, Phoenix experiments and reports.
-- [`fraud-decisioning/`](fraud-decisioning/) — PostgreSQL deployment, operational workflows and recovery documentation.
-- [`docs/architecture.md`](docs/architecture.md) — Architecture, trust boundaries, agent responsibilities and decision-authority model.
-- [`observability/`](observability/) — Optional Phoenix deployment, OpenTelemetry configuration, trace interpretation and no-cost smoke test.
-- [`fraud-assessment-correlator/`](fraud-assessment-correlator/) — Additive Go service for durable, asynchronous correlation outside authorisation.
-- [`fraud-decision-engine/`](fraud-decision-engine/) — Versioned Go Action Selection Control and durable shadow-decision publisher.
-
-## Documentation
-
-- [Self-contained local deployment](DEPLOYMENT.md)
-- [Streaming and Flink guide](confluent-flink/README.md)
-- [Decisioning, recovery and operations](fraud-decisioning/README.md)
-- [Agent architecture and security boundaries](docs/architecture.md)
-- [Architecture evolution and historical tags](docs/evolution.md)
-- [Phoenix and OpenTelemetry observability](observability/README.md)
-- [Fraud-agent evaluation harness](agents/evaluation/README.md)
-- [Mac mini golden-reference inventory](docs/golden-reference.md)
-
-## Security and execution controls
-
-Live Anthropic investigations are disabled by default and require explicit enablement and durable budget approval. Payment verdicts are protected by database-enforced immutability, while AI recommendations are recorded separately for audit and follow-up.
-
-API credentials and local environment configuration remain outside version control, with safe configuration templates provided in the repository.
+- Fictional data only; no account balance or ledger mutation.
+- Deterministic decisions are immutable and remain the sole payment authority.
+- LightGBM and Go output is experimental, synthetic, and shadow-only.
+- Orchestrate is server-side only; API keys and IAM tokens never enter images, build arguments, browser bundles,
+  or PostgreSQL.
+- Root deployment preserves Kafka offsets, PostgreSQL data, and Flink checkpoints/savepoints across `make down`.

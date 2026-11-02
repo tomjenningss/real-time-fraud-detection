@@ -1,8 +1,7 @@
-# Fraud agents and experimental ML baseline
+# Deterministic fraud services and experimental ML baseline
 
-The existing router and Claude investigation services remain the authoritative application paths. The
-`fraud_agents.ml` package adds an independent, experimental LightGBM shadow score. It never changes a
-payment verdict, writes PostgreSQL decisions, or invokes Claude.
+The router is the authoritative payment-decision path. The `fraud_agents.ml` package adds an independent,
+experimental LightGBM shadow score. It never changes a payment verdict or writes an authoritative decision.
 
 ## CPU prerequisites
 

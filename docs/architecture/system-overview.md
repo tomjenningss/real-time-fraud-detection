@@ -10,13 +10,11 @@ Glaramara submission -> PostgreSQL banking attempt + shared outbox -> payments.r
 controlled generators ---------------------------------------------> payments.raw.demo
   |-> Java Flink enrichment -> payments.enriched.demo
   |      |-> deterministic Python router -> fraud.decisions.demo -> PostgreSQL
-  |      |                                  |-> fraud.investigations.requested
-  |      |                                  |      -> optional Claude worker
-  |      |                                  |      -> fraud.investigations.completed
+  |      |                                  |-> fraud.investigations.requested (legacy audit event)
   |      |-> CPU LightGBM scorer -> fraud.risk.baseline.demo
   |-> Flink SQL -> fraud.signals.demo (context only; not a router input)
 
-decisions + ML risk + optional investigation events
+decisions + ML risk + legacy investigation events
   -> Go correlator -> fraud.assessments.correlated.demo
   -> Go shadow decision engine -> fraud.decisions.shadow.demo
 
@@ -27,7 +25,7 @@ CHALLENGED Glaramara payment -> adaptive versioned questionnaire -> backend Frau
 
 Only deterministic policy `fast-path-policy/1.0.0` produces the initial `APPROVED`, `CHALLENGED` or
 `BLOCKED` verdict.
-Claude's later recommendation and the Go engine's experimental shadow action cannot change it. Publication
+The Glaramara reassessment and the Go engine's experimental shadow action cannot change it. Publication
 is at least once.
 
 ## Kafka contracts and ownership
@@ -41,8 +39,8 @@ The root deployment creates one-partition, replication-one topics. Application c
 | `payments.enriched.demo` | Java Flink | Router and scorer. Canonical rolling counts, amount/diversity, transaction signals/IDs and risk. |
 | `fraud.signals.demo` | Flink SQL | No checked-in decision consumer. Repeating two-minute aggregate velocity/hopping context. |
 | `fraud.decisions.demo` | Python outbox publisher | Correlator. Immutable verdict, policy/rules and evidence provenance. |
-| `fraud.investigations.requested` | Python outbox publisher | Investigation worker. Original verdict, evidence and routing provenance. |
-| `fraud.investigations.completed` | Python outbox publisher | Correlator. Separate recommendation, mode, model/policy and audit references. |
+| `fraud.investigations.requested` | Python outbox publisher | Legacy audit event with original verdict, evidence and routing provenance; no worker is deployed by root Compose. |
+| `fraud.investigations.completed` | Legacy worker when separately run | Correlator compatibility input; root Compose does not produce it. |
 | `fraud.risk.baseline.demo` | Python LightGBM scorer | Correlator. Probability, model/feature versions, latency and feature provenance. |
 | `fraud.assessments.correlated.demo` | Go correlator outbox | Shadow engine. Revisioned union of available evidence branches. |
 | `fraud.decisions.shadow.demo` | Go engine outbox | Evaluation only. Proposed/original actions, disagreement, policy inputs and provenance. |
@@ -78,9 +76,9 @@ One PostgreSQL transaction records the consumed event, immutable decision, optio
 publication outbox rows; Kafka commits afterward. A separate publisher emits decisions/requests. Event,
 decision, correlation and investigation identities are deterministic UUIDv5 values.
 
-The asynchronous worker can run dry-run or separately approved live mode. Supervisor, Behaviour, Geo and
-Action roles use canonical evidence and deterministic tools. Recommendations remain separate; PostgreSQL
-rejects payment-decision mutation. Root Compose does not start this worker and disables live investigations.
+The router can emit an investigation-request audit event for challenged payments. Root Compose does not start
+any legacy investigation worker; customer evidence is handled only through Glaramara's bounded Phase C flow.
+PostgreSQL rejects payment-decision mutation.
 
 ## LightGBM shadow scorer
 
