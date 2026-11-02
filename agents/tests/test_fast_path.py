@@ -38,6 +38,30 @@ def test_velocity_and_hopping_are_explicit_routes(normal_dict):
     assert decide(combined).investigation_required is True
 
 
+def test_new_beneficiary_high_value_is_challenged_with_versioned_rule(normal_dict):
+    evidence = make_signal_event(normal_dict, "new-beneficiary", ["NEW_BENEFICIARY_HIGH_VALUE"]).flink
+    result = decide(evidence)
+
+    assert result.payment_verdict == Verdict.CHALLENGED
+    assert result.investigation_required is True
+    assert result.investigation_reason == "NEW_BENEFICIARY_HIGH_VALUE"
+    assert result.triggered_rule_ids == ("FP-CHALLENGE-NEW-BENEFICIARY-HIGH-VALUE/1.0.0",)
+    assert result.policy_version == "fast-path-policy/1.1.0"
+
+
+def test_existing_hard_block_precedes_new_beneficiary_challenge(normal_dict):
+    evidence = make_signal_event(
+        normal_dict,
+        "combined-new-beneficiary",
+        ["HIGH_VELOCITY", "MERCHANT_HOPPING", "NEW_BENEFICIARY_HIGH_VALUE"],
+        7,
+    ).flink
+    result = decide(evidence)
+
+    assert result.payment_verdict == Verdict.BLOCKED
+    assert result.triggered_rule_ids == ("FP-BLOCK-VELOCITY-HOPPING",)
+
+
 def test_stable_identifiers_and_immutable_original_verdict(normal_event):
     source = SourcePosition(topic="payments.enriched.demo", partition=0, offset=9)
     result = decide(normal_event.flink, sample_normal=True)

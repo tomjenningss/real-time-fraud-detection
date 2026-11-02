@@ -24,7 +24,12 @@ test("adapts, recovers and completes the Phase C investigation accessibly", asyn
   await selectAndContinue(page, "Friends or family");
   await selectAndContinue(page, "Yes, an unexpected caller or message");
 
-  await expect(page.getByText("5 of about 6", { exact: true })).toBeVisible();
+  await expect(page.getByText("5 of about 7", { exact: true })).toBeVisible();
+  await page.getByRole("textbox").fill(
+    "An unfamiliar number said my daughter abroad needed urgent help and told me to pay an unknown beneficiary.",
+  );
+  await page.getByRole("button", { name: "Save and continue" }).click();
+  await expect(page.getByText("6 of about 7", { exact: true })).toBeVisible();
   await selectAndContinue(page, "Yes");
   await expect(page.getByRole("group", { name: /install an app or share access/ })).toBeVisible();
   await selectAndContinue(page, "Yes");
@@ -33,8 +38,8 @@ test("adapts, recovers and completes the Phase C investigation accessibly", asyn
 
   await expect(page.getByRole("heading", { name: "Payment remains declined" })).toBeVisible();
   await expect(page.getByText(/original CHALLENGED verdict is immutable/)).toBeVisible();
-  expect(api.investigationMutations).toHaveLength(8);
-  expect(api.investigationMutations.filter((item) => item.idempotencyKey)).toHaveLength(6);
+  expect(api.investigationMutations).toHaveLength(9);
+  expect(api.investigationMutations.filter((item) => item.idempotencyKey)).toHaveLength(7);
   await expect.poll(() => page.evaluate(
     () => document.documentElement.scrollWidth <= Math.ceil(window.innerWidth) + 1,
   )).toBe(true);

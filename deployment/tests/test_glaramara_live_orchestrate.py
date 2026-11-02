@@ -32,7 +32,7 @@ class GlaramaraLiveOrchestrateLauncherTests(unittest.TestCase):
         self.assertIn('default="http://127.0.0.1:13001"', source)
         self.assertIn('args.payment_count >= 5', source)
         self.assertIn('decision.get("source") == "deterministic_fast_path"', source)
-        self.assertIn('decision.get("policyVersion") == "fast-path-policy/1.0.0"', source)
+        self.assertIn('decision.get("policyVersion") == "fast-path-policy/1.1.0"', source)
         self.assertIn('"fictional balance changed while creating the challenge"', source)
 
     def test_interactive_orchestrate_configuration_hides_the_api_key(self) -> None:

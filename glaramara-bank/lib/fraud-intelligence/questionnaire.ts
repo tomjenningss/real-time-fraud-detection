@@ -1,12 +1,16 @@
 import { z } from "zod";
 
-export const QUESTIONNAIRE_VERSION = "glaramara-fraud-questionnaire/1.0.0";
+export const QUESTIONNAIRE_VERSION = "glaramara-fraud-questionnaire/1.1.0";
+export const questionnaireVersionSchema = z.enum([
+  "glaramara-fraud-questionnaire/1.0.0",
+  QUESTIONNAIRE_VERSION,
+]);
 
 const optionSchema = z.object({ value: z.string(), label: z.string() });
 
 export const questionDefinitionSchema = z.object({
   id: z.string().min(1).max(96),
-  version: z.literal(QUESTIONNAIRE_VERSION),
+  version: questionnaireVersionSchema,
   prompt: z.string().min(1).max(240),
   helpText: z.string().max(240).optional(),
   kind: z.enum(["SINGLE_CHOICE", "SHORT_TEXT"]),
@@ -73,6 +77,14 @@ const DEFINITIONS: Record<string, QuestionDefinition> = {
     ],
     required: true,
   },
+  payment_circumstances: {
+    id: "payment_circumstances",
+    version: QUESTIONNAIRE_VERSION,
+    prompt: "Briefly explain what happened and why this payment feels urgent.",
+    helpText: "You can mention who contacted you, an unfamiliar number, someone abroad, and how the recipient was chosen. Don’t include full phone or account numbers, passwords or security codes.",
+    kind: "SHORT_TEXT",
+    required: true,
+  },
   pressure_or_secrecy: {
     id: "pressure_or_secrecy",
     version: QUESTIONNAIRE_VERSION,
@@ -114,6 +126,9 @@ export function initialQuestionIds(context: { triggeredRuleIds: string[]; benefi
   );
   if (context.beneficiaryPaymentCount === 0 || velocityTriggered) {
     selected.push("contact_influence");
+  }
+  if (context.beneficiaryPaymentCount === 0) {
+    selected.push("payment_circumstances");
   }
   return selected;
 }

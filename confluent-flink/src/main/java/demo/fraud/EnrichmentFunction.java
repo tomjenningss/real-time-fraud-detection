@@ -24,10 +24,15 @@ public class EnrichmentFunction extends KeyedProcessFunction<String, Transaction
     private static final long TEN_MINUTES = 600_000L;
     private static final long DEDUP_RETENTION = TEN_MINUTES + 2_000L;
     private static final ObjectMapper JSON = new ObjectMapper();
+    private final double newBeneficiaryHighValueThreshold;
 
     private transient ListState<Transaction> pending;
     private transient ListState<Transaction> history;
     private transient MapState<String, Long> seenIds;
+
+    public EnrichmentFunction(double newBeneficiaryHighValueThreshold) {
+        this.newBeneficiaryHighValueThreshold = newBeneficiaryHighValueThreshold;
+    }
 
     @Override
     public void open(Configuration ignored) {
@@ -68,7 +73,7 @@ public class EnrichmentFunction extends KeyedProcessFunction<String, Transaction
         for (Transaction tx : due) {
             prior.removeIf(old -> old.eventTimeMillis < tx.eventTimeMillis - TEN_MINUTES);
             prior.add(tx);
-            out.collect(assessmentJson(tx, prior));
+            out.collect(assessmentJson(tx, prior, newBeneficiaryHighValueThreshold));
         }
         pending.update(remaining);
 
@@ -84,7 +89,9 @@ public class EnrichmentFunction extends KeyedProcessFunction<String, Transaction
         for (String id : expired) seenIds.remove(id);
     }
 
-    private static String assessmentJson(Transaction current, List<Transaction> events) throws Exception {
+    static String assessmentJson(
+            Transaction current, List<Transaction> events, double newBeneficiaryHighValueThreshold
+    ) throws Exception {
         int count1m = 0, count2m = 0, count10m = 0;
         double total2m = 0;
         java.util.Set<String> merchants2m = new java.util.HashSet<>();
@@ -99,6 +106,9 @@ public class EnrichmentFunction extends KeyedProcessFunction<String, Transaction
         }
         boolean velocity = count2m >= 5;
         boolean hopping = count2m >= 5 && merchants2m.size() >= 4;
+        boolean newBeneficiaryHighValue = current.beneficiaryPaymentCount != null
+                && current.beneficiaryPaymentCount == 0
+                && current.amount >= newBeneficiaryHighValueThreshold;
 
         ObjectNode root = JSON.createObjectNode();
         root.put("assessment_type", "transaction");
@@ -112,11 +122,17 @@ public class EnrichmentFunction extends KeyedProcessFunction<String, Transaction
         root.put("transactions_10m", count10m);
         root.put("distinct_merchants_2m", merchants2m.size());
         root.put("total_amount_2m", Math.round(total2m * 100.0) / 100.0);
+        if (current.beneficiaryPaymentCount == null) root.putNull("beneficiary_payment_count");
+        else root.put("beneficiary_payment_count", current.beneficiaryPaymentCount);
         ArrayNode signals = root.putArray("signals");
         ArrayNode signalIds = root.putArray("signal_ids");
         if (velocity) { signals.add("HIGH_VELOCITY"); signalIds.add("txn:" + current.transactionId + ":HIGH_VELOCITY"); }
         if (hopping) { signals.add("MERCHANT_HOPPING"); signalIds.add("txn:" + current.transactionId + ":MERCHANT_HOPPING"); }
-        root.put("risk_level", velocity || hopping ? "HIGH" : "LOW");
+        if (newBeneficiaryHighValue) {
+            signals.add("NEW_BENEFICIARY_HIGH_VALUE");
+            signalIds.add("txn:" + current.transactionId + ":NEW_BENEFICIARY_HIGH_VALUE");
+        }
+        root.put("risk_level", velocity || hopping || newBeneficiaryHighValue ? "HIGH" : "LOW");
         root.put("assessment_timestamp", Instant.now().toString());
         root.put("evidence_source", "flink");
         return JSON.writeValueAsString(root);

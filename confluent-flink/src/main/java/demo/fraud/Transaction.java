@@ -9,6 +9,7 @@ public class Transaction implements Serializable {
     public double amount;
     public String deviceId;
     public String paymentChannel;
+    public Integer beneficiaryPaymentCount;
     public long eventTimeMillis;
 
     public Transaction() {}

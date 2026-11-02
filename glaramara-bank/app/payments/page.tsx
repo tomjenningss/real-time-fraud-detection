@@ -2,8 +2,8 @@
 
 import { CheckCircle2, LoaderCircle, ShieldCheck, UserPlus } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 
 import { useCustomer } from "@/components/customer-provider";
 import { DataStateNotice } from "@/components/data-state-notice";
@@ -28,7 +28,17 @@ const stepIndex: Record<Step, number> = {
 };
 
 export default function PaymentsPage() {
+  return (
+    <Suspense fallback={<DataStateNotice loading error={null} />}>
+      <PaymentJourney />
+    </Suspense>
+  );
+}
+
+function PaymentJourney() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedBeneficiaryId = searchParams.get("beneficiary");
   const { customer, sessionReady } = useCustomer();
   const { data, error: beneficiariesError, loading } = useBankingResource<BeneficiariesResponse>(
     "/api/v1/beneficiaries",
@@ -52,6 +62,24 @@ export default function PaymentsPage() {
     setSubmitting(false);
     setError(null);
   }, [customer.id]);
+
+  useEffect(() => {
+    if (!requestedBeneficiaryId || !data) return;
+    const requestedRecipient = data.beneficiaries.find(
+      (beneficiary) => beneficiary.id === requestedBeneficiaryId,
+    );
+    if (!requestedRecipient) return;
+    setRecipient(requestedRecipient);
+    setStep("amount");
+  }, [data, requestedBeneficiaryId]);
+
+  function changeRecipient() {
+    setStep("recipient");
+    setRecipient(null);
+    setIdempotencyKey(null);
+    setError(null);
+    router.replace("/payments");
+  }
 
   function continueFromAmount(event: FormEvent) {
     event.preventDefault();
@@ -232,8 +260,8 @@ export default function PaymentsPage() {
                 </p>
               )}
               <div className="mt-6 flex gap-2.5">
-                <Button variant="secondary" type="button" onClick={() => setStep("recipient")}>
-                  ← Back
+                <Button variant="secondary" type="button" onClick={changeRecipient}>
+                  Change recipient
                 </Button>
                 <Button type="submit" className="flex-1">
                   Review payment →

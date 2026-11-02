@@ -96,6 +96,7 @@ services:
     ports:
       - "127.0.0.1:${FLINK_HOST_PORT}:8081"
     environment:
+      NEW_BENEFICIARY_HIGH_VALUE_THRESHOLD_GBP: ${NEW_BENEFICIARY_HIGH_VALUE_THRESHOLD_GBP:-5000}
       FLINK_PROPERTIES: |
         jobmanager.rpc.address: jobmanager
         rest.address: jobmanager

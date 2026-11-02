@@ -23,6 +23,7 @@ public class TransactionJsonSchema extends AbstractDeserializationSchema<Transac
         tx.amount = node.required("amount").asDouble();
         tx.deviceId = required(node, "device_id");
         tx.paymentChannel = required(node, "payment_channel");
+        tx.beneficiaryPaymentCount = optionalNonNegativeInt(node, "beneficiary_payment_count");
         tx.eventTimeMillis = LocalDateTime.parse(required(node, "event_time"), EVENT_TIME)
                 .toInstant(ZoneOffset.UTC).toEpochMilli();
         return tx;
@@ -34,5 +35,14 @@ public class TransactionJsonSchema extends AbstractDeserializationSchema<Transac
             throw new IOException("Missing required field: " + name);
         }
         return value.asText();
+    }
+
+    private static Integer optionalNonNegativeInt(JsonNode node, String name) throws IOException {
+        JsonNode value = node.get(name);
+        if (value == null || value.isNull()) return null;
+        if (!value.isIntegralNumber() || !value.canConvertToInt() || value.asInt() < 0) {
+            throw new IOException(name + " must be a non-negative integer");
+        }
+        return value.asInt();
     }
 }

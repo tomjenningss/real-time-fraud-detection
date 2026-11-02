@@ -20,6 +20,13 @@ test.describe("Phase C live Orchestrate journey", () => {
       await page.getByLabel(answer, { exact: true }).check();
       await page.getByRole("button", { name: "Save and continue" }).click();
     }
+    const circumstances = page.getByRole("textbox");
+    if (await circumstances.isVisible()) {
+      await circumstances.fill(
+        "An unfamiliar number said my daughter abroad needed urgent help and directed me to an unknown beneficiary.",
+      );
+      await page.getByRole("button", { name: "Save and continue" }).click();
+    }
     await expect(page.getByRole("heading", { name: "Your answers are ready" })).toBeVisible();
     await page.getByRole("button", { name: "Analyse my answers" }).click();
 

@@ -4,7 +4,8 @@ from dataclasses import dataclass
 
 from .schemas import FlinkEvidence, Verdict
 
-POLICY_VERSION = "fast-path-policy/1.0.0"
+POLICY_VERSION = "fast-path-policy/1.1.0"
+NEW_BENEFICIARY_HIGH_VALUE_RULE = "FP-CHALLENGE-NEW-BENEFICIARY-HIGH-VALUE/1.0.0"
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,7 @@ def decide(evidence: FlinkEvidence, *, sample_normal: bool = False) -> FastPathR
     signals = set(evidence.signals)
     velocity = "HIGH_VELOCITY" in signals
     hopping = "MERCHANT_HOPPING" in signals
+    new_beneficiary_high_value = "NEW_BENEFICIARY_HIGH_VALUE" in signals
     if velocity and hopping:
         return FastPathResult(
             Verdict.BLOCKED,
@@ -30,6 +32,13 @@ def decide(evidence: FlinkEvidence, *, sample_normal: bool = False) -> FastPathR
         )
     if hopping:
         return FastPathResult(Verdict.CHALLENGED, True, "MERCHANT_HOPPING", ("FP-CHALLENGE-HOPPING",))
+    if new_beneficiary_high_value:
+        return FastPathResult(
+            Verdict.CHALLENGED,
+            True,
+            "NEW_BENEFICIARY_HIGH_VALUE",
+            (NEW_BENEFICIARY_HIGH_VALUE_RULE,),
+        )
     if velocity:
         return FastPathResult(Verdict.CHALLENGED, True, "HIGH_VELOCITY", ("FP-CHALLENGE-VELOCITY",))
     return FastPathResult(

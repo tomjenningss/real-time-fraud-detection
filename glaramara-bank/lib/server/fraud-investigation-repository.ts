@@ -19,6 +19,7 @@ import {
   definitionSnapshot,
   initialQuestionIds,
   QUESTIONNAIRE_VERSION,
+  questionnaireVersionSchema,
   type QuestionDefinition,
   validateAnswer,
 } from "@/lib/fraud-intelligence/questionnaire";
@@ -417,7 +418,7 @@ export async function executeFraudIntelligence(customerId: string, paymentId: st
       if (result.evidence.clarificationQuestion.needed && claimed.invocationNumber === 1) {
         const clarification: QuestionDefinition & { reason: string } = {
           id: result.evidence.clarificationQuestion.id,
-          version: QUESTIONNAIRE_VERSION,
+          version: questionnaireVersionSchema.parse(claimed.row.questionnaire_version),
           prompt: result.evidence.clarificationQuestion.prompt,
           kind: "SINGLE_CHOICE",
           required: true,

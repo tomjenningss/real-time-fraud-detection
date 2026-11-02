@@ -126,7 +126,7 @@ def main() -> None:
     require(final["status"] == "APPROVED", f"unexpected deterministic verdict {final['status']}")
     decision = final.get("authoritativeDecision") or {}
     require(decision.get("source") == "deterministic_fast_path", "wrong decision authority")
-    require(decision.get("policyVersion") == "fast-path-policy/1.0.0", "wrong policy version")
+    require(decision.get("policyVersion") == "fast-path-policy/1.1.0", "wrong policy version")
     shadow = final.get("experimentalShadow") or {}
     require(shadow.get("status") == "EVALUATED", "shadow evaluation timed out")
     require(shadow.get("originalPaymentVerdict") == final["status"], "shadow lost original verdict")

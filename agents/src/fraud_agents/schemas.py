@@ -45,7 +45,8 @@ class FlinkEvidence(StrictModel):
     transactions_10m: int = Field(ge=1)
     distinct_merchants_2m: int = Field(ge=1)
     total_amount_2m: float = Field(ge=0)
-    signals: list[Literal["HIGH_VELOCITY", "MERCHANT_HOPPING"]]
+    beneficiary_payment_count: int | None = Field(default=None, ge=0)
+    signals: list[Literal["HIGH_VELOCITY", "MERCHANT_HOPPING", "NEW_BENEFICIARY_HIGH_VALUE"]]
     signal_ids: list[str]
     risk_level: Literal["LOW", "HIGH"]
     assessment_timestamp: datetime

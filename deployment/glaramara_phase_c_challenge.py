@@ -74,7 +74,7 @@ def main() -> None:
     challenge = challenged[0]
     decision = challenge.get("authoritativeDecision") or {}
     require(decision.get("source") == "deterministic_fast_path", "challenge used the wrong authority")
-    require(decision.get("policyVersion") == "fast-path-policy/1.0.0", "challenge used the wrong policy")
+    require(decision.get("policyVersion") == "fast-path-policy/1.1.0", "challenge used the wrong policy")
 
     after_status, dashboard_after = call(opener, base_url, "GET", "/api/v1/dashboard")
     require(after_status == 200, f"final dashboard returned {after_status}")

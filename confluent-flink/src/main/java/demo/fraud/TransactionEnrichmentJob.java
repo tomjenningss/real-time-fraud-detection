@@ -21,6 +21,8 @@ public class TransactionEnrichmentJob {
         String output = env("ENRICHMENT_OUTPUT_TOPIC", "payments.enriched.demo");
         String group = env("ENRICHMENT_GROUP_ID", "flink-transaction-enrichment-v1");
         String startupMode = env("ENRICHMENT_STARTUP_MODE", "latest");
+        double newBeneficiaryThreshold = positiveAmountEnv(
+                "NEW_BENEFICIARY_HIGH_VALUE_THRESHOLD_GBP", "5000");
 
         StreamExecutionEnvironment environment = StreamExecutionEnvironment.getExecutionEnvironment();
         environment.setParallelism(1);
@@ -43,7 +45,7 @@ public class TransactionEnrichmentJob {
         SingleOutputStreamOperator<String> assessments = environment.fromSource(source, watermarks, "payments.raw.demo")
                 .uid("payments-raw-source-v1")
                 .keyBy(tx -> tx.userId)
-                .process(new EnrichmentFunction())
+                .process(new EnrichmentFunction(newBeneficiaryThreshold))
                 .uid("transaction-enrichment-v1")
                 .name("event-time rolling enrichment");
 
@@ -61,6 +63,19 @@ public class TransactionEnrichmentJob {
     private static String env(String name, String fallback) {
         String value = System.getenv(name);
         return value == null || value.isBlank() ? fallback : value;
+    }
+
+    static double positiveAmountEnv(String name, String fallback) {
+        double value;
+        try {
+            value = Double.parseDouble(env(name, fallback));
+        } catch (NumberFormatException error) {
+            throw new IllegalArgumentException(name + " must be a positive GBP amount", error);
+        }
+        if (!Double.isFinite(value) || value <= 0) {
+            throw new IllegalArgumentException(name + " must be a positive GBP amount");
+        }
+        return value;
     }
 
     private static OffsetsInitializer startupOffsets(String mode) {

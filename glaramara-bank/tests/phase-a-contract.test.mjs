@@ -37,6 +37,9 @@ test("payment UI submits idempotently and contains no client-side verdict rules"
   const status = read("app/payments/status/payment-status-client.tsx");
 
   assert.match(payment, /Idempotency-Key/);
+  assert.match(payment, /useSearchParams/);
+  assert.match(payment, /requestedBeneficiaryId/);
+  assert.match(payment, /Change recipient/);
   assert.match(payment, /Submit fictional payment/);
   assert.match(payment, /never moves money or changes this account balance/);
   assert.match(status, /payment\?\.status/);

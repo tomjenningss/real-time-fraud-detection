@@ -56,7 +56,7 @@ acknowledgement behaviour. It will not claim a banking watermark until the corre
 transaction IDs are identical UUIDs through Flink, Python, LightGBM, Go correlation and shadow evaluation.
 
 `banking_payment_status` joins the attempt only to immutable `payment_decisions`; absence is `PENDING` and the
-three terminal states come solely from `fast-path-policy/1.0.0`. The owned status API separately returns outbox
+three terminal states come solely from `fast-path-policy/1.1.0`. The owned status API separately returns outbox
 progress, correlated revision and experimental Go shadow evidence. The UI polls it, exposes honest delay/retry
 messaging and labels shadow output non-authoritative. No booked transaction, balance or ledger row is created.
 Authoritative `PENDING` status continues polling at a slower cadence after the initial fast window, so a
@@ -162,6 +162,55 @@ PostgreSQL volumes, the approved prototype and AskOrchestrate were preserved.
 
 Do not begin ML-active selection under this milestone. That work is Phase B.1 and requires separate approval.
 
+## New-beneficiary high-value rule
+
+Glaramara derives beneficiary history in PostgreSQL from immutable booked transactions keyed by customer and
+beneficiary UUID and adds the count to its raw payment event. Flink emits `NEW_BENEFICIARY_HIGH_VALUE` only
+when that count is zero and the amount is at least the configurable threshold (default £5,000). Generic raw
+producers without beneficiary history cannot trigger it. Deterministic policy `fast-path-policy/1.1.0`
+challenges the signal under `FP-CHALLENGE-NEW-BENEFICIARY-HIGH-VALUE/1.0.0`; the pre-existing combined
+velocity and merchant-hopping block retains precedence. The Fraud Intelligence provider boundary is
+unchanged.
+
+Observed verification on 2 November 2026:
+
+- focused Java rule/schema tests: 8 passed; agents: 92 passed, 8 opt-in skipped, Ruff passed; Glaramara:
+  21 passed, TypeScript and production build passed; deployment: 27 passed; Compose rendered successfully;
+- both Flink jobs restored from verified savepoints, retaining Kafka/PostgreSQL volumes and offsets;
+- genuine new-beneficiary payment `002913e0-3d19-4294-9c72-a285d6de3d4a` for exactly £5,000 produced only
+  `NEW_BENEFICIARY_HIGH_VALUE`, was authoritatively `CHALLENGED` at `fast-path-policy/1.1.0`, and recorded
+  `FP-CHALLENGE-NEW-BENEFICIARY-HIGH-VALUE/1.0.0`; its booked-history count was zero, ledger effect remained
+  `NONE`, and no booked transaction was created;
+- the then-current `1.0.0` questionnaire started with four existing questions including
+  `contact_influence`; no live Orchestrate call was made in that rule-only verification;
+- the fresh 16-payment regression `cafed8e578a2` retained 11 approved / 2 challenged / 3 blocked, and a normal
+  known-beneficiary Glaramara payment remained `APPROVED` with unchanged balance and shadow provenance.
+
+## Glaramara recipient and questionnaire follow-up
+
+Beneficiary-list `Pay` links now open payment review with the server-returned owned beneficiary selected.
+Recipient selection reappears only through `Change recipient`; the signed session, same-origin controls and
+database ownership validation remain authoritative.
+
+Questionnaire `glaramara-fraud-questionnaire/1.1.0` selects a required bounded `payment_circumstances`
+explanation for first-time beneficiaries. The earlier free-text `other_purpose` appeared only after choosing
+`Something else`, which is why the demonstrated `Friends or family` path had no place for the Thailand
+context. Stored `1.0.0` investigations retain their snapshotted definitions and compatibility. The minimal
+pseudonymous extraction request includes the explanation as a question/answer pair with question ID and
+`CUSTOMER` provenance; the controlled questionnaire and existing agent are otherwise unchanged.
+
+Observed verification on 2 November 2026:
+
+- Glaramara contracts: 21 passed; focused desktop/mobile Playwright: 14 passed; TypeScript and production
+  build passed;
+- only `glaramara-bank` was rebuilt and recreated; Kafka, Flink, PostgreSQL and their volumes were untouched;
+- payment `7b45533d-8df9-41b1-b1af-53a77de48620`, a genuine first-time-beneficiary payment for exactly £5,000,
+  remained authoritatively `CHALLENGED` with `FP-CHALLENGE-NEW-BENEFICIARY-HIGH-VALUE/1.0.0`;
+- the running provider was `orchestrate`; the REST extraction persisted
+  `provider=watsonx-orchestrate-rest`, model `groq/openai/gpt-oss-120b`, valid schema and 6,733 ms latency;
+- deterministic reassessment was `DECLINED` for `SCAM_INDICATOR_PRESSURE_OR_SECRECY`; the original verdict
+  remained `CHALLENGED`, and both payment and reassessment ledger effects remained `NONE`.
+
 ## Orchestrate boundary
 
 Only repository source under `watsonx-orchestrate/fraud-intelligence/` may manage the single Phase C agent.
@@ -186,8 +235,9 @@ be measured against the strict evaluation before importing only `fraud_intellige
 - Orchestrate ADK 2.19.1 warns that planner style is deprecated. Planner is retained because this ADK version
   requires it for structured output; migrate only after validating equivalent strict output support.
 - Outbox delivery retries indefinitely; there is no terminal publication-failure state or operator retry API.
-- Trusted customer/account/beneficiary/location context is retained in the immutable banking snapshot but is
-  not added to the strict enriched/correlator contracts because existing policies do not consume it.
+- Trusted customer/account/location context and beneficiary names remain only in the immutable banking
+  snapshot. The strict raw/enriched contract exposes the minimal server-derived beneficiary payment count;
+  LightGBM does not consume it.
 - The Go policy is transport-independent, but the current engine is asynchronous shadow evaluation. A
   synchronous authorisation service is a separate future design.
 - Full IBM-laptop portability is not evidenced. Golden and development stacks are isolated and may exceed

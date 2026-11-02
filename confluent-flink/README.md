@@ -15,9 +15,9 @@ The existing SQL job produces window-level alerts and remains unchanged. The Dat
 - `fraud.signals.demo`: existing, potentially repeated window-level alerts from overlapping two-minute windows.
 - `payments.enriched.demo`: transaction-level assessments from the new job.
 
-An enriched record contains the original transaction identity and amount, UTC transaction and assessment timestamps, exact rolling `transactions_1m`, `transactions_2m`, `transactions_10m`, `distinct_merchants_2m`, `total_amount_2m`, all qualifying `signals`, stable `signal_ids`, `risk_level`, and `evidence_source: flink`.
+An enriched record contains the original transaction identity and amount, UTC transaction and assessment timestamps, exact rolling `transactions_1m`, `transactions_2m`, `transactions_10m`, `distinct_merchants_2m`, `total_amount_2m`, the optional server-derived `beneficiary_payment_count`, all qualifying `signals`, stable `signal_ids`, `risk_level`, and `evidence_source: flink`.
 
-`HIGH_VELOCITY` means at least five transactions in the inclusive two-minute interval ending at the current transaction. `MERCHANT_HOPPING` requires the same five-transaction minimum and at least four distinct merchants. Both signals are retained. Amount alone is never a signal. `HIGH` means one or more prototype signals are present and `LOW` means none are present; these labels are evidence severity, not payment verdicts. Under this evidence contract, merchant hopping necessarily co-occurs with high velocity.
+`HIGH_VELOCITY` means at least five transactions in the inclusive two-minute interval ending at the current transaction. `MERCHANT_HOPPING` requires the same five-transaction minimum and at least four distinct merchants. `NEW_BENEFICIARY_HIGH_VALUE` requires a server-derived beneficiary payment count of zero and an amount at or above `NEW_BENEFICIARY_HIGH_VALUE_THRESHOLD_GBP` (default `5000`). Producers without beneficiary history cannot trigger it. All qualifying signals are retained. Amount alone is never a signal. `HIGH` means one or more prototype signals are present and `LOW` means none are present; these labels are evidence severity, not payment verdicts. Under this evidence contract, merchant hopping necessarily co-occurs with high velocity.
 
 ## Why DataStream
 

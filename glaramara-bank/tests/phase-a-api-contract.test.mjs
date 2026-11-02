@@ -88,6 +88,11 @@ test("Phase C keeps customer evidence and reassessment separate from payment aut
   assert.doesNotMatch(repository, /INSERT INTO banking_transactions/i);
   assert.match(policy, /customer-evidence-reassessment\/1\.0\.0/);
   assert.match(questionnaire, /conditionalQuestionIds/);
+  assert.match(questionnaire, /glaramara-fraud-questionnaire\/1\.1\.0/);
+  assert.match(questionnaire, /payment_circumstances/);
+  assert.match(questionnaire, /beneficiaryPaymentCount === 0/);
+  assert.match(repository, /questionId: answer\.question_id/);
+  assert.match(repository, /provenance: "CUSTOMER"/);
   assert.match(questionnaire, /FP-CHALLENGE-VELOCITY/);
   assert.match(repository, /customer_fraud_reassessments/);
   assert.doesNotMatch(questionnaire, /nine/i);
@@ -127,6 +132,10 @@ test("payment repository is transactional, idempotent and preserves authority bo
   assert.match(repository, /raw_event_time_clock/);
   assert.match(repository, /payments\.raw\.demo:event-time/);
   assert.match(repository, /payments\.raw\.demo/);
+  assert.match(repository, /beneficiary_payment_count/);
+  assert.match(repository, /booked\.beneficiary_id = b\.beneficiary_id/);
+  assert.match(repository, /booked\.customer_id = c\.customer_id/);
+  assert.doesNotMatch(repository, /beneficiary_payment_count:\s*context\.beneficiary_name/);
   assert.match(repository, /FROM banking_payment_status status/);
   assert.match(repository, /fraud-action-policy-v1/);
   assert.doesNotMatch(repository, /UPDATE\s+payment_decisions/i);

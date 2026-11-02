@@ -138,6 +138,24 @@ test("submits the £10,000 payment idempotently and shows a real pending status"
   }
 });
 
+test("Pay beside a beneficiary opens the amount step with that recipient selected", async ({ page }) => {
+  await mockPhaseABankingApi(page);
+  await page.goto("/beneficiaries");
+
+  await page
+    .locator('a[href="/payments?beneficiary=8e252606-f346-522c-a62e-bdd3aee2b45a"]')
+    .click();
+
+  await expect(page).toHaveURL(/\/payments\?beneficiary=8e252606-f346-522c-a62e-bdd3aee2b45a/);
+  await expect(page.getByRole("heading", { name: "How much?" })).toBeVisible();
+  await expect(page.getByText(/Enter the amount and reference for/)).toContainText("Sam Bennett");
+  await expect(page.getByRole("heading", { name: "Who are you paying?" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Change recipient" }).click();
+  await expect(page).toHaveURL(/\/payments$/);
+  await expect(page.getByRole("heading", { name: "Who are you paying?" })).toBeVisible();
+});
+
 test("has no detectable WCAG A or AA violations on the loaded overview", async ({ page }) => {
   await mockPhaseABankingApi(page);
   await page.goto("/");

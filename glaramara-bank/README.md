@@ -7,6 +7,8 @@ from this application.
 ## Phase B and C boundary
 
 - The dashboard, activity, cards, beneficiaries and payment-review journeys are implemented.
+- `Pay` beside an owned beneficiary opens payment review with that recipient selected; the customer can
+  explicitly return to recipient selection with `Change recipient`.
 - Fictional customer/account data is selected through the demo customer switcher.
 - The server layer supplies those read models from PostgreSQL and a signed demo session.
 - Payment review submits a simulated attempt through the PostgreSQL outbox and existing fraud pipeline.
@@ -14,7 +16,8 @@ from this application.
   separately labelled shadow evidence.
 - Submission never creates a booked transaction, ledger effect or balance change.
 - A genuine `CHALLENGED` payment can enter a short, versioned adaptive questionnaire with durable refresh
-  recovery. Conditional follow-ups are selected from checked-in definitions, never generated freely.
+  recovery. Questionnaire `1.1.0` adds a required, 500-character circumstances explanation for a first-time
+  beneficiary; conditional follow-ups remain selected from checked-in definitions, never generated freely.
 - Fraud Intelligence extracts strict semantic evidence; a separate deterministic policy writes only a
   simulated investigation resolution. It cannot mutate the original verdict, ledger or balance.
 - Every account, card, transaction and beneficiary is fictional.
@@ -40,9 +43,15 @@ Customer identity always comes from the HMAC-signed, HttpOnly, SameSite session 
 beneficiary/payment mutations require an exact same-origin request. Payment submission also requires an
 `Idempotency-Key`; account and location identity never come from the browser.
 
+The optional `beneficiary` payment URL parameter is only a selection hint. The server-returned owned
+beneficiary list must contain that UUID before the UI skips recipient selection, and the payment API repeats
+the composite customer/beneficiary ownership check before accepting the attempt.
+
 One PostgreSQL transaction reserves monotonic raw-event time and inserts the immutable banking attempt plus
 raw-payment and delayed-watermark rows into the existing `outbox_events`. The root regression fixture uses the
 same advisory lock and event clock, so its later SQL-window marker cannot make a subsequent UI payment late.
+The raw payment uses the stable beneficiary UUID as merchant identity and carries a server-derived count of
+immutable booked payments for that beneficiary; customer-entered display names are not history inputs.
 The marker payload's event time is separate from its processing-time schedule: it becomes publishable three
 seconds after insertion even when coordinated event time is farther ahead. Migration
 `0009_release_banking_watermarks` releases any pending marker written by the earlier conflated-clock

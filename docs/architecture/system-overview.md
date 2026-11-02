@@ -23,7 +23,7 @@ CHALLENGED Glaramara payment -> adaptive versioned questionnaire -> backend Frau
   -> validated semantic evidence -> deterministic reassessment -> separate simulated resolution
 ```
 
-Only deterministic policy `fast-path-policy/1.0.0` produces the initial `APPROVED`, `CHALLENGED` or
+Only deterministic policy `fast-path-policy/1.1.0` produces the initial `APPROVED`, `CHALLENGED` or
 `BLOCKED` verdict.
 The Glaramara reassessment and the Go engine's experimental shadow action cannot change it. Publication
 is at least once.
@@ -54,8 +54,11 @@ Correlated/shadow messages are keyed by `transaction_id`. Shadow consumers must 
 The Java `TransactionEnrichmentJob` consumes raw payments with two-second bounded out-of-orderness and
 15-second idleness, keyed by user. `EnrichmentFunction` maintains event-time rolling evidence over one,
 two and ten minutes and emits one canonical assessment per accepted transaction. Deterministic signals are
-`HIGH_VELOCITY` (at least five transactions in two minutes) and `MERCHANT_HOPPING` (that velocity across
-at least four merchants), with transaction-scoped IDs. Late records go to a logged side output.
+`HIGH_VELOCITY` (at least five transactions in two minutes), `MERCHANT_HOPPING` (that velocity across at
+least four merchants), and `NEW_BENEFICIARY_HIGH_VALUE` when a Glaramara raw event contains a server-derived
+booked-payment count of zero and meets the configurable GBP threshold (default £5,000), all with
+transaction-scoped IDs. Missing beneficiary history cannot trigger the new rule. Late records go to a logged
+side output.
 
 The separate SQL job reads raw payments into two-minute hopping windows every ten seconds. It emits aggregate
 alerts when count is at least five. Alerts can repeat across overlapping windows and are explicitly not
@@ -69,7 +72,7 @@ root lifecycle scripts preserve established checkpoints/savepoints and never res
 The Python router consumes enriched evidence, validates the strict `FlinkEvidence` contract, and applies:
 
 - both velocity and merchant hopping: `BLOCKED`, investigation requested;
-- either signal: `CHALLENGED`, investigation requested;
+- either behavioural signal or `NEW_BENEFICIARY_HIGH_VALUE`: `CHALLENGED`, investigation requested;
 - neither: `APPROVED`, with optional normal sampling (deployed rate zero).
 
 One PostgreSQL transaction records the consumed event, immutable decision, optional investigation and
@@ -139,10 +142,15 @@ Session/beneficiary mutations require exact same-origin requests. Implemented AP
 `GET|POST /api/v1/demo/session`, `GET /api/v1/dashboard`, `GET /api/v1/activity`, and
 `GET|POST /api/v1/beneficiaries` plus the owned Phase C investigation endpoints described below.
 
+Beneficiary-list `Pay` links pass the beneficiary UUID as a navigation hint. Payment review skips its first
+screen only after matching that UUID against the signed-session customer's server-returned beneficiaries;
+`Change recipient` clears the hint. The payment mutation still enforces database ownership independently.
+
 `POST /api/v1/payments` requires an exact same-origin request, a signed demo session and a visible-ASCII
 `Idempotency-Key`. The browser supplies only beneficiary, GBP amount and reference. PostgreSQL resolves the
 fictional customer, primary account and allowlisted demo location from trusted server state, validates
-beneficiary ownership, and serializes concurrent replays with a transaction advisory lock. Reusing a key with
+beneficiary ownership, counts prior immutable booked payments by customer and beneficiary UUID, and serializes
+concurrent replays with a transaction advisory lock. Reusing a key with
 the same canonical request returns the original payment; different details return `409`.
 
 The same PostgreSQL transaction reserves monotonically increasing time in `raw_event_time_clock`, inserts the
@@ -168,15 +176,18 @@ transaction, ledger entry or balance mutation occurs.
 
 Only a genuine immutable `CHALLENGED` decision can start
 `GET|POST /api/v1/payments/{paymentId}/investigation`. Versioned definitions select three core questions,
-with `contact_influence` selected for a new beneficiary or velocity context. Answers can add bounded
-`other_purpose`, `pressure_or_secrecy` and `remote_access` follow-ups. Each answer requires same-origin,
+with `contact_influence` and the bounded `payment_circumstances` explanation selected for a new beneficiary.
+Questionnaire `1.1.0` caps that explanation at 500 characters and warns against secrets or full identifiers;
+stored `1.0.0` investigations remain readable. Answers can add bounded `other_purpose`,
+`pressure_or_secrecy` and `remote_access` follow-ups. Each answer requires same-origin,
 signed-session ownership and an idempotency key; selected questions and their definitions are snapshotted for
 recovery. The responsive UI restores the next unanswered question after refresh.
 
 `POST .../answers` persists customer provenance and `POST .../extract` atomically claims one invocation before
 calling the backend adapter. The adapter sends only a pseudonymous transaction reference, amount/currency,
 prior-beneficiary flag, deterministic signal names, required evidence keys and completed question/answer
-pairs. The SaaS tenant never calls localhost. The canonical `fraud_intelligence` agent has no tools,
+pairs. Every pair retains its question ID and `CUSTOMER` provenance, including the circumstances explanation.
+The SaaS tenant never calls localhost. The canonical `fraud_intelligence` agent has no tools,
 collaborators, memory or knowledge base and returns only `fraud-intelligence-evidence/1.0.0`. Local Zod
 validation additionally enforces non-empty indicators, exclusive `NONE`, bounded clarification and semantic
 question provenance. An optional clarification can cause one second and final invocation; the database caps
@@ -207,8 +218,9 @@ reuse, reset or implicitly stop their networks, offsets, state or volumes; see `
 Phase B is asynchronous by design. There is no synchronous authorisation API, balance mutation, production
 feature store, calibrated model, terminal outbox failure state or automatic challenge resolution. Pending UI
 status can identify retries and delay but the publisher retries indefinitely. Trusted banking context remains
-an immutable banking snapshot; the unchanged Flink enriched contract intentionally carries only fields used by
-the existing deterministic and ML paths.
+an immutable banking snapshot. The raw/enriched contracts expose only the minimal server-derived beneficiary
+payment count needed by the deterministic rule; customer/account/location details and beneficiary names remain
+outside Flink, and the unchanged LightGBM feature schema ignores the count.
 
 ML-active mode selection is deferred to Phase B.1. LightGBM and the Go action remain shadow-only.
 

@@ -1,6 +1,9 @@
 # Deterministic fraud services and experimental ML baseline
 
-The router is the authoritative payment-decision path. The `fraud_agents.ml` package adds an independent,
+The router is the authoritative payment-decision path. Policy `fast-path-policy/1.1.0` preserves the existing
+velocity-plus-merchant-hopping block and existing single-signal challenges, and also challenges Flink's
+`NEW_BENEFICIARY_HIGH_VALUE` signal under versioned rule
+`FP-CHALLENGE-NEW-BENEFICIARY-HIGH-VALUE/1.0.0`. The `fraud_agents.ml` package adds an independent,
 experimental LightGBM shadow score. It never changes a payment verdict or writes an authoritative decision.
 
 ## CPU prerequisites

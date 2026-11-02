@@ -103,6 +103,7 @@ Edit the ignored `.env` before first startup to change ports or resource sizes:
 | `GLARAMARA_PUBLIC_ORIGIN` | `http://localhost:3000` | exact browser mutation origin |
 | `GLARAMARA_SESSION_SECRET` | generated | signed demo-session secret |
 | `GLARAMARA_COOKIE_SECURE` | `false` | localhost-only HTTP cookie override |
+| `NEW_BENEFICIARY_HIGH_VALUE_THRESHOLD_GBP` | `5000` | Flink threshold for a first-time beneficiary payment challenge |
 | `FRAUD_INTELLIGENCE_PROVIDER` | `mock` | `mock` offline or `orchestrate` live server-side extraction |
 | `FRAUD_INTELLIGENCE_MODEL` | `mock-fraud-intelligence/1.0.0` | extraction provenance/model name |
 | `FRAUD_INTELLIGENCE_TIMEOUT_MS` | `45000` | bounded live Orchestrate request timeout |

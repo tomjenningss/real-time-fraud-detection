@@ -78,6 +78,7 @@ type PaymentContextRow = {
   latitude: string;
   longitude: string;
   device_id: string;
+  beneficiary_payment_count: string;
 };
 
 type PaymentStatusRow = {
@@ -493,7 +494,11 @@ async function findPaymentContext(
     SELECT c.customer_id, c.demo_slug AS customer_slug, a.account_id,
            b.beneficiary_id, b.display_name AS beneficiary_name,
            l.location_id, l.location_key, l.label AS location_label,
-           l.latitude::text, l.longitude::text, l.device_id
+           l.latitude::text, l.longitude::text, l.device_id,
+           (SELECT count(*)::text
+            FROM banking_transactions booked
+            WHERE booked.customer_id = c.customer_id
+              AND booked.beneficiary_id = b.beneficiary_id) AS beneficiary_payment_count
     FROM banking_customers c
     JOIN banking_accounts a
       ON a.customer_id = c.customer_id AND a.is_primary AND a.status = 'OPEN'
@@ -558,6 +563,7 @@ export async function createPaymentAttempt(
       amount,
       device_id: context.device_id,
       payment_channel: "OTHER",
+      beneficiary_payment_count: Number(context.beneficiary_payment_count),
       event_time: flinkEventTime(eventTime),
     };
     const trustedContext = {
