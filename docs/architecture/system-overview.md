@@ -1,7 +1,7 @@
 # Verified system overview
 
-Verified from repository code and deployment wiring on 1 November 2026. Runtime observations are identified
-separately; Phase B/C intentions are not presented as implemented behaviour.
+Verified from repository code and deployment wiring on 2 November 2026. Runtime observations are identified
+separately; future intentions are not presented as implemented behaviour.
 
 ## Authority and end-to-end flow
 
@@ -19,6 +19,10 @@ controlled generators ---------------------------------------------> payments.ra
 decisions + ML risk + optional investigation events
   -> Go correlator -> fraud.assessments.correlated.demo
   -> Go shadow decision engine -> fraud.decisions.shadow.demo
+
+CHALLENGED Glaramara payment -> adaptive versioned questionnaire -> backend Fraud Intelligence adapter
+  -> one primary Orchestrate extraction (optional one bounded clarification)
+  -> validated semantic evidence -> deterministic reassessment -> separate simulated resolution
 ```
 
 Only deterministic policy `fast-path-policy/1.0.0` produces the initial `APPROVED`, `CHALLENGED` or
@@ -111,7 +115,7 @@ Investigation content is audit context, never policy input. Duplicate/obsolete r
 
 ## PostgreSQL schemas and transaction boundaries
 
-Alembic currently ends at `0009_release_banking_watermarks`:
+Alembic currently ends at `0010_glaramara_phase_c`:
 
 - Python: consumed events, immutable payment decisions, investigations/attempts/audit, durable outbox,
   budget and investigation context.
@@ -121,6 +125,8 @@ Alembic currently ends at `0009_release_banking_watermarks`:
 - Glaramara: customers, accounts, beneficiaries, locations, booked transactions, immutable payment attempts
   and the authoritative `banking_payment_status` projection; a singleton raw-event clock coordinates producer
   event time without storing a verdict.
+- Phase C: durable customer investigations, append-only events and answers, immutable Fraud Intelligence
+  extractions and independent simulated reassessments with schema/model/policy provenance.
 
 Consumers finish their database transaction before Kafka commit. Publishers lease outbox rows and mark them
 published after Kafka acknowledgement. PostgreSQL is authoritative; Kafka stays at least once.
@@ -133,7 +139,7 @@ change. Composite foreign keys prevent cross-customer account/beneficiary/locati
 demo-session cookie. It implements dashboard, activity, cards, beneficiaries and responsive payment review.
 Session/beneficiary mutations require exact same-origin requests. Implemented APIs are
 `GET|POST /api/v1/demo/session`, `GET /api/v1/dashboard`, `GET /api/v1/activity`, and
-`GET|POST /api/v1/beneficiaries`.
+`GET|POST /api/v1/beneficiaries` plus the owned Phase C investigation endpoints described below.
 
 `POST /api/v1/payments` requires an exact same-origin request, a signed demo session and a visible-ASCII
 `Idempotency-Key`. The browser supplies only beneficiary, GBP amount and reference. PostgreSQL resolves the
@@ -160,12 +166,39 @@ shadow evaluation as explicitly experimental audit evidence. The responsive stat
 shows honest delayed/retry states and never derives a verdict from amount, ML or Go output. No booked
 transaction, ledger entry or balance mutation occurs.
 
+## Phase C customer evidence and reassessment
+
+Only a genuine immutable `CHALLENGED` decision can start
+`GET|POST /api/v1/payments/{paymentId}/investigation`. Versioned definitions select three core questions,
+with `contact_influence` selected for a new beneficiary or velocity context. Answers can add bounded
+`other_purpose`, `pressure_or_secrecy` and `remote_access` follow-ups. Each answer requires same-origin,
+signed-session ownership and an idempotency key; selected questions and their definitions are snapshotted for
+recovery. The responsive UI restores the next unanswered question after refresh.
+
+`POST .../answers` persists customer provenance and `POST .../extract` atomically claims one invocation before
+calling the backend adapter. The adapter sends only a pseudonymous transaction reference, amount/currency,
+prior-beneficiary flag, deterministic signal names, required evidence keys and completed question/answer
+pairs. The SaaS tenant never calls localhost. The canonical `fraud_intelligence` agent has no tools,
+collaborators, memory or knowledge base and returns only `fraud-intelligence-evidence/1.0.0`. Local Zod
+validation additionally enforces non-empty indicators, exclusive `NONE`, bounded clarification and semantic
+question provenance. An optional clarification can cause one second and final invocation; the database caps
+the total at two.
+
+Policy `customer-evidence-reassessment/1.0.0` consumes only validated evidence. It clears only complete,
+recognised, low-uncertainty evidence with no scam indicator; defined unrecognised/scam conditions decline;
+missing, contradictory, uncertain, invalid or unavailable evidence requires further review. Results are
+simulated and append-only. They do not update `payment_decisions`, `banking_accounts` or booked transactions.
+Root Compose selects a deterministic fixture for reproducible local validation. Provider `orchestrate` is the
+backend-only live mode and invokes the existing agent through native TypeScript IAM/REST; Glaramara does not
+spawn the Python ADK runner or fall back to mock after a live failure.
+
 ## Configuration and deployment
 
 Root `compose.yaml` owns isolated Kafka, PostgreSQL, Flink, migrations, router, Python outbox/scorer, both
 Go services and Glaramara. Traffic uses Compose DNS; default host ports are `19092`, `55433`, `18081`, `18082`,
-`18083` and `13000`. `make up` migrates, creates topics, ensures one of each Flink job, captures Python start
-boundaries once, then starts applications. `make down` saves both Flink jobs and does not remove volumes.
+`18083` and `3000`. `make up` migrates through `0010_glaramara_phase_c`, creates topics, ensures one of each
+Flink job, captures Python start boundaries once, then starts applications. `make down` saves both Flink jobs
+and does not remove volumes.
 See `DEPLOYMENT.md`.
 
 Protected golden `confluent-flink`, `part3` and `fraud-observability` projects are separate. Never
@@ -181,5 +214,12 @@ the existing deterministic and ML paths.
 
 ML-active mode selection is deferred to Phase B.1. LightGBM and the Go action remain shadow-only.
 
-IBM TechZone/watsonx Orchestrate is Phase C. No Orchestrate agent/tool lifecycle exists here; AskOrchestrate
-must remain untouched until that phase is explicitly approved.
+The live adapter is validated end to end against the TechZone development tenant through a second Glaramara
+server bound only to `127.0.0.1`. Native server-side TypeScript exchanges the ignored `.env.local` API key for
+an IBM IAM bearer token, caches it until five minutes before expiry, deduplicates refreshes and retries a 401
+exactly once after invalidation. It then calls the fixed existing agent ID through
+`/v1/orchestrate/{agent_id}/chat/completions` with `stream: false`. Neither bearer token nor API key reaches the
+browser, Compose or PostgreSQL. The standalone Python ADK runner remains repository diagnostic tooling but is
+not part of the Glaramara runtime path.
+Planner style is deprecated by ADK 2.19.1 but retained for its structured-output support. AskOrchestrate
+remains outside this architecture and untouched.

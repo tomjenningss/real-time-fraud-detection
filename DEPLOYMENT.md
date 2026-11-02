@@ -17,12 +17,28 @@ Python's standard library only.
 
 ## First startup
 
+On a clean Mac, install Podman Desktop (or Podman plus a Compose provider), then create and start a machine
+with enough memory for Kafka and Flink. The deployment uses only localhost-bound published ports.
+
 ```sh
+git clone <repository-url> fraud-detection
+cd fraud-detection
+podman machine init --cpus 4 --memory 8192 --disk-size 60  # first Podman setup only
+podman machine start
+cp .env.example .env
+# Replace POSTGRES_PASSWORD and GLARAMARA_SESSION_SECRET with local random values,
+# or remove .env and let `make prepare` generate both on a brand-new deployment.
+chmod 600 .env
 make build
 make up
 make status
 make smoke-test
 ```
+
+Open [http://localhost:3000](http://localhost:3000) after startup. No separate host Next.js process is
+required. Do not reuse the placeholder secrets in `.env.example`; for example, generate local hexadecimal
+values with `openssl rand -hex 24` and `openssl rand -hex 32`. If Podman already has a machine, adjust its
+resources through Podman Desktop or `podman machine set` instead of creating a second machine.
 
 `make build` creates an ignored, mode-600 `.env` on first use with a random local PostgreSQL password. It
 also creates the ignored `.runtime/` directory used for Kafka startup boundaries and Flink recovery records.
@@ -83,10 +99,15 @@ Edit the ignored `.env` before first startup to change ports or resource sizes:
 | `FLINK_HOST_PORT` | `18081` | Flink REST/UI |
 | `CORRELATOR_HOST_PORT` | `18082` | correlator HTTP |
 | `SHADOW_ENGINE_HOST_PORT` | `18083` | shadow engine HTTP |
-| `GLARAMARA_HOST_PORT` | `13000` | fictional banking HTTP |
-| `GLARAMARA_PUBLIC_ORIGIN` | `http://127.0.0.1:13000` | exact mutation origin |
+| `GLARAMARA_HOST_PORT` | `3000` | localhost-only fictional banking HTTP |
+| `GLARAMARA_PUBLIC_ORIGIN` | `http://localhost:3000` | exact browser mutation origin |
 | `GLARAMARA_SESSION_SECRET` | generated | signed demo-session secret |
 | `GLARAMARA_COOKIE_SECURE` | `false` | localhost-only HTTP cookie override |
+| `FRAUD_INTELLIGENCE_PROVIDER` | `mock` | `mock` offline or `orchestrate` live server-side extraction |
+| `FRAUD_INTELLIGENCE_MODEL` | `mock-fraud-intelligence/1.0.0` | extraction provenance/model name |
+| `FRAUD_INTELLIGENCE_TIMEOUT_MS` | `45000` | bounded live Orchestrate request timeout |
+| `WATSONX_ORCHESTRATE_API_KEY` | empty | server-only live credential; required for `orchestrate` |
+| `WATSONX_ORCHESTRATE_URL` | empty | server-only IBM service-instance URL |
 | `KAFKA_HEAP_OPTS` | `-Xms256m -Xmx512m` | development broker heap |
 | `JOBMANAGER_MEMORY` | `768m` | Flink JobManager process memory |
 | `TASKMANAGER_MEMORY` | `1280m` | Flink TaskManager process memory |
@@ -100,6 +121,14 @@ COMPOSE_PROJECT_NAME=my-fraud-dev make up
 The Compose project owns its network and the `kafka-data`, `postgres-data`, and `flink-checkpoints` named
 volumes. Service-to-service traffic uses Compose DNS names (`kafka`, `postgres`, and `jobmanager`), never
 host `localhost`.
+
+The default `mock` provider is fully offline and requires no IBM credential. To use the existing Orchestrate
+agent, set `FRAUD_INTELLIGENCE_PROVIDER=orchestrate`, `WATSONX_ORCHESTRATE_API_KEY`,
+`WATSONX_ORCHESTRATE_URL`, and the live model name in the ignored mode-600 root `.env`, then run `make up`.
+These values are injected at runtime into the server container; they are not build arguments, image layers,
+`NEXT_PUBLIC_` values, or browser data. Authentication, timeout, network, non-2xx and schema failures are
+recorded as a simulated `REQUIRES_FURTHER_REVIEW` outcome. The server never falls back to mock when
+`orchestrate` is selected.
 
 Do not change `POSTGRES_PASSWORD` after PostgreSQL has initialized. Migrations deliberately fail before
 workers start if the configured password no longer matches the persisted database. Use the confirmed reset
@@ -143,7 +172,8 @@ inside the JobManager before writing the recovery manifest or stopping any conta
 
 ## Smoke test
 
-`make smoke-test` creates a unique run ID, establishes output boundaries, and publishes 16 payments plus an
+`make smoke-test` first requires the Compose-network Glaramara health endpoint, then creates a unique run ID,
+establishes output boundaries, and publishes 16 payments plus an
 event-time watermark marker to this deployment's broker. It requires all 16 transaction IDs to appear in:
 
 - `payments.enriched.demo`

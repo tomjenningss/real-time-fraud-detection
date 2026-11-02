@@ -4,7 +4,7 @@ Mobile-first fictional banking UI for the fraud-platform demonstration. The appr
 `../docs/designs/glaramara-clickable-prototype.html` remains the visual source of truth and is not generated
 from this application.
 
-## Phase B boundary
+## Phase B and C boundary
 
 - The dashboard, activity, cards, beneficiaries and payment-review journeys are implemented.
 - Fictional customer/account data is selected through the demo customer switcher.
@@ -13,6 +13,10 @@ from this application.
 - Customer status comes only from the immutable deterministic Python verdict. LightGBM and Go remain
   separately labelled shadow evidence.
 - Submission never creates a booked transaction, ledger effect or balance change.
+- A genuine `CHALLENGED` payment can enter a short, versioned adaptive questionnaire with durable refresh
+  recovery. Conditional follow-ups are selected from checked-in definitions, never generated freely.
+- Fraud Intelligence extracts strict semantic evidence; a separate deterministic policy writes only a
+  simulated investigation resolution. It cannot mutate the original verdict, ledger or balance.
 - Every account, card, transaction and beneficiary is fictional.
 
 PostgreSQL is authoritative for customer, account, transaction and beneficiary screens. `lib/demo-data.ts`
@@ -27,6 +31,9 @@ The Phase B API surface is:
 - `GET|POST /api/v1/beneficiaries`
 - `POST /api/v1/payments`
 - `GET /api/v1/payments/{paymentId}`
+- `GET|POST /api/v1/payments/{paymentId}/investigation`
+- `POST /api/v1/payments/{paymentId}/investigation/answers`
+- `POST /api/v1/payments/{paymentId}/investigation/extract`
 - `GET /api/v1/health`
 
 Customer identity always comes from the HMAC-signed, HttpOnly, SameSite session cookie. Session and
@@ -76,6 +83,42 @@ externally visible HTTPS origin in hosted environments; the development example 
 TLS for PostgreSQL. `GLARAMARA_COOKIE_SECURE` defaults to true in production; set it false only for explicit
 localhost HTTP development. Keep all settings outside Git.
 
+`FRAUD_INTELLIGENCE_PROVIDER` selects `mock` or `orchestrate`. Root Compose defaults to `mock` for a
+deterministic, credential-free demonstration. `orchestrate` invokes the existing agent directly from the
+Next.js backend. It reads only
+`WATSONX_ORCHESTRATE_API_KEY` and `WATSONX_ORCHESTRATE_URL` from the server environment, obtains a cached IAM
+token and calls the existing agent through its supported non-streaming chat-completions endpoint. Never use
+`NEXT_PUBLIC_` names for either credential. Live failures produce `REQUIRES_FURTHER_REVIEW` and never fall
+back to mock. The standalone Python adapter remains in the Orchestrate source directory for diagnostics, but
+Glaramara no longer spawns it.
+
+For a bounded live development journey, keep the Compose Glaramara service in `mock` mode and start a second
+localhost-only backend from the repository root after building the app:
+
+```sh
+cd glaramara-bank && npm run build
+cd .. && sh deployment/run_glaramara_live_orchestrate.sh
+```
+
+This process reads the private root deployment values without printing them, connects to PostgreSQL through
+its existing loopback port and lets Next.js load the ignored `.env.local` server credentials. It defaults to
+native TypeScript REST mode. The browser origin is `http://127.0.0.1:13001`; stopping this host process does
+not change the Compose mock configuration.
+The opt-in live acceptance sequence first creates a fresh genuine velocity challenge, then passes its payment
+ID to the browser test:
+
+```sh
+python3 deployment/glaramara_phase_c_challenge.py
+cd glaramara-bank
+RUN_GLARAMARA_PHASE_C_LIVE=1 GLARAMARA_PHASE_C_PAYMENT_ID=<printed-payment-id> \
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:13001 \
+  npx playwright test tests/e2e/phase-c-live-orchestrate.spec.ts \
+  --project=desktop-chrome --workers=1
+```
+
+This publishes fictional payment attempts and performs one live tenant invocation, so it is never part of the
+default test suite.
+
 ## Isolated PostgreSQL validation
 
 Database-backed tests must target an explicitly approved isolated database at Alembic head, never either
@@ -93,8 +136,9 @@ GLARAMARA_SESSION_SECRET=replace-with-at-least-32-bytes \
 ```
 
 The normal Playwright suite mocks API transport and checks both 1440×1000 desktop and 390×844 mobile
-layouts, customer switching, beneficiary persistence, idempotent payment submission, pending status and
-WCAG A/AA. Pending authoritative payments keep a low-frequency poll after the initial fast window so outbox
+layouts, customer switching, beneficiary persistence, idempotent payment submission, pending status,
+adaptive Phase C follow-ups, refresh recovery and WCAG A/AA. Pending authoritative payments keep a
+low-frequency poll after the initial fast window so outbox
 recovery can update an already-open status page. `PLAYWRIGHT_BASE_URL` can reuse an explicitly managed local
 server.
 

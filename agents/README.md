@@ -132,5 +132,9 @@ attempts plus `banking_payment_raw` and `banking_payment_watermark` rows into th
 until its raw sibling is `PUBLISHED`; the existing lease, retry and Kafka-acknowledgement behaviour otherwise
 remains unchanged. Terminal banking status is derived only from immutable `payment_decisions`.
 
-Phase 1 is this baseline shadow model. Later phases may add Claude-based customer-evidence extraction and
-evidence-enriched ML, but neither is implemented here; a dashboard is also out of scope.
+Revision `0010_glaramara_phase_c` adds durable adaptive questionnaires, append-only investigation events and
+answers, immutable Fraud Intelligence extraction records, a metrics view and separate simulated reassessment
+history. Database triggers preserve original decision/questionnaire provenance and reject mutation of
+evidence or resolution history. The reassessment outcome never replaces `payment_decisions`.
+
+The LightGBM baseline remains shadow-only. Phase C does not add evidence-enriched ML or active model policy.

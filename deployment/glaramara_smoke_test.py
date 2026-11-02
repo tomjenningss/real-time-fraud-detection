@@ -45,7 +45,7 @@ def require(condition: bool, message: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--base-url", default="http://127.0.0.1:13000")
+    parser.add_argument("--base-url", default="http://localhost:3000")
     parser.add_argument("--timeout-seconds", type=float, default=120)
     args = parser.parse_args()
     base_url = args.base_url.rstrip("/")

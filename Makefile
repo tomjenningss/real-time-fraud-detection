@@ -29,7 +29,8 @@ smoke-test: prepare
 	@$(COMPOSE) run --rm --no-deps smoke-runner python /deployment/smoke_test.py
 
 glaramara-smoke-test: prepare
-	python3 deployment/glaramara_smoke_test.py
+	@base_url=$$(awk -F= '$$1 == "GLARAMARA_PUBLIC_ORIGIN" { value = substr($$0, index($$0, "=") + 1); gsub(/^"|"$$/, "", value); print value; exit }' .env); \
+	python3 deployment/glaramara_smoke_test.py --base-url "$$base_url"
 
 logs: prepare
 	$(COMPOSE) logs --tail="$${LOG_TAIL:-200}"

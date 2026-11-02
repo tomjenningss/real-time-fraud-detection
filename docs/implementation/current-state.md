@@ -1,6 +1,6 @@
 # Current implementation state
 
-Handoff as of 1 November 2026. Start milestone work here; follow links for detail. Planned statements are not
+Handoff as of 2 November 2026. Start milestone work here; follow links for detail. Planned statements are not
 claims about deployed behaviour.
 
 ## Completed milestones
@@ -88,6 +88,58 @@ Observed Phase B verification on 1 November 2026:
   topics with the preserved 11 approved / 2 challenged / 3 blocked deterministic distribution and both SQL
   rules observed.
 
+### Phase C: Glaramara Fraud Intelligence
+
+Phase C adds Alembic `0010_glaramara_phase_c`, an adaptive and recoverable Glaramara security check, the
+single TechZone `fraud_intelligence` agent, strict evidence validation and deterministic reassessment policy
+`customer-evidence-reassessment/1.0.0`. A questionnaire begins with three core questions and selects contact
+or scam follow-ups only from versioned definitions when payment context or prior answers require them. One
+bounded agent clarification is permitted; it is not a free-form chatbot.
+
+The Glaramara server constructs a minimal pseudonymous context and owns the authenticated Orchestrate adapter.
+Validated evidence, request hash, provider/model, schema version, latency, questionnaire answers, append-only
+history and simulated reassessment are persisted independently. `CLEARED`, `REQUIRES_FURTHER_REVIEW` and
+`DECLINED` are investigation resolutions only: the original `payment_decisions` row and customer payment
+status remain immutable. Invalid schema, model errors, timeouts, missing evidence and contradictions cannot
+clear a payment. Root Compose uses the deterministic mock extractor so the shared runtime contains no
+TechZone credentials. Deployments select native TypeScript REST with
+`FRAUD_INTELLIGENCE_PROVIDER=orchestrate`; Glaramara no longer spawns the existing standalone Python ADK
+runner, and live failures conservatively require further review without mock fallback.
+
+Observed Phase C verification on 2 November 2026:
+
+- TechZone connectivity and model inventory were read through ADK 2.19.1; the tenant contains only the
+  pre-existing AskOrchestrate and the new `fraud_intelligence` agent. AskOrchestrate was not modified;
+- `groq/openai/gpt-oss-120b` passed all 3 live semantic/provenance scenarios at 5,026 / 6,949 / 6,594 ms
+  (mean 6,190 ms, median 6,594 ms, max 6,949 ms). The lower-capacity
+  `watsonx/mistralai/mistral-small-3-1-24b-instruct-2503` candidate failed the strict evidence contract and was
+  rejected;
+- Glaramara unit/contracts: 21 passed, including IAM caching, concurrent refresh and bounded 401 retry;
+  TypeScript and production build passed; default Playwright
+  desktop/mobile: 12 passed and 4 opt-in PostgreSQL/live cases skipped, including adaptive follow-up, refresh
+  recovery and WCAG A/AA checks;
+- agents: 90 passed, 8 opt-in skips; Ruff passed; deployment: 25 passed; Compose rendered successfully;
+- genuine challenged payment `76608ed5-27de-4441-b459-ec2b68f4aa8f` completed four contextual questions and
+  one deterministic-fixture extraction, producing separate simulated `CLEARED` resolution with policy
+  `customer-evidence-reassessment/1.0.0`. Its original verdict remained `CHALLENGED` under
+  `fast-path-policy/1.0.0`, its balance remained £24,862.80, and the audit retained four answers, eight events,
+  schema/model provenance and `ledger_effect=NONE`;
+- fresh velocity challenge `1a658cb8-65b2-4444-8ae3-cdabf05148a5` completed the real browser journey against
+  a loopback-only host backend. It invoked provider `watsonx-orchestrate` and model
+  `groq/openai/gpt-oss-120b` once, persisted valid schema and two answer-provenance claims at 4,545 ms, and
+  independently reassessed to simulated `CLEARED`. Its authoritative verdict remained `CHALLENGED`, the
+  ledger effect remained `NONE`, and the balance remained £24,862.80. The opt-in live Playwright case passed
+  in 11.6 seconds;
+- native REST challenge `44439d6c-e864-416d-a833-3ab56d7b05ee` resolved the existing agent ID through the
+  configured Toronto instance, then passed the live browser journey in 7.2 seconds. PostgreSQL recorded
+  provider `watsonx-orchestrate-rest`, model `groq/openai/gpt-oss-120b`, one schema-valid invocation at
+  3,952 ms, two question-provenance claims and simulated `CLEARED`; the original verdict remained
+  `CHALLENGED` and ledger effect remained `NONE`;
+- additive migration and rebuild preserved Flink job IDs `17cab785ccbc4c6cae52481386114fb8` and
+  `09573924d3fdb1d265641300ab0fe6b3`; required services were healthy and consumer lag was zero.
+
+See [`glaramara-phase-c-summary.md`](glaramara-phase-c-summary.md) for contracts, model selection and evidence.
+
 ## Existing 16-payment baseline and shadow reference
 
 The controlled fixture contains 16 payments. Its deterministic reference is **11 approved, 2 challenged,
@@ -101,7 +153,7 @@ challenges. It published 24 revision-driven shadow messages for 16 transactions.
 [`MILESTONE_REPORT.md`](../../fraud-decision-engine/MILESTONE_REPORT.md). These synthetic, unlabelled
 results are not production accuracy evidence.
 
-## Phase B operating mode
+## Phase B/C operating mode
 
 Required and implemented mode is **fictional, simulated, shadow-only, no ledger effect**. The immutable
 deterministic verdict remains payment authority; LightGBM and the Go action remain experimental shadow
@@ -110,11 +162,11 @@ PostgreSQL volumes, the approved prototype and AskOrchestrate were preserved.
 
 Do not begin ML-active selection under this milestone. That work is Phase B.1 and requires separate approval.
 
-## Phase C Orchestrate boundary
+## Orchestrate boundary
 
-Phase C owns IBM TechZone/watsonx Orchestrate. Until explicitly authorised, do not import, deploy, edit or
-delete Orchestrate agents/tools and do not alter AskOrchestrate. Phase B should expose a clean service
-contract, not couple the payment path to Orchestrate.
+Only repository source under `watsonx-orchestrate/fraud-intelligence/` may manage the single Phase C agent.
+Do not edit AskOrchestrate or add collaborators, tools or agents without a later milestone. Model changes must
+be measured against the strict evaluation before importing only `fraud_intelligence` into development.
 
 ## Limitations and outstanding work
 
@@ -127,6 +179,12 @@ contract, not couple the payment path to Orchestrate.
   the general late-event policy.
 - `fraud.signals.demo` is not a router input; canonical signals are in `payments.enriched.demo`.
 - Root Compose enables the scorer and Glaramara but does not run the investigation worker.
+- Root Compose deliberately uses the deterministic Fraud Intelligence fixture. Native REST has completed a
+  localhost browser journey against TechZone using only server-side `.env.local` values. The containerised
+  Glaramara service deliberately carries no TechZone credentials; a non-local deployment needs managed secret
+  injection. The Python ADK adapter remains standalone diagnostic tooling, not an application fallback.
+- Orchestrate ADK 2.19.1 warns that planner style is deprecated. Planner is retained because this ADK version
+  requires it for structured output; migrate only after validating equivalent strict output support.
 - Outbox delivery retries indefinitely; there is no terminal publication-failure state or operator retry API.
 - Trusted customer/account/beneficiary/location context is retained in the immutable banking snapshot but is
   not added to the strict enriched/correlator contracts because existing policies do not consume it.
@@ -146,8 +204,9 @@ contract, not couple the payment path to Orchestrate.
 - ML: `agents/src/fraud_agents/ml/`, `agents/artifacts/baseline/metadata.json`
 - Correlation: `fraud-assessment-correlator/internal/{assessment/model,store/store}.go`
 - Shadow: `fraud-decision-engine/internal/{policy/policy,store/store}.go`
-- Banking: `agents/migrations/versions/{0006_glaramara_banking,0007_glaramara_phase_b,0008_raw_event_time_clock,0009_release_banking_watermarks}.py`,
-  `glaramara-bank/lib/server/`, `glaramara-bank/app/api/v1/payments/`
+- Banking/Phase C: `agents/migrations/versions/{0006_glaramara_banking,0007_glaramara_phase_b,0008_raw_event_time_clock,0009_release_banking_watermarks,0010_glaramara_phase_c}.py`,
+  `glaramara-bank/lib/{server,fraud-intelligence}/`, `glaramara-bank/app/api/v1/payments/`,
+  `watsonx-orchestrate/fraud-intelligence/`
 
 At later milestones, update this handoff with observed commands/results, the system overview for
 flow changes, and the nearest component README. Link evidence instead of duplicating logs.

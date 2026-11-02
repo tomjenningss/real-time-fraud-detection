@@ -6,6 +6,8 @@ import type {
   DashboardResponse,
   DemoLocation,
   DemoSessionResponse,
+  FraudInvestigation,
+  FraudInvestigationResponse,
   Payment,
   PaymentStatusResponse,
   PaymentSubmissionResponse,
@@ -231,6 +233,7 @@ export type MockBankingApi = {
   beneficiaryPosts: CapturedMutation[];
   paymentRequests: CapturedMutation[];
   sessionPosts: CapturedMutation[];
+  investigationMutations: CapturedMutation[];
 };
 
 function cloneBeneficiaries(): Record<string, Beneficiary[]> {
@@ -277,7 +280,60 @@ export async function mockPhaseABankingApi(page: Page): Promise<MockBankingApi> 
   const sessionPosts: CapturedMutation[] = [];
   const beneficiaryPosts: CapturedMutation[] = [];
   const paymentRequests: CapturedMutation[] = [];
+  const investigationMutations: CapturedMutation[] = [];
   const payments = new Map<string, Payment>();
+  let investigation: FraudInvestigation | null = null;
+
+  const phaseCQuestions: FraudInvestigation["questions"] = [
+    {
+      id: "payment_recognition",
+      version: "glaramara-fraud-questionnaire/1.0.0",
+      prompt: "Did you make this payment yourself?",
+      kind: "SINGLE_CHOICE",
+      options: [{ value: "YES", label: "Yes, I made it" }, { value: "NO", label: "No" }],
+      required: true,
+    },
+    {
+      id: "beneficiary_relationship",
+      version: "glaramara-fraud-questionnaire/1.0.0",
+      prompt: "How do you know the person or business you’re paying?",
+      kind: "SINGLE_CHOICE",
+      options: [{ value: "KNOWN_PERSON", label: "Someone I know" }],
+      required: true,
+    },
+    {
+      id: "payment_purpose",
+      version: "glaramara-fraud-questionnaire/1.0.0",
+      prompt: "What is this payment for?",
+      kind: "SINGLE_CHOICE",
+      options: [{ value: "FRIENDS_FAMILY", label: "Friends or family" }],
+      required: true,
+    },
+    {
+      id: "contact_influence",
+      version: "glaramara-fraud-questionnaire/1.0.0",
+      prompt: "Did anyone contact you or guide you through making this payment?",
+      kind: "SINGLE_CHOICE",
+      options: [{ value: "UNEXPECTED", label: "Yes, an unexpected caller or message" }],
+      required: true,
+    },
+    {
+      id: "pressure_or_secrecy",
+      version: "glaramara-fraud-questionnaire/1.0.0",
+      prompt: "Did they ask you to act quickly, keep it secret, or ignore a bank warning?",
+      kind: "SINGLE_CHOICE",
+      options: [{ value: "YES", label: "Yes" }],
+      required: true,
+    },
+    {
+      id: "remote_access",
+      version: "glaramara-fraud-questionnaire/1.0.0",
+      prompt: "Did anyone ask you to install an app or share access to your phone or computer?",
+      kind: "SINGLE_CHOICE",
+      options: [{ value: "YES", label: "Yes" }],
+      required: true,
+    },
+  ];
 
   function sessionResponse(): DemoSessionResponse {
     const customerLocations = locations[activeCustomerId];
@@ -420,6 +476,76 @@ export async function mockPhaseABankingApi(page: Page): Promise<MockBankingApi> 
       return;
     }
 
+    const investigationMatch = url.pathname.match(
+      /^\/api\/v1\/payments\/([0-9a-f-]+)\/investigation(?:\/(answers|extract))?$/,
+    );
+    if (investigationMatch) {
+      if (method === "GET") {
+        const response: FraudInvestigationResponse = { investigation };
+        await json(route, response);
+        return;
+      }
+      const mutation = capture(request);
+      investigationMutations.push(mutation);
+      if (!investigationMatch[2]) {
+        investigation = {
+          id: "10000000-0000-4000-8000-000000000001",
+          paymentId: investigationMatch[1],
+          status: "IN_PROGRESS",
+          questionnaireVersion: "glaramara-fraud-questionnaire/1.0.0",
+          questions: phaseCQuestions.slice(0, 4),
+          answers: {},
+          currentQuestionId: "payment_recognition",
+          answeredCount: 0,
+          selectedQuestionCount: 4,
+          agentInvocationCount: 0,
+          canExtract: false,
+          resolution: null,
+        };
+        await json(route, { investigation }, 201);
+        return;
+      }
+      if (!investigation) {
+        await json(route, { error: { code: "INVESTIGATION_NOT_FOUND", message: "Not found." } }, 404);
+        return;
+      }
+      if (investigationMatch[2] === "answers") {
+        const input = mutation.body as { questionId: string; answer: { value: string } };
+        investigation.answers[input.questionId] = {
+          value: input.answer.value,
+          answeredAt: "2026-11-02T09:00:00.000Z",
+          source: "DEFINITION",
+        };
+        if (input.questionId === "contact_influence" && input.answer.value === "UNEXPECTED") {
+          investigation.questions = phaseCQuestions;
+          investigation.selectedQuestionCount = phaseCQuestions.length;
+        }
+        investigation.answeredCount = Object.keys(investigation.answers).length;
+        investigation.currentQuestionId = investigation.questions.find(
+          (question) => !investigation?.answers[question.id],
+        )?.id ?? null;
+        if (!investigation.currentQuestionId) {
+          investigation.status = "READY_FOR_EXTRACTION";
+          investigation.canExtract = true;
+        }
+        await json(route, { investigation });
+        return;
+      }
+      investigation.status = "REASSESSED";
+      investigation.agentInvocationCount = 1;
+      investigation.canExtract = false;
+      investigation.resolution = {
+        outcome: "DECLINED",
+        policyVersion: "customer-evidence-reassessment/1.0.0",
+        reasonCodes: ["DEFINED_SCAM_INDICATOR"],
+        reassessedAt: "2026-11-02T09:00:01.000Z",
+        simulated: true,
+        ledgerEffect: "NONE",
+      };
+      await json(route, { investigation });
+      return;
+    }
+
     if (url.pathname.startsWith("/api/v1/payments/") && method === "GET") {
       const payment = payments.get(url.pathname.split("/").at(-1) ?? "");
       if (!payment) {
@@ -439,5 +565,6 @@ export async function mockPhaseABankingApi(page: Page): Promise<MockBankingApi> 
     beneficiaryPosts,
     paymentRequests,
     sessionPosts,
+    investigationMutations,
   };
 }

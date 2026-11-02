@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import urllib.request
 from collections import Counter
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
@@ -151,6 +152,11 @@ def publish(brokers: str, rows: list[dict]) -> None:
 
 
 def main() -> None:
+    glaramara_base_url = os.environ.get("GLARAMARA_BASE_URL", "http://glaramara-bank:3000")
+    with urllib.request.urlopen(f"{glaramara_base_url}/api/v1/health", timeout=10) as response:
+        if response.status != 200:
+            raise RuntimeError(f"Glaramara health returned HTTP {response.status}")
+
     brokers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:29092")
     database_url = os.environ["DATABASE_URL"]
     run_id = uuid4().hex[:12]

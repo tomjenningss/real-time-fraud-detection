@@ -73,6 +73,11 @@ class CredentialLifecycleTests(unittest.TestCase):
         env_file = repo / ".env"
         values = read_env(env_file)
         self.assertRegex(values["POSTGRES_PASSWORD"], r"^[0-9a-f]{48}$")
+        self.assertEqual(values["GLARAMARA_HOST_PORT"], "3000")
+        self.assertEqual(values["GLARAMARA_PUBLIC_ORIGIN"], "http://localhost:3000")
+        self.assertEqual(values["FRAUD_INTELLIGENCE_PROVIDER"], "mock")
+        self.assertEqual(values["WATSONX_ORCHESTRATE_API_KEY"], "")
+        self.assertEqual(values["WATSONX_ORCHESTRATE_URL"], "")
         self.assertEqual(stat.S_IMODE(env_file.stat().st_mode), 0o600)
 
     def test_repeated_make_up_preparation_reuses_credentials(self) -> None:
@@ -188,6 +193,16 @@ class CredentialPropagationTests(unittest.TestCase):
         self.assertRegex(compose, re.compile(r"POSTGRES_DB: \$\{POSTGRES_DB\}"))
         self.assertRegex(compose, re.compile(r"POSTGRES_USER: \$\{POSTGRES_USER\}"))
         self.assertRegex(compose, re.compile(r"POSTGRES_PASSWORD: \$\{POSTGRES_PASSWORD\}"))
+
+    def test_glaramara_uses_runtime_only_provider_configuration(self) -> None:
+        compose = (REPO_DIR / "compose.yaml").read_text()
+        dockerfile = (REPO_DIR / "glaramara-bank" / "Dockerfile").read_text()
+
+        self.assertIn('FRAUD_INTELLIGENCE_PROVIDER: ${FRAUD_INTELLIGENCE_PROVIDER}', compose)
+        self.assertIn('WATSONX_ORCHESTRATE_API_KEY: ${WATSONX_ORCHESTRATE_API_KEY}', compose)
+        self.assertIn('WATSONX_ORCHESTRATE_URL: ${WATSONX_ORCHESTRATE_URL}', compose)
+        self.assertNotIn("WATSONX_ORCHESTRATE", dockerfile)
+        self.assertIn('127.0.0.1:${GLARAMARA_HOST_PORT}:3000', compose)
 
 
 class CredentialPreflightTests(unittest.TestCase):

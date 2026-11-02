@@ -157,6 +157,19 @@ export function PaymentStatusClient() {
             </div>
           )}
 
+          {payment.status === "CHALLENGED" && (
+            <div className="mt-4 rounded-[11px] border border-[#ecd9af] bg-[#fff9ea] p-[14px] text-[11px] leading-relaxed text-[#735c2f]">
+              <strong>Help us understand this payment.</strong> Answer a few short questions so Fraud Intelligence can extract evidence for a separate, controlled reassessment. Completing the check does not automatically clear the payment.
+              <div className="mt-3">
+                <Button asChild>
+                  <Link href={`/payments/investigation?paymentId=${encodeURIComponent(payment.id)}`}>
+                    Start security check
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="mt-4 rounded-[11px] border border-[#e5e8e2] bg-white p-[14px] text-[11px] leading-relaxed text-[#6f7f73]">
             <strong>Experimental shadow evaluation:</strong>{" "}
             {payment.experimentalShadow?.status === "EVALUATED"

@@ -94,6 +94,40 @@ export type Payment = {
 export type PaymentSubmissionResponse = { payment: Payment; replayed: boolean };
 export type PaymentStatusResponse = { payment: Payment };
 
+export type InvestigationQuestion = {
+  id: string;
+  version: string;
+  prompt: string;
+  helpText?: string;
+  kind: "SINGLE_CHOICE" | "SHORT_TEXT";
+  options?: Array<{ value: string; label: string }>;
+  required: true;
+};
+
+export type FraudInvestigation = {
+  id: string;
+  paymentId: string;
+  status: "IN_PROGRESS" | "READY_FOR_EXTRACTION" | "EXTRACTING" | "NEEDS_CLARIFICATION" | "REASSESSED" | "FAILED";
+  questionnaireVersion: string;
+  questions: InvestigationQuestion[];
+  answers: Record<string, { value: string; answeredAt: string; source: "DEFINITION" | "AI_VALIDATED" }>;
+  currentQuestionId: string | null;
+  answeredCount: number;
+  selectedQuestionCount: number;
+  agentInvocationCount: number;
+  canExtract: boolean;
+  resolution: {
+    outcome: "CLEARED" | "REQUIRES_FURTHER_REVIEW" | "DECLINED";
+    policyVersion: string;
+    reasonCodes: string[];
+    reassessedAt: string;
+    simulated: true;
+    ledgerEffect: "NONE";
+  } | null;
+};
+
+export type FraudInvestigationResponse = { investigation: FraudInvestigation | null };
+
 type ApiErrorBody = { error?: { code?: string; message?: string } };
 
 export class BankingApiError extends Error {

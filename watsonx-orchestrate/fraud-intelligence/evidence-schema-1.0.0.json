@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fraud-intelligence-evidence/1.0.0",
+  "title": "Fraud Intelligence Evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "paymentRecognition",
+    "beneficiaryRelationship",
+    "scamIndicators",
+    "contradictions",
+    "uncertainty",
+    "missingEvidence",
+    "provenance",
+    "clarificationQuestion"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "enum": ["fraud-intelligence-evidence/1.0.0"] },
+    "paymentRecognition": {
+      "type": "string",
+      "enum": ["RECOGNISED", "NOT_RECOGNISED", "UNCERTAIN"]
+    },
+    "beneficiaryRelationship": {
+      "type": "string",
+      "enum": ["KNOWN", "NEW", "UNCERTAIN"]
+    },
+    "scamIndicators": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "maxItems": 8,
+      "items": {
+        "type": "string",
+        "enum": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "SAFE_ACCOUNT",
+          "IMPERSONATION",
+          "INVESTMENT",
+          "REMOTE_ACCESS",
+          "NONE"
+        ]
+      }
+    },
+    "contradictions": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["summary", "sourceQuestionIds"],
+        "properties": {
+          "summary": { "type": "string", "minLength": 1, "maxLength": 240 },
+          "sourceQuestionIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 6,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1, "maxLength": 96 }
+          }
+        }
+      }
+    },
+    "uncertainty": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH"] },
+    "missingEvidence": {
+      "type": "array",
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 96 }
+    },
+    "provenance": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim", "sourceQuestionIds"],
+        "properties": {
+          "claim": { "type": "string", "minLength": 1, "maxLength": 240 },
+          "sourceQuestionIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 6,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1, "maxLength": 96 }
+          }
+        }
+      }
+    },
+    "clarificationQuestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["needed", "id", "prompt", "options", "reason"],
+      "properties": {
+        "needed": { "type": "boolean" },
+        "id": { "type": "string", "maxLength": 80 },
+        "prompt": { "type": "string", "maxLength": 200 },
+        "options": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 80 }
+        },
+        "reason": { "type": "string", "maxLength": 160 }
+      }
+    }
+  }
+}

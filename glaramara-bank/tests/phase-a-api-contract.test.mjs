@@ -14,6 +14,9 @@ test("Phase B banking API routes expose submission, owned status and health", ()
     "app/api/v1/beneficiaries/route.ts",
     "app/api/v1/payments/route.ts",
     "app/api/v1/payments/[paymentId]/route.ts",
+    "app/api/v1/payments/[paymentId]/investigation/route.ts",
+    "app/api/v1/payments/[paymentId]/investigation/answers/route.ts",
+    "app/api/v1/payments/[paymentId]/investigation/extract/route.ts",
     "app/api/v1/health/route.ts",
   ]) {
     assert.equal(statSync(join(root, route)).isFile(), true, `${route} should exist`);
@@ -40,6 +43,9 @@ test("business routes derive customer identity from the signed session", () => {
     "app/api/v1/beneficiaries/route.ts",
     "app/api/v1/payments/route.ts",
     "app/api/v1/payments/[paymentId]/route.ts",
+    "app/api/v1/payments/[paymentId]/investigation/route.ts",
+    "app/api/v1/payments/[paymentId]/investigation/answers/route.ts",
+    "app/api/v1/payments/[paymentId]/investigation/extract/route.ts",
   ]) {
     const source = read(route);
     assert.match(source, /requireDemoSession\(request\)/);
@@ -53,11 +59,57 @@ test("all browser mutations enforce same-origin requests", () => {
     "app/api/v1/demo/session/route.ts",
     "app/api/v1/beneficiaries/route.ts",
     "app/api/v1/payments/route.ts",
+    "app/api/v1/payments/[paymentId]/investigation/route.ts",
+    "app/api/v1/payments/[paymentId]/investigation/answers/route.ts",
+    "app/api/v1/payments/[paymentId]/investigation/extract/route.ts",
   ]) {
     const source = read(route);
     assert.match(source, /export async function POST/);
     assert.match(source, /requireSameOrigin\(request\)/);
   }
+});
+
+test("Phase C keeps customer evidence and reassessment separate from payment authority", () => {
+  const repository = read("lib/server/fraud-investigation-repository.ts");
+  const policy = read("lib/fraud-intelligence/policy.mjs");
+  const questionnaire = read("lib/fraud-intelligence/questionnaire.ts");
+
+  assert.match(repository, /customer_fraud_investigation_events/);
+  assert.match(repository, /fraud_intelligence_extractions/);
+  assert.match(repository, /customer_fraud_reassessments/);
+  assert.match(repository, /agent_invocation_count >= 2/);
+  assert.match(repository, /REQUIRES_FURTHER_REVIEW/);
+  assert.match(repository, /JSON\.stringify\(REQUIRED_EVIDENCE_KEYS\)/);
+  assert.match(repository, /JSON\.stringify\(selectedQuestionIds\)/);
+  assert.match(repository, /JSON\.stringify\(policy\.reasonCodes\)/);
+  assert.match(repository, /'READY_FOR_EXTRACTION'::customer_investigation_status/);
+  assert.doesNotMatch(repository, /UPDATE\s+payment_decisions/i);
+  assert.doesNotMatch(repository, /UPDATE\s+banking_accounts/i);
+  assert.doesNotMatch(repository, /INSERT INTO banking_transactions/i);
+  assert.match(policy, /customer-evidence-reassessment\/1\.0\.0/);
+  assert.match(questionnaire, /conditionalQuestionIds/);
+  assert.match(questionnaire, /FP-CHALLENGE-VELOCITY/);
+  assert.match(repository, /customer_fraud_reassessments/);
+  assert.doesNotMatch(questionnaire, /nine/i);
+});
+
+test("live Fraud Intelligence REST adapter stays backend-only and does not spawn a subprocess", () => {
+  const adapter = read("lib/fraud-intelligence/orchestrate-client.ts");
+  const iam = read("lib/fraud-intelligence/ibm-iam.ts");
+
+  assert.match(adapter, /FRAUD_INTELLIGENCE_PROVIDER/);
+  assert.match(adapter, /provider !== "orchestrate"/);
+  assert.match(adapter, /"orchestrate-rest"/);
+  assert.match(adapter, /\/chat\/completions/);
+  assert.match(adapter, /stream:\s*false/);
+  assert.match(adapter, /Authorization:\s*`Bearer \$\{accessToken\}`/);
+  assert.match(adapter, /fraudEvidenceSchema\.parse\(envelope\.evidence\)/);
+  assert.match(iam, /WATSONX_ORCHESTRATE_API_KEY/);
+  assert.match(adapter, /WATSONX_ORCHESTRATE_URL/);
+  assert.doesNotMatch(`${adapter}\n${iam}`, /NEXT_PUBLIC_/);
+  assert.match(iam, /withOneIamRetry/);
+  assert.doesNotMatch(adapter, /node:child_process|\bspawn\s*\(/);
+  assert.doesNotMatch(adapter, /FRAUD_INTELLIGENCE_(?:PYTHON|RUNNER)/);
 });
 
 test("payment repository is transactional, idempotent and preserves authority boundaries", () => {
