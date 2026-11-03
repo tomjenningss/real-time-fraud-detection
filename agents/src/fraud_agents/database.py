@@ -22,6 +22,7 @@ from .events import (
 from .schemas import (
     AuditRecord,
     ExternalVerdict,
+    FlinkEvidence,
     HistoricalEvidence,
     InvestigationInput,
     TransactionContext,
@@ -57,6 +58,7 @@ class FraudStore:
         payload_sha256: str,
         decision: PaymentDecisionEvent,
         request: InvestigationRequestEvent | None,
+        enrichment_evidence: FlinkEvidence | None = None,
     ) -> bool:
         """Atomically record inbox, immutable decision and all downstream outbox messages."""
         logical_id = decision.decision_id
@@ -75,8 +77,8 @@ class FraudStore:
                 """INSERT INTO payment_decisions
                    (decision_id, transaction_id, correlation_id, payment_verdict, decision_source,
                     policy_version, investigation_required, investigation_reason, evidence_sha256,
-                    decision_payload, decided_at)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    decision_payload, decided_at, enrichment_evidence)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     decision.decision_id,
                     decision.transaction_id,
@@ -89,6 +91,9 @@ class FraudStore:
                     decision.evidence_sha256,
                     Jsonb(decision.model_dump(mode="json")),
                     decision.decided_at,
+                    Jsonb(enrichment_evidence.model_dump(mode="json"))
+                    if enrichment_evidence is not None
+                    else None,
                 ),
             )
             self._insert_outbox(

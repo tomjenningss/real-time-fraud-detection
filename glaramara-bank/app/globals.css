@@ -64,6 +64,48 @@ select {
   animation: fade-in 0.24s ease;
 }
 
+.system-lane-label {
+  fill: #567064;
+  font-family: inherit;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+
+.system-edge-note {
+  fill: #829289;
+  font-family: inherit;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: .06em;
+}
+
+.system-node-processing {
+  animation: system-node-breathe 1.8s ease-in-out infinite;
+}
+
+.system-node-watsonx {
+  box-shadow: 0 10px 30px #3f8a5e25, inset 0 0 0 1px #ffffff;
+}
+
+.system-flow-particle {
+  filter: drop-shadow(0 0 4px #70c983);
+}
+
+.system-pulse {
+  animation: system-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes system-node-breathe {
+  0%, 100% { box-shadow: 0 8px 24px #173f330d; }
+  50% { box-shadow: 0 8px 28px #4d9a6438, 0 0 0 2px #85b88d22; }
+}
+
+@keyframes system-pulse {
+  0%, 100% { opacity: .7; }
+  50% { opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -72,5 +114,9 @@ select {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .system-flow-particle {
+    display: none;
   }
 }

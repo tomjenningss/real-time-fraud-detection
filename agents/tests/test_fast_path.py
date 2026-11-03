@@ -88,3 +88,4 @@ def test_router_passes_decision_and_request_atomically_to_store(normal_dict):
     assert len(store.results) == 1
     assert store.results[0]["decision"].payment_verdict == Verdict.CHALLENGED
     assert store.results[0]["request"].transaction_id == "v-atomic"
+    assert store.results[0]["enrichment_evidence"] == event

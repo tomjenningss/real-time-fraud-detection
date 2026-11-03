@@ -140,6 +140,42 @@ Observed Phase C verification on 2 November 2026:
 
 See [`glaramara-phase-c-summary.md`](glaramara-phase-c-summary.md) for contracts, model selection and evidence.
 
+### Live Fraud Intelligence visualiser
+
+Alembic `0013_fraud_intel_view` and the Glaramara `System view` expose the existing payment architecture as a
+read-only, animated system diagram. The toggle is scoped to the browser session and persists across payment
+status and security-check navigation. When disabled, the retail journey remains unchanged. When enabled, a
+responsive SVG/HTML panel shows the transactional outbox, Kafka acknowledgement, Flink event-time evidence,
+parallel authoritative Python and shadow LightGBM branches, Go correlation and shadow policy, plus the
+separate challenged-payment evidence/reassessment lane.
+
+New router decisions retain the already validated Flink payload in the existing immutable decision insert.
+The inbox, decision, optional investigation and outbox still commit in one transaction before Kafka offset
+commit; duplicate and conflicting evidence handling are unchanged. Historical rows are not rewritten. The
+owner-scoped projection endpoint reports those rows as downstream-inferred or not observed instead of
+inventing timestamps or features.
+
+Replay is browser-only: it freezes the latest persisted timeline, compresses timestamp gaps, preserves
+parallel branch ordering, animates particles along connectors, and supports pause, resume, restart and
+1×/2×/4× speeds. Provider details use the persisted provider/model/schema/latency values. Human-readable
+findings are a deterministic rendering of the validated extraction fields and the exact structured response
+remains expandable; replay cannot invoke Orchestrate or resubmit a payment.
+
+Observed verification on 3 November 2026:
+
+- Glaramara contracts: 32 passed; TypeScript and production build passed;
+- mocked Playwright desktop/mobile: 26 passed and 6 explicitly opt-in cases skipped after mobile overflow
+  regression verification;
+- agents: 98 passed, 8 opt-in skips; Ruff passed; migration and router evidence-capture tests passed;
+- Go correlator and shadow-engine tests plus `go vet ./...` passed in Go 1.24 containers;
+- live payment `29827c14-399b-4856-8b77-9ec07815fa18` traversed the isolated development stack as
+  authoritative `APPROVED` at `fast-path-policy/1.1.0`, correlation revision 2 and Go shadow `APPROVED` with
+  model `lgbm-baseline-20261028T115824Z-abfd893e`; its validated Flink payload and assessment timestamp were
+  retained and its fictional balance was unchanged;
+- the live browser replay case passed against that payment with visible connector particles and no non-GET
+  request during replay. Post-update status showed every required service healthy, both existing Flink job IDs
+  still running and all consumer lags zero.
+
 ### Phase D: extensible AI-assisted fraud rule discovery
 
 Phase D adds Alembic `0011_glaramara_phase_d` and append-only repair provenance in `0012`, a fixed-seed
@@ -330,7 +366,7 @@ Observed verification on 3 November 2026:
 - ML: `agents/src/fraud_agents/ml/`, `agents/artifacts/baseline/metadata.json`
 - Correlation: `fraud-assessment-correlator/internal/{assessment/model,store/store}.go`
 - Shadow: `fraud-decision-engine/internal/{policy/policy,store/store}.go`
-- Banking/Phase C/D: `agents/migrations/versions/{0006_glaramara_banking,0007_glaramara_phase_b,0008_raw_event_time_clock,0009_release_banking_watermarks,0010_glaramara_phase_c,0011_glaramara_phase_d,0012_fraud_lab_wave_supersession}.py`,
+- Banking/Phase C/D/system view: `agents/migrations/versions/{0006_glaramara_banking,0007_glaramara_phase_b,0008_raw_event_time_clock,0009_release_banking_watermarks,0010_glaramara_phase_c,0011_glaramara_phase_d,0012_fraud_lab_wave_supersession,0013_fraud_intelligence_visualiser}.py`,
   `glaramara-bank/lib/{server,fraud-intelligence}/`, `glaramara-bank/app/api/v1/payments/`,
   `glaramara-bank/app/api/v1/fraud-operations/`, `glaramara-bank/lib/fraud-rule-discovery/`,
   `agents/src/fraud_agents/fraud_lab/`, `watsonx-orchestrate/{fraud-intelligence,fraud-rule-discovery}/`

@@ -57,5 +57,9 @@ class DecisionRouter:
         result = decide(evidence, sample_normal=bucket < self.normal_sample_rate)
         decision, request = build_decision(evidence, result, source, started, datetime.now(UTC))
         return self.store.record_router_result(
-            position=position, payload_sha256=digest, decision=decision, request=request
+            position=position,
+            payload_sha256=digest,
+            decision=decision,
+            request=request,
+            enrichment_evidence=evidence,
         )

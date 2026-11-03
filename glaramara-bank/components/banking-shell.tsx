@@ -4,6 +4,7 @@ import {
   BarChart3,
   Bell,
   Clock3,
+  Cpu,
   CreditCard,
   Home,
   Landmark,
@@ -15,6 +16,7 @@ import { usePathname } from "next/navigation";
 
 import { Brand } from "@/components/mountain-mark";
 import { CustomerProvider, useCustomer } from "@/components/customer-provider";
+import { SystemViewProvider, useSystemView } from "@/components/fraud-intelligence/system-view-provider";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -42,6 +44,7 @@ function isActive(pathname: string, href: string) {
 function ShellContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { customer, customers, sessionError, setCustomerId, switching } = useCustomer();
+  const systemView = useSystemView();
   const copy = pageCopy[pathname] ?? pageCopy["/"];
 
   if (pathname.startsWith("/fraud-operations")) {
@@ -140,7 +143,7 @@ function ShellContent({ children }: { children: React.ReactNode }) {
               {copy.title(customer.firstName)} <span className="font-normal">✳</span>
             </h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div
               aria-label="INTERACTIVE DEMO"
               className="flex items-center gap-[7px] rounded-full border border-[#d6e5c9] bg-[#e7f1df] px-[11px] py-[9px] text-[10px] font-bold tracking-[.03em] text-[#356645] md:text-[11px]"
@@ -148,6 +151,23 @@ function ShellContent({ children }: { children: React.ReactNode }) {
               <span className="size-[7px] rounded-full bg-[#62ab63]" />
               <span><span className="hidden sm:inline">INTERACTIVE </span>DEMO</span>
             </div>
+            <label
+              className="relative flex cursor-pointer items-center gap-0 rounded-full border border-[#dce5d8] bg-white px-2 py-2 text-[10px] font-extrabold tracking-[.04em] text-[#315d48] shadow-[0_4px_14px_#173f3308] sm:gap-2 sm:px-2.5"
+              title="Developer view of persisted fraud-platform evidence"
+            >
+              <Cpu className="hidden size-3.5 sm:block" aria-hidden="true" />
+              <span className="hidden lg:inline">SYSTEM VIEW</span>
+              <span className="hidden sm:inline lg:hidden">SYSTEM</span>
+              <input
+                type="checkbox"
+                className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                checked={systemView.enabled}
+                disabled={!systemView.ready}
+                onChange={(event) => systemView.setEnabled(event.target.checked)}
+                aria-label="System view — technical fraud intelligence visualisation"
+              />
+              <span className="relative h-[18px] w-8 rounded-full bg-[#dfe7dc] transition peer-checked:bg-[#275A47] peer-focus-visible:ring-2 peer-focus-visible:ring-[#75a983] peer-focus-visible:ring-offset-2 after:absolute after:left-[3px] after:top-[3px] after:size-3 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-[14px]" />
+            </label>
             <button
               type="button"
               className="hidden size-[38px] place-items-center rounded-full border border-[#e6ebe4] bg-white text-[#456254] md:grid"
@@ -227,8 +247,10 @@ function ShellContent({ children }: { children: React.ReactNode }) {
 
 export function BankingShell({ children }: { children: React.ReactNode }) {
   return (
-    <CustomerProvider>
-      <ShellContent>{children}</ShellContent>
-    </CustomerProvider>
+    <SystemViewProvider>
+      <CustomerProvider>
+        <ShellContent>{children}</ShellContent>
+      </CustomerProvider>
+    </SystemViewProvider>
   );
 }

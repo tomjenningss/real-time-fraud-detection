@@ -25,11 +25,29 @@ def test_router_replay_is_durable_and_outbox_claim_is_concurrent_safe(normal_eve
     )
     position = KafkaPosition(source.topic, source.partition, source.offset)
     assert store.record_router_result(
-        position=position, payload_sha256="a" * 64, decision=decision, request=request
+        position=position,
+        payload_sha256="a" * 64,
+        decision=decision,
+        request=request,
+        enrichment_evidence=normal_event.flink,
     )
     assert not store.record_router_result(
-        position=position, payload_sha256="a" * 64, decision=decision, request=request
+        position=position,
+        payload_sha256="a" * 64,
+        decision=decision,
+        request=request,
+        enrichment_evidence=normal_event.flink,
     )
+    with store.connection() as connection:
+        captured = connection.execute(
+            "SELECT enrichment_evidence FROM payment_decisions WHERE decision_id=%s",
+            (decision.decision_id,),
+        ).fetchone()
+        assert captured["enrichment_evidence"]["transaction_id"] == normal_event.flink.transaction_id
+        assert connection.execute(
+            "SELECT count(*) AS total FROM payment_decisions WHERE decision_id=%s",
+            (decision.decision_id,),
+        ).fetchone()["total"] == 1
     first = store.claim_outbox("test-worker-a", 10, lease_seconds=60)
     second = store.claim_outbox("test-worker-b", 10, lease_seconds=60)
     first_ids = {item.event_id for item in first}

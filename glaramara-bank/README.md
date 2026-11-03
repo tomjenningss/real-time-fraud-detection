@@ -40,6 +40,7 @@ The Phase B API surface is:
 - `GET|POST /api/v1/beneficiaries`
 - `POST /api/v1/payments`
 - `GET /api/v1/payments/{paymentId}`
+- `GET /api/v1/payments/{paymentId}/fraud-intelligence`
 - `GET|POST /api/v1/payments/{paymentId}/investigation`
 - `POST /api/v1/payments/{paymentId}/investigation/answers`
 - `POST /api/v1/payments/{paymentId}/investigation/extract`
@@ -69,6 +70,24 @@ implementation. The Python publisher retries and recovers leases. It only claims
 Kafka acknowledged the raw event, allowing the existing two-second Flink watermark contract to process a
 sporadic UI payment without making a later retry late. `banking_payment_status` derives terminal status only
 from `payment_decisions`.
+
+### Live Fraud Intelligence system view
+
+The session-scoped `System view` toggle adds a developer/demo visualisation to payment status and the
+customer security check without changing the retail journey when disabled. The read-only projection endpoint
+assembles persisted outbox acknowledgements, router/Flink evidence, LightGBM source events, Go correlation
+revisions, shadow evaluations, questionnaire history, extraction metadata and simulated reassessments. It
+never publishes, invokes a provider or writes replay state.
+
+Alembic `0013_fraud_intel_view` adds nullable `payment_decisions.enrichment_evidence`. The router writes its
+already validated `FlinkEvidence` in the same immutable decision transaction; decision IDs, evidence hashes,
+outbox events, duplicate handling and Kafka commit ordering are unchanged. Historical decisions remain null
+and the UI labels their Flink stage as downstream-inferred when only the router inbox proves observation.
+
+Replay freezes the latest fetched timeline, compresses its real timestamp gaps, preserves parallel router and
+LightGBM ordering, and animates connector traversal at 1×, 2× or 4×. Pause, resume and restart are entirely
+client-side. Persisted extraction responses are summarised deterministically from contracted fields and remain
+available as formatted structured JSON with provider/model/schema/latency provenance.
 
 ## Local development
 

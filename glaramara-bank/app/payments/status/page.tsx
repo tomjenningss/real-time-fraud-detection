@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import { Card } from "@/components/ui/card";
+import { SystemViewJourney } from "@/components/fraud-intelligence/system-view-journey";
 
 import { PaymentStatusClient } from "./payment-status-client";
 
@@ -13,7 +14,9 @@ export default function PaymentStatusPage() {
         </Card>
       }
     >
-      <PaymentStatusClient />
+      <SystemViewJourney>
+        <PaymentStatusClient />
+      </SystemViewJourney>
     </Suspense>
   );
 }

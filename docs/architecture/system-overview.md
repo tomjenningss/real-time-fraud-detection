@@ -116,7 +116,7 @@ Investigation content is audit context, never policy input. Duplicate/obsolete r
 
 ## PostgreSQL schemas and transaction boundaries
 
-Alembic currently ends at `0012_fraud_lab_wave_supersession`:
+Alembic currently ends at `0013_fraud_intel_view`:
 
 - Python: consumed events, immutable payment decisions, investigations/attempts/audit, durable outbox,
   budget and investigation context.
@@ -131,6 +131,9 @@ Alembic currently ends at `0012_fraud_lab_wave_supersession`:
 - Phase D: immutable wave-scoped synthetic transactions, discovery snapshots, validated rule candidates,
   deterministic held-out backtests, append-only analyst reviews and append-only wave supersession provenance.
   These tables have no foreign key or write path to banking attempts, balances or payment decisions.
+- System view: new decisions retain the validated Flink enrichment payload in nullable
+  `payment_decisions.enrichment_evidence`. It is inserted atomically with the immutable decision and is not
+  added to the published decision contract. Historical rows are intentionally not backfilled.
 
 Consumers finish their database transaction before Kafka commit. Publishers lease outbox rows and mark them
 published after Kafka acknowledgement. PostgreSQL is authoritative; Kafka stays at least once.
@@ -174,6 +177,21 @@ customer status. The response also reports outbox recovery, correlated revision/
 shadow evaluation as explicitly experimental audit evidence. The responsive status page polls this contract,
 shows honest delayed/retry states and never derives a verdict from amount, ML or Go output. No booked
 transaction, ledger entry or balance mutation occurs.
+
+### Read-only Fraud Intelligence system view
+
+The session-scoped technical view is available on payment status and customer security-check pages. Its
+owner-scoped `GET /api/v1/payments/{paymentId}/fraud-intelligence` endpoint projects existing durable rows
+into current stages plus an ordered replay timeline. It reads the banking outbox, router inbox/decision,
+LightGBM source event, correlation history, Go shadow evaluations and, when applicable, Phase C evidence.
+It contains no mutation or provider invocation path.
+
+The diagram preserves the real fork after Flink: deterministic routing and LightGBM run independently, both
+feed revisioned Go correlation, and only correlation feeds the Go shadow decision engine. The separate
+questionnaire/provider/evidence/reassessment lane begins only after an authoritative `CHALLENGED` verdict.
+Historical rows without retained enrichment payloads use an explicit `DOWNSTREAM_INFERRED` observation from
+the router inbox; absent evidence remains `NOT_OBSERVED`. Replay compresses persisted timestamp gaps in the
+browser and never republishes an event or records playback state.
 
 ## Phase C customer evidence and reassessment
 
@@ -240,7 +258,7 @@ means pending engineering work and has no Kafka, Flink, router or banking side e
 
 Root `compose.yaml` owns isolated Kafka, PostgreSQL, Flink, migrations, router, Python outbox/scorer, both
 Go services and Glaramara. Traffic uses Compose DNS; default host ports are `19092`, `55433`, `18081`, `18082`,
-`18083` and `3000`. `make up` migrates through `0012_fraud_lab_wave_supersession`, idempotently seeds the
+`18083` and `3000`. `make up` migrates through `0013_fraud_intel_view`, idempotently seeds the
 initial fraud-lab wave, creates topics, ensures one of each Flink job, captures Python start boundaries once,
 then starts applications. `make fraud-lab-next-wave` optionally appends a second immutable period without a
 new service or topic. `make down` saves both Flink jobs

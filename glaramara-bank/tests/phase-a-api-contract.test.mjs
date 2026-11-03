@@ -14,6 +14,7 @@ test("Phase B banking API routes expose submission, owned status and health", ()
     "app/api/v1/beneficiaries/route.ts",
     "app/api/v1/payments/route.ts",
     "app/api/v1/payments/[paymentId]/route.ts",
+    "app/api/v1/payments/[paymentId]/fraud-intelligence/route.ts",
     "app/api/v1/payments/[paymentId]/investigation/route.ts",
     "app/api/v1/payments/[paymentId]/investigation/answers/route.ts",
     "app/api/v1/payments/[paymentId]/investigation/extract/route.ts",
@@ -43,6 +44,7 @@ test("business routes derive customer identity from the signed session", () => {
     "app/api/v1/beneficiaries/route.ts",
     "app/api/v1/payments/route.ts",
     "app/api/v1/payments/[paymentId]/route.ts",
+    "app/api/v1/payments/[paymentId]/fraud-intelligence/route.ts",
     "app/api/v1/payments/[paymentId]/investigation/route.ts",
     "app/api/v1/payments/[paymentId]/investigation/answers/route.ts",
     "app/api/v1/payments/[paymentId]/investigation/extract/route.ts",
@@ -52,6 +54,24 @@ test("business routes derive customer identity from the signed session", () => {
     assert.match(source, /session\.customerId/);
     assert.doesNotMatch(source, /body\.customerId/);
   }
+});
+
+test("Fraud Intelligence system view is read-only and owner scoped", () => {
+  const route = read("app/api/v1/payments/[paymentId]/fraud-intelligence/route.ts");
+  const repository = read("lib/server/fraud-intelligence-repository.ts");
+
+  assert.match(route, /export async function GET/);
+  assert.doesNotMatch(route, /export async function POST/);
+  assert.match(route, /requireDemoSession\(request\)/);
+  assert.match(route, /session\.customerId/);
+  assert.match(route, /Cache-Control.*no-store/);
+  assert.match(repository, /fraud_assessment_history/);
+  assert.match(repository, /fraud_shadow_decision_history/);
+  assert.match(repository, /fraud_intelligence_extractions/);
+  assert.match(repository, /customer_fraud_reassessments/);
+  assert.doesNotMatch(repository, /UPDATE\s+payment_decisions/i);
+  assert.doesNotMatch(repository, /INSERT\s+INTO/i);
+  assert.doesNotMatch(repository, /executeFraudIntelligence/);
 });
 
 test("all browser mutations enforce same-origin requests", () => {
