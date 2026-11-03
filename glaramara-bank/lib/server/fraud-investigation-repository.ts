@@ -62,6 +62,7 @@ type InvestigationRow = {
   agent_invocation_count: number;
   questionnaire_completed_at: Date | null;
   completed_at: Date | null;
+  updated_at: Date;
 };
 
 type AnswerRow = {
@@ -105,7 +106,7 @@ async function loadInvestigation(customerId: string, paymentId: string) {
            investigation.required_evidence_keys, investigation.selected_question_ids,
            investigation.question_definitions_snapshot, investigation.clarification_question,
            investigation.agent_invocation_count, investigation.questionnaire_completed_at,
-           investigation.completed_at
+           investigation.completed_at, investigation.updated_at
     FROM customer_fraud_investigations investigation
     JOIN banking_payment_attempts attempt ON attempt.payment_id = investigation.payment_id
     WHERE investigation.customer_id = $1 AND investigation.payment_id = $2
@@ -143,6 +144,13 @@ async function investigationJson(row: InvestigationRow) {
     .map((id) => questionFor(row, id))
     .filter((item): item is QuestionDefinition => item !== null);
   const reassessment = reassessmentResult.rows[0] ?? null;
+  const reassessmentLifecycle = row.status === "REASSESSED"
+    ? "COMPLETED"
+    : row.status === "FAILED"
+      ? "FAILED"
+      : row.status === "EXTRACTING"
+        ? "PROCESSING"
+        : "PENDING";
   return {
     id: row.customer_investigation_id,
     paymentId: row.payment_id,
@@ -155,6 +163,8 @@ async function investigationJson(row: InvestigationRow) {
     selectedQuestionCount: questions.length,
     agentInvocationCount: row.agent_invocation_count,
     canExtract: ["READY_FOR_EXTRACTION", "FAILED"].includes(row.status) && row.agent_invocation_count < 2,
+    reassessmentLifecycle,
+    lifecycleUpdatedAt: row.updated_at.toISOString(),
     resolution: reassessment ? {
       outcome: reassessment.outcome,
       policyVersion: reassessment.policy_version,
@@ -261,9 +271,6 @@ export async function answerFraudQuestion(
     `, [customerId, paymentId]);
     const row = result.rows[0];
     if (!row) throw new ApiError(404, "INVESTIGATION_NOT_FOUND", "Start the security check first.");
-    if (!["IN_PROGRESS", "NEEDS_CLARIFICATION"].includes(row.status)) {
-      throw new ApiError(409, "INVESTIGATION_NOT_ANSWERABLE", "This security check is not accepting answers.");
-    }
     const question = questionFor(row, input.questionId);
     if (!question || !row.selected_question_ids.includes(input.questionId)) {
       throw new ApiError(400, "QUESTION_NOT_SELECTED", "That question is not part of this security check.");
@@ -280,6 +287,9 @@ export async function answerFraudQuestion(
       if (replay.rows[0].question_id === input.questionId
           && replay.rows[0].answer_payload.value === answer.value) return;
       throw new ApiError(409, "ANSWER_CONFLICT", "This question or idempotency key was already used.");
+    }
+    if (!["IN_PROGRESS", "NEEDS_CLARIFICATION"].includes(row.status)) {
+      throw new ApiError(409, "INVESTIGATION_NOT_ANSWERABLE", "This security check is not accepting answers.");
     }
     const source = row.clarification_question?.id === input.questionId ? "AI_VALIDATED" : "DEFINITION";
     await client.query(`
@@ -376,8 +386,26 @@ export async function executeFraudIntelligence(customerId: string, paymentId: st
     `, [customerId, paymentId]);
     const row = result.rows[0];
     if (!row) throw new ApiError(404, "INVESTIGATION_NOT_FOUND", "Start the security check first.");
-    if (!["READY_FOR_EXTRACTION", "FAILED"].includes(row.status) || row.agent_invocation_count >= 2) {
-      throw new ApiError(409, "EXTRACTION_NOT_READY", "Fraud Intelligence is not ready to run.");
+
+    const configuredTimeoutMs = Number(process.env.FRAUD_INTELLIGENCE_TIMEOUT_MS ?? "45000");
+    const recoveryAfterMs = (Number.isFinite(configuredTimeoutMs) ? configuredTimeoutMs : 45_000) + 15_000;
+    const processingIsStale = row.status === "EXTRACTING"
+      && Date.now() - row.updated_at.getTime() >= recoveryAfterMs;
+    if (row.status === "EXTRACTING" && processingIsStale && row.agent_invocation_count >= 2) {
+      await client.query(`
+        UPDATE customer_fraud_investigations
+        SET status = 'FAILED', completed_at = now()
+        WHERE customer_investigation_id = $1
+      `, [row.customer_investigation_id]);
+      await appendEvent(client, row.customer_investigation_id, "FAILED", {
+        errorType: "PROCESSING_TIMEOUT",
+      });
+      return { kind: "existing" as const };
+    }
+    const canClaim = ["READY_FOR_EXTRACTION", "FAILED"].includes(row.status)
+      || processingIsStale;
+    if (!canClaim || row.agent_invocation_count >= 2) {
+      return { kind: "existing" as const };
     }
     const answers = await client.query<AnswerRow>(`
       SELECT question_id, question_version, question_source, answer_payload, answered_at
@@ -392,8 +420,20 @@ export async function executeFraudIntelligence(customerId: string, paymentId: st
       WHERE customer_investigation_id = $1
     `, [row.customer_investigation_id, invocationNumber]);
     await appendEvent(client, row.customer_investigation_id, "EXTRACTION_STARTED", { invocationNumber });
-    return { row, answers: answers.rows, invocationNumber, context: minimalContext(row, answers.rows) };
+    return {
+      kind: "claimed" as const,
+      row,
+      answers: answers.rows,
+      invocationNumber,
+      context: minimalContext(row, answers.rows),
+    };
   });
+
+  if (claimed.kind === "existing") {
+    const state = await getFraudInvestigation(customerId, paymentId);
+    if (!state) throw new ApiError(404, "INVESTIGATION_NOT_FOUND", "Security check not found.");
+    return state;
+  }
 
   const requestSha256 = createHash("sha256")
     .update(JSON.stringify(claimed.context))

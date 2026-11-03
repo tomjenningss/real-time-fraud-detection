@@ -3,7 +3,7 @@
 import { AlertTriangle, CheckCircle2, ChevronRight, RefreshCw, ShieldCheck, ShieldX } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -21,6 +21,9 @@ export function FraudInvestigationClient() {
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reviewElapsedMs, setReviewElapsedMs] = useState(0);
+  const automaticRequest = useRef<string | null>(null);
+  const recoveryRequestAt = useRef(0);
   const currentQuestion = useMemo(
     () => investigation?.questions.find((question) => question.id === investigation.currentQuestionId) ?? null,
     [investigation],
@@ -40,9 +43,62 @@ export function FraudInvestigationClient() {
     return () => { cancelled = true; };
   }, [paymentId]);
 
+  useEffect(() => {
+    if (investigation?.status !== "READY_FOR_EXTRACTION") return;
+    const requestKey = `${investigation.id}:${investigation.agentInvocationCount}`;
+    if (automaticRequest.current === requestKey) return;
+    automaticRequest.current = requestKey;
+    void mutate("/extract");
+  }, [investigation?.agentInvocationCount, investigation?.id, investigation?.status]);
+
+  useEffect(() => {
+    if (investigation?.status !== "EXTRACTING") {
+      setReviewElapsedMs(0);
+      return;
+    }
+    let cancelled = false;
+    const startedAt = new Date(investigation.lifecycleUpdatedAt).getTime();
+    const poll = async () => {
+      const elapsedMs = Math.max(0, Date.now() - startedAt);
+      setReviewElapsedMs(elapsedMs);
+      try {
+        const response = await bankingFetch<FraudInvestigationResponse>(
+          `/api/v1/payments/${encodeURIComponent(paymentId)}/investigation`,
+        );
+        if (!cancelled) {
+          setInvestigation(response.investigation);
+          setError(null);
+        }
+      } catch (pollError) {
+        if (!cancelled) setError(messageFor(pollError));
+      }
+      if (elapsedMs >= 65_000 && Date.now() - recoveryRequestAt.current >= 15_000) {
+        recoveryRequestAt.current = Date.now();
+        void mutate("/extract");
+      }
+    };
+    const interval = window.setInterval(() => { void poll(); }, 2_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [investigation?.lifecycleUpdatedAt, investigation?.status, paymentId]);
+
   async function mutate(path: string, body?: unknown, idempotencyKey?: string) {
+    const previousInvestigation = investigation;
+    const isFinalSelectedAnswer = path === "/answers"
+      && investigation !== null
+      && investigation.answeredCount + 1 >= investigation.selectedQuestionCount;
     setBusy(true);
     setError(null);
+    if (path === "/extract" || isFinalSelectedAnswer) {
+      setInvestigation((current) => current ? {
+        ...current,
+        status: "EXTRACTING",
+        reassessmentLifecycle: "PROCESSING",
+        lifecycleUpdatedAt: new Date().toISOString(),
+      } : current);
+    }
     try {
       const response = await bankingFetch<FraudInvestigationResponse>(
         `/api/v1/payments/${encodeURIComponent(paymentId)}/investigation${path}`,
@@ -57,6 +113,8 @@ export function FraudInvestigationClient() {
       );
       setInvestigation(response.investigation);
     } catch (mutationError) {
+      if (path === "/extract") automaticRequest.current = null;
+      if (isFinalSelectedAnswer) setInvestigation(previousInvestigation);
       setError(messageFor(mutationError));
     } finally {
       setBusy(false);
@@ -86,24 +144,33 @@ export function FraudInvestigationClient() {
     );
   }
 
-  if (investigation.resolution && ["REASSESSED", "FAILED"].includes(investigation.status)) {
-    return <ResolutionCard investigation={investigation} busy={busy} error={error} onRetry={() => mutate("/extract")} />;
+  if (investigation.status === "FAILED") {
+    return <FailureCard investigation={investigation} busy={busy} error={error} onRetry={() => mutate("/extract")} />;
   }
 
   if (investigation.status === "READY_FOR_EXTRACTION" || investigation.status === "EXTRACTING") {
     return (
       <Card className="max-w-[680px] p-6 md:p-8" aria-live="polite">
-        <ShieldCheck className="size-9 text-[#275A47]" aria-hidden="true" />
-        <h2 className="mt-4 text-2xl font-bold tracking-[-.6px]">Your answers are ready</h2>
-        <p className="mt-2 text-xs leading-relaxed text-[#59695e]">
-          Fraud Intelligence will interpret the completed questionnaire once, then a separate deterministic policy will choose the simulated resolution.
+        <div className="grid size-[66px] place-items-center rounded-[20px] bg-[#edf3e9] text-[#275A47]">
+          <RefreshCw className="size-8 animate-spin" aria-hidden="true" />
+        </div>
+        <h2 className="mt-4 text-2xl font-bold tracking-[-.6px]">We’re reviewing your payment</h2>
+        <p className="mt-2 max-w-[560px] text-xs leading-relaxed text-[#59695e]">
+          Thanks — we’ve saved your answers. We’re carrying out a few final checks and this page will update automatically.
         </p>
+        {reviewElapsedMs >= 15_000 && (
+          <div className="mt-5 rounded-[11px] border border-[#eadfbe] bg-[#fff8e8] p-[14px] text-[11px] leading-relaxed text-[#755b26]">
+            This is taking a little longer than usual. You can keep this page open or come back later; your progress is safely saved.
+          </div>
+        )}
         {error && <p className="mt-4 text-xs text-[#9a403b]" role="alert">{error}</p>}
-        <Button className="mt-6" disabled={busy || investigation.status === "EXTRACTING"} onClick={() => mutate("/extract") }>
-          {busy || investigation.status === "EXTRACTING" ? "Analysing evidence…" : "Analyse my answers"}
-        </Button>
+        <p className="mt-6 text-[10px] leading-relaxed text-[#8a978e]">Please don’t make the payment again while we finish these checks.</p>
       </Card>
     );
+  }
+
+  if (investigation.resolution && investigation.status === "REASSESSED") {
+    return <ResolutionCard investigation={investigation} />;
   }
 
   if (!currentQuestion) {
@@ -164,18 +231,15 @@ function QuestionForm({ question, busy, onSubmit }: {
   );
 }
 
-function ResolutionCard({ investigation, busy, error, onRetry }: {
+function ResolutionCard({ investigation }: {
   investigation: FraudInvestigation;
-  busy: boolean;
-  error: string | null;
-  onRetry: () => void;
 }) {
   const outcome = investigation.resolution!.outcome;
   const content = outcome === "CLEARED"
-    ? { title: "Security check cleared", body: "The controlled policy found complete, low-risk evidence for this simulated payment.", icon: CheckCircle2, colour: "text-[#2f7448] bg-[#e8f5e7]" }
+    ? { title: "Security check complete", body: "This payment passed our additional security checks. No money has moved as part of this demonstration.", icon: CheckCircle2, colour: "text-[#2f7448] bg-[#e8f5e7]" }
     : outcome === "DECLINED"
-      ? { title: "Payment remains declined", body: "The controlled policy found defined fraud or scam indicators. No money has moved.", icon: ShieldX, colour: "text-[#9a403b] bg-[#fbe8e6]" }
-      : { title: "Further review is required", body: "The evidence was missing, uncertain, contradictory, or unavailable, so the payment was not cleared.", icon: AlertTriangle, colour: "text-[#8a6421] bg-[#fff4dc]" };
+      ? { title: "We can’t approve this payment", body: "Based on the answers you provided, this payment hasn’t passed our security checks. No money has left your account.", icon: ShieldX, colour: "text-[#9a403b] bg-[#fbe8e6]" }
+      : { title: "We need to keep this payment on hold", body: "We couldn’t complete enough checks to approve this payment. No money has left your account.", icon: AlertTriangle, colour: "text-[#8a6421] bg-[#fff4dc]" };
   const Icon = content.icon;
   return (
     <Card className="max-w-[680px] p-6 md:p-8" aria-live="polite">
@@ -183,13 +247,39 @@ function ResolutionCard({ investigation, busy, error, onRetry }: {
       <h2 className="mt-4 text-2xl font-bold tracking-[-.6px]">{content.title}</h2>
       <p className="mt-2 text-xs leading-relaxed text-[#59695e]">{content.body}</p>
       <div className="mt-5 rounded-[11px] border border-[#e3ecd9] bg-[#f0f6e9] p-[14px] text-[11px] leading-relaxed text-[#4f6658]">
-        Simulated resolution from {investigation.resolution!.policyVersion}. The original CHALLENGED verdict is immutable; no ledger entry or balance change was made.
+        This was a simulated payment. Your balance has not changed.
       </div>
+      <div className="mt-6 flex flex-wrap gap-2.5">
+        <Button variant="secondary" asChild><Link href={`/payments/status?paymentId=${encodeURIComponent(investigation.paymentId)}`}>View payment</Link></Button>
+        <Button variant="secondary" asChild><Link href="/">Overview</Link></Button>
+      </div>
+    </Card>
+  );
+}
+
+function FailureCard({ investigation, busy, error, onRetry }: {
+  investigation: FraudInvestigation;
+  busy: boolean;
+  error: string | null;
+  onRetry: () => void;
+}) {
+  return (
+    <Card className="max-w-[680px] p-6 md:p-8" aria-live="polite">
+      <div className="grid size-[66px] place-items-center rounded-[20px] bg-[#fff4dc] text-[#8a6421]">
+        <AlertTriangle className="size-8" aria-hidden="true" />
+      </div>
+      <h2 className="mt-4 text-2xl font-bold tracking-[-.6px]">We couldn’t finish the review</h2>
+      <p className="mt-2 text-xs leading-relaxed text-[#59695e]">
+        Your payment has not been approved and no money has moved. Your answers are saved, so you can safely try the review again.
+      </p>
       {error && <p className="mt-4 text-xs text-[#9a403b]" role="alert">{error}</p>}
       <div className="mt-6 flex flex-wrap gap-2.5">
-        {investigation.status === "FAILED" && investigation.canExtract && <Button disabled={busy} onClick={onRetry}><RefreshCw className="mr-2 size-4" />{busy ? "Retrying…" : "Retry once"}</Button>}
-        <Button variant="secondary" asChild><Link href={`/payments/status?paymentId=${encodeURIComponent(investigation.paymentId)}`}>View original decision</Link></Button>
-        <Button variant="secondary" asChild><Link href="/">Overview</Link></Button>
+        {investigation.canExtract && (
+          <Button disabled={busy} onClick={onRetry}>
+            <RefreshCw className="mr-2 size-4" />{busy ? "Trying again…" : "Try again"}
+          </Button>
+        )}
+        <Button variant="secondary" asChild><Link href={`/payments/status?paymentId=${encodeURIComponent(investigation.paymentId)}`}>View payment</Link></Button>
       </div>
     </Card>
   );

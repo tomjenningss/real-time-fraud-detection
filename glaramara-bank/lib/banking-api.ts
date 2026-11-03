@@ -117,6 +117,8 @@ export type FraudInvestigation = {
   selectedQuestionCount: number;
   agentInvocationCount: number;
   canExtract: boolean;
+  reassessmentLifecycle: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+  lifecycleUpdatedAt: string;
   resolution: {
     outcome: "CLEARED" | "REQUIRES_FURTHER_REVIEW" | "DECLINED";
     policyVersion: string;

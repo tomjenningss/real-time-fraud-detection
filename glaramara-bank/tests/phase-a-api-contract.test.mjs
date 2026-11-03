@@ -98,6 +98,26 @@ test("Phase C keeps customer evidence and reassessment separate from payment aut
   assert.doesNotMatch(questionnaire, /nine/i);
 });
 
+test("Phase C automatically resumes one durable reassessment lifecycle", () => {
+  const repository = read("lib/server/fraud-investigation-repository.ts");
+  const journey = read("app/payments/investigation/fraud-investigation-client.tsx");
+  const answersRoute = read("app/api/v1/payments/[paymentId]/investigation/answers/route.ts");
+
+  assert.match(repository, /"PENDING"/);
+  assert.match(repository, /"PROCESSING"/);
+  assert.match(repository, /"COMPLETED"/);
+  assert.match(repository, /processingIsStale/);
+  assert.match(repository, /kind: "existing"/);
+  assert.ok(repository.indexOf("if (replay.rows[0])")
+    < repository.indexOf("INVESTIGATION_NOT_ANSWERABLE"));
+  assert.match(journey, /status !== "READY_FOR_EXTRACTION"/);
+  assert.match(journey, /void mutate\("\/extract"\)/);
+  assert.match(journey, /setInterval\(.*2_000/);
+  assert.doesNotMatch(journey, /Analyse my answers/);
+  assert.match(answersRoute, /status === "READY_FOR_EXTRACTION"/);
+  assert.match(answersRoute, /executeFraudIntelligence/);
+});
+
 test("live Fraud Intelligence REST adapter stays backend-only and does not spawn a subprocess", () => {
   const adapter = read("lib/fraud-intelligence/orchestrate-client.ts");
   const iam = read("lib/fraud-intelligence/ibm-iam.ts");

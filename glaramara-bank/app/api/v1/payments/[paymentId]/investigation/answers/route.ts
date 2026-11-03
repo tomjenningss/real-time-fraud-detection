@@ -4,6 +4,7 @@ import { z } from "zod";
 import { apiErrorResponse, ApiError, readJsonBody } from "@/lib/server/api-errors";
 import {
   answerFraudQuestion,
+  executeFraudIntelligence,
   investigationAnswerRequestSchema,
 } from "@/lib/server/fraud-investigation-repository";
 import { requireSameOrigin } from "@/lib/server/origin";
@@ -31,12 +32,15 @@ export async function POST(
     requireSameOrigin(request);
     const session = requireDemoSession(request);
     const { paymentId } = await context.params;
-    const investigation = await answerFraudQuestion(
+    let investigation = await answerFraudQuestion(
       session.customerId,
       paymentIdSchema.parse(paymentId),
       idempotencyKey(request),
       investigationAnswerRequestSchema.parse(await readJsonBody(request)),
     );
+    if (investigation?.status === "READY_FOR_EXTRACTION") {
+      investigation = await executeFraudIntelligence(session.customerId, paymentId);
+    }
     return NextResponse.json({ investigation }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return apiErrorResponse(error);

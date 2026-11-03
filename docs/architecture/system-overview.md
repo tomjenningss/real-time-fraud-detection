@@ -1,6 +1,6 @@
 # Verified system overview
 
-Verified from repository code and deployment wiring on 2 November 2026. Runtime observations are identified
+Verified from repository code and deployment wiring on 3 November 2026. Runtime observations are identified
 separately; future intentions are not presented as implemented behaviour.
 
 ## Authority and end-to-end flow
@@ -187,7 +187,13 @@ signed-session ownership and an idempotency key; selected questions and their de
 recovery. The responsive UI restores the next unanswered question after refresh.
 
 `POST .../answers` persists customer provenance and `POST .../extract` atomically claims one invocation before
-calling the backend adapter. The adapter sends only a pseudonymous transaction reference, amount/currency,
+calling the backend adapter. Completing the final selected answer moves the customer immediately to a review
+screen and invokes the same extraction workflow automatically within the final-answer server request. The
+separate extraction endpoint remains the idempotent recovery entry point. The existing investigation status is
+the durable reassessment lifecycle: ready is pending, extracting is processing, reassessed is completed, and
+failed is failed. The browser polls the owned investigation resource while processing; duplicate extraction requests
+return the current state, and a bounded stale claim can be recovered without exceeding the two-invocation cap.
+The adapter sends only a pseudonymous transaction reference, amount/currency,
 prior-beneficiary flag, deterministic signal names, required evidence keys and completed question/answer
 pairs. Every pair retains its question ID and `CUSTOMER` provenance, including the circumstances explanation.
 The SaaS tenant never calls localhost. The canonical `fraud_intelligence` agent has no tools,

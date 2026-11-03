@@ -18,6 +18,10 @@ from this application.
 - A genuine `CHALLENGED` payment can enter a short, versioned adaptive questionnaire with durable refresh
   recovery. Questionnaire `1.1.0` adds a required, 500-character circumstances explanation for a first-time
   beneficiary; conditional follow-ups remain selected from checked-in definitions, never generated freely.
+- Saving the final selected answer automatically starts the existing server-side extraction and controlled
+  reassessment. The customer sees a saved, refresh-safe review screen while the browser polls the durable
+  pending/processing/completed/failed lifecycle; duplicate calls return the same work and stale processing is
+  recoverable within the existing invocation budget.
 - Fraud Intelligence extracts strict semantic evidence; a separate deterministic policy writes only a
   simulated investigation resolution. It cannot mutate the original verdict, ledger or balance.
 - Every account, card, transaction and beneficiary is fictional.
@@ -121,7 +125,9 @@ It appends a distinct beneficiary fan-in period without resetting prior waves, s
 backtests or reviews. The batch evaluator recomputes supported temporal features in chronological order, but
 does not emulate Flink watermarks, late-event handling, checkpoints or operational deduplication.
 
-`FRAUD_INTELLIGENCE_PROVIDER` selects `mock` or `orchestrate`. Root Compose defaults to `mock` for a
+`FRAUD_INTELLIGENCE_PROVIDER` selects `mock` or `orchestrate`. The browser never calls the provider directly:
+the final questionnaire answer causes the Glaramara backend to run the existing extraction workflow
+automatically, and refresh recovery reads the persisted investigation state. Root Compose defaults to `mock` for a
 deterministic, credential-free demonstration. `orchestrate` invokes the existing agent directly from the
 Next.js backend. It reads only
 `WATSONX_ORCHESTRATE_API_KEY` and `WATSONX_ORCHESTRATE_URL` from the server environment, obtains a cached IAM

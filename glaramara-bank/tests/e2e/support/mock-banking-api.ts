@@ -236,6 +236,12 @@ export type MockBankingApi = {
   investigationMutations: CapturedMutation[];
 };
 
+type MockInvestigationOptions = {
+  extractionDelayMs?: number;
+  extractionFailure?: boolean;
+  outcome?: "CLEARED" | "REQUIRES_FURTHER_REVIEW" | "DECLINED";
+};
+
 function cloneBeneficiaries(): Record<string, Beneficiary[]> {
   return Object.fromEntries(
     Object.entries(initialBeneficiaries).map(([customerId, items]) => [
@@ -274,7 +280,10 @@ function initialsFor(name: string) {
   return `${parts[0]?.[0] ?? "B"}${parts.at(-1)?.[0] ?? ""}`.toUpperCase();
 }
 
-export async function mockPhaseABankingApi(page: Page): Promise<MockBankingApi> {
+export async function mockPhaseABankingApi(
+  page: Page,
+  options: MockInvestigationOptions = {},
+): Promise<MockBankingApi> {
   let activeCustomerId: string = customerIds.alex;
   const beneficiaries = cloneBeneficiaries();
   const sessionPosts: CapturedMutation[] = [];
@@ -314,7 +323,10 @@ export async function mockPhaseABankingApi(page: Page): Promise<MockBankingApi> 
       version: "glaramara-fraud-questionnaire/1.1.0",
       prompt: "Did anyone contact you or guide you through making this payment?",
       kind: "SINGLE_CHOICE",
-      options: [{ value: "UNEXPECTED", label: "Yes, an unexpected caller or message" }],
+      options: [
+        { value: "UNEXPECTED", label: "Yes, an unexpected caller or message" },
+        { value: "NO", label: "No, nobody guided me" },
+      ],
       required: true,
     },
     {
@@ -341,6 +353,52 @@ export async function mockPhaseABankingApi(page: Page): Promise<MockBankingApi> 
       required: true,
     },
   ];
+
+  async function completeMockExtraction(route: Route) {
+    if (!investigation) return;
+    if (["EXTRACTING", "REASSESSED"].includes(investigation.status)) {
+      await json(route, { investigation });
+      return;
+    }
+    investigation.status = "EXTRACTING";
+    investigation.reassessmentLifecycle = "PROCESSING";
+    investigation.lifecycleUpdatedAt = new Date().toISOString();
+    investigation.canExtract = false;
+    if (options.extractionDelayMs) {
+      await new Promise((resolve) => setTimeout(resolve, options.extractionDelayMs));
+    }
+    if (options.extractionFailure) {
+      investigation.status = "FAILED";
+      investigation.reassessmentLifecycle = "FAILED";
+      investigation.agentInvocationCount += 1;
+      investigation.canExtract = investigation.agentInvocationCount < 2;
+      investigation.lifecycleUpdatedAt = new Date().toISOString();
+      investigation.resolution = {
+        outcome: "REQUIRES_FURTHER_REVIEW",
+        policyVersion: "customer-evidence-reassessment/1.0.0",
+        reasonCodes: ["AGENT_TIMEOUTERROR"],
+        reassessedAt: "2026-11-02T09:00:01.000Z",
+        simulated: true,
+        ledgerEffect: "NONE",
+      };
+      await json(route, { investigation });
+      return;
+    }
+    investigation.status = "REASSESSED";
+    investigation.agentInvocationCount = 1;
+    investigation.canExtract = false;
+    investigation.reassessmentLifecycle = "COMPLETED";
+    investigation.lifecycleUpdatedAt = new Date().toISOString();
+    investigation.resolution = {
+      outcome: options.outcome ?? "DECLINED",
+      policyVersion: "customer-evidence-reassessment/1.0.0",
+      reasonCodes: ["DEFINED_SCAM_INDICATOR"],
+      reassessedAt: "2026-11-02T09:00:01.000Z",
+      simulated: true,
+      ledgerEffect: "NONE",
+    };
+    await json(route, { investigation });
+  }
 
   function sessionResponse(): DemoSessionResponse {
     const customerLocations = locations[activeCustomerId];
@@ -507,6 +565,8 @@ export async function mockPhaseABankingApi(page: Page): Promise<MockBankingApi> 
           selectedQuestionCount: 5,
           agentInvocationCount: 0,
           canExtract: false,
+          reassessmentLifecycle: "PENDING",
+          lifecycleUpdatedAt: "2026-11-02T09:00:00.000Z",
           resolution: null,
         };
         await json(route, { investigation }, 201);
@@ -518,6 +578,11 @@ export async function mockPhaseABankingApi(page: Page): Promise<MockBankingApi> 
       }
       if (investigationMatch[2] === "answers") {
         const input = mutation.body as { questionId: string; answer: { value: string } };
+        const existingAnswer = investigation.answers[input.questionId];
+        if (existingAnswer?.value === input.answer.value) {
+          await json(route, { investigation });
+          return;
+        }
         investigation.answers[input.questionId] = {
           value: input.answer.value,
           answeredAt: "2026-11-02T09:00:00.000Z",
@@ -534,22 +599,15 @@ export async function mockPhaseABankingApi(page: Page): Promise<MockBankingApi> 
         if (!investigation.currentQuestionId) {
           investigation.status = "READY_FOR_EXTRACTION";
           investigation.canExtract = true;
+          investigation.reassessmentLifecycle = "PENDING";
+          investigation.lifecycleUpdatedAt = new Date().toISOString();
+          await completeMockExtraction(route);
+          return;
         }
         await json(route, { investigation });
         return;
       }
-      investigation.status = "REASSESSED";
-      investigation.agentInvocationCount = 1;
-      investigation.canExtract = false;
-      investigation.resolution = {
-        outcome: "DECLINED",
-        policyVersion: "customer-evidence-reassessment/1.0.0",
-        reasonCodes: ["DEFINED_SCAM_INDICATOR"],
-        reassessedAt: "2026-11-02T09:00:01.000Z",
-        simulated: true,
-        ledgerEffect: "NONE",
-      };
-      await json(route, { investigation });
+      await completeMockExtraction(route);
       return;
     }
 

@@ -27,14 +27,13 @@ test.describe("Phase C live Orchestrate journey", () => {
       );
       await page.getByRole("button", { name: "Save and continue" }).click();
     }
-    await expect(page.getByRole("heading", { name: "Your answers are ready" })).toBeVisible();
-    await page.getByRole("button", { name: "Analyse my answers" }).click();
+    await expect(page.getByRole("heading", { name: "We’re reviewing your payment" })).toBeVisible();
 
-    await expect(page.getByRole("heading", { name: "Security check cleared" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "Security check complete" })).toBeVisible({
       timeout: 90_000,
     });
-    await expect(page.getByText(/original CHALLENGED verdict is immutable/)).toBeVisible();
-    await page.getByRole("link", { name: "View original decision" }).click();
+    await expect(page.getByText("This was a simulated payment. Your balance has not changed.")).toBeVisible();
+    await page.getByRole("link", { name: "View payment" }).click();
     await expect(page.getByText("CHALLENGED · DETERMINISTIC POLICY", { exact: true })).toBeVisible();
     await expect(page.getByText(/No ledger entry was created/)).toBeVisible();
   });

@@ -1,6 +1,6 @@
 # Current implementation state
 
-Handoff as of 2 November 2026. Start milestone work here; follow links for detail. Planned statements are not
+Handoff as of 3 November 2026. Start milestone work here; follow links for detail. Planned statements are not
 claims about deployed behaviour.
 
 ## Completed milestones
@@ -268,6 +268,28 @@ Repository source under `watsonx-orchestrate/fraud-intelligence/` manages the Ph
 `watsonx-orchestrate/fraud-rule-discovery/` manages the separate Phase D agent. AskOrchestrate and the Phase C
 agent were not modified. Neither agent has deployment authority. Model changes must be measured against the
 appropriate strict local schema before importing only the intended agent into development.
+
+## Automatic customer reassessment journey
+
+Submitting the final selected questionnaire answer now starts the existing server-side Fraud Intelligence
+extraction and controlled reassessment automatically. The customer moves directly to a Glaramara review
+screen; lightweight polling follows the durable investigation state and displays the existing result when the
+controlled policy has finished. Refreshes recover pending or processing work, answer and extraction replays
+are idempotent, and stale processing can be reclaimed within the existing two-invocation budget. A slow review
+keeps an explicit in-progress message, while a failed review states that the payment was not approved and
+offers a bounded retry when one remains.
+
+The customer result no longer exposes policy versions, internal verdict names, reason codes or API language.
+Those fields remain in the persisted evidence/reassessment records and owned server response for developer and
+analyst inspection. The initial deterministic verdict, append-only reassessment, simulated ledger boundary,
+LightGBM shadow score, Go shadow action, Fraud Intelligence contract and AskOrchestrate are unchanged.
+
+Observed verification on 3 November 2026:
+
+- Glaramara unit/contracts: 28 passed; TypeScript and production build passed;
+- focused desktop/mobile Playwright: 10 passed, covering completed/cleared, declined, Orchestrate failure,
+  duplicate answer submission and refresh recovery, with the existing adaptive and accessibility assertions
+  retained.
 
 ## Limitations and outstanding work
 
