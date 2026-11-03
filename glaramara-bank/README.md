@@ -4,7 +4,7 @@ Mobile-first fictional banking UI for the fraud-platform demonstration. The appr
 `../docs/designs/glaramara-clickable-prototype.html` remains the visual source of truth and is not generated
 from this application.
 
-## Phase B and C boundary
+## Phase B, C and D boundary
 
 - The dashboard, activity, cards, beneficiaries and payment-review journeys are implemented.
 - `Pay` beside an owned beneficiary opens payment review with that recipient selected; the customer can
@@ -21,6 +21,8 @@ from this application.
 - Fraud Intelligence extracts strict semantic evidence; a separate deterministic policy writes only a
   simulated investigation resolution. It cannot mutate the original verdict, ledger or balance.
 - Every account, card, transaction and beneficiary is fictional.
+- The separate `/fraud-operations` persona analyses only immutable synthetic fraud-lab history. It can
+  propose, backtest and review a future control, but cannot change a payment verdict or deploy a rule.
 
 PostgreSQL is authoritative for customer, account, transaction and beneficiary screens. `lib/demo-data.ts`
 contains shared view types and a small render-time identity fallback only; once the signed session is ready,
@@ -38,6 +40,10 @@ The Phase B API surface is:
 - `POST /api/v1/payments/{paymentId}/investigation/answers`
 - `POST /api/v1/payments/{paymentId}/investigation/extract`
 - `GET /api/v1/health`
+- `GET /api/v1/fraud-operations`
+- `POST /api/v1/fraud-operations/analyses`
+- `GET /api/v1/fraud-operations/runs/{runId}`
+- `POST /api/v1/fraud-operations/candidates/{candidateId}/reviews`
 
 Customer identity always comes from the HMAC-signed, HttpOnly, SameSite session cookie. Session and
 beneficiary/payment mutations require an exact same-origin request. Payment submission also requires an
@@ -91,6 +97,29 @@ externally visible HTTPS origin in hosted environments; the development example 
 `GLARAMARA_SESSION_SECRET` must contain at least 32 bytes. `DATABASE_SSL=true` enables certificate-verified
 TLS for PostgreSQL. `GLARAMARA_COOKIE_SECURE` defaults to true in production; set it false only for explicit
 localhost HTTP development. Keep all settings outside Git.
+
+### Fraud Operations
+
+Selecting `Alex Morgan — Fraud Analyst` issues a signed, HttpOnly `FRAUD_ANALYST` session and opens the
+dedicated internal shell. Customer sessions receive `403` from every Fraud Operations API; role and reviewer
+identity are derived by the server and never accepted from the browser.
+
+`FRAUD_RULE_DISCOVERY_PROVIDER` selects `mock` or `orchestrate`. Live mode reuses the server-only IBM IAM
+credentials but has independent agent ID, model and timeout settings. An analysis snapshots the active wave
+manifest, sends only discovery-partition aggregates and bounded pseudonymous examples, validates the strict
+`fraud-rule-proposal/1.0.0` result, and only then reads the held-out evaluation partition. Approval records
+`APPROVED_FOR_IMPLEMENTATION`; it never activates or publishes a control.
+
+The initial 8,000-row wave is seeded by the migration job during `make up`. The optional additive extension
+is reproducible and idempotent:
+
+```sh
+make fraud-lab-next-wave
+```
+
+It appends a distinct beneficiary fan-in period without resetting prior waves, snapshots, candidates,
+backtests or reviews. The batch evaluator recomputes supported temporal features in chronological order, but
+does not emulate Flink watermarks, late-event handling, checkpoints or operational deduplication.
 
 `FRAUD_INTELLIGENCE_PROVIDER` selects `mock` or `orchestrate`. Root Compose defaults to `mock` for a
 deterministic, credential-free demonstration. `orchestrate` invokes the existing agent directly from the

@@ -140,6 +140,57 @@ Observed Phase C verification on 2 November 2026:
 
 See [`glaramara-phase-c-summary.md`](glaramara-phase-c-summary.md) for contracts, model selection and evidence.
 
+### Phase D: extensible AI-assisted fraud rule discovery
+
+Phase D adds Alembic `0011_glaramara_phase_d` and append-only repair provenance in `0012`, a fixed-seed
+8,000-row synthetic fraud laboratory, immutable discovery snapshots, standalone
+`fraud_rule_discovery`, strict `fraud-rule-proposal/1.0.0` validation, chronological held-out backtesting and
+the role-protected `/fraud-operations` analyst UI. The 50,000-row LightGBM training corpus remains unchanged
+and was rejected for discovery because it lacks raw beneficiary history and group-safe partitions.
+
+The server exposes discovery aggregates and selected pseudonymous examples only. Evaluation rows are first
+queried after a validated candidate is stored. Candidate fingerprints detect repeats; every run remains bound
+to its wave manifest. Approval is terminal `APPROVED_FOR_IMPLEMENTATION` audit state only—no live controls,
+transactions, balances, Kafka topics, Flink jobs, router policy, scorer or Go service are changed.
+
+Observed Phase D verification on 2 November 2026:
+
+- active initial wave: 8,000 rows (5,600 discovery / 2,400 evaluation), fixed seed `20261102`, dataset
+  `fraud-lab-dataset/1.0.0`; an append-only supersession record preserves an earlier local draft while the
+  corrected active snapshot uses `fraud-lab-wave-2026q4-v2`;
+- live run `1dec13bd-18cb-40a9-ab59-e6d4166cf0c6` captured only that 8,000-row snapshot
+  (`ea1fa51479254b370d29f7999a7947ac9bdae29c3e0a5b513c866c2b8ef20719`), invoked standalone agent
+  `d67de40f-7ff4-4906-8e21-83425e7f2840` on `groq/openai/gpt-oss-120b` in 6,082 ms and produced a locally
+  valid two-condition velocity/value proposal;
+- the deterministic 2,400-row holdout measured baseline TP/FP/TN/FN 25/7/2245/123 and combined
+  30/9/2243/118: five additional fraud-labelled payments and two additional genuine challenges, recall
+  16.89% to 20.27%, precision 78.13% to 76.92%, with overlap 13. The UI displayed this trade-off honestly;
+- Alex Morgan approved candidate `d3bfc928-05d4-43f8-b54b-3fb55b4cc2b6` for future implementation. The
+  immutable review and backtest remain present and no deployment followed. A customer session received `403`;
+- `make fraud-lab-next-wave` appended corrected calendar-Q1 wave `fraud-lab-wave-2027q1-v2`, 6,000 rows
+  (4,200/1,800), seed `20270115`, digest
+  `968bc228058ce65b86af09fc1eaec7325195b3175bef0658cf0d35774db617a3`; immediate replay returned
+  `replayed=true`. Active lab history is now 14,000 rows and all earlier candidates, backtests and reviews
+  remain. The period-mismatched local draft is retained but inactive through audited supersession.
+- final regressions: agents 96 passed / 8 opt-in skipped with Ruff clean; Glaramara 26 contracts, typecheck and
+  production build passed; Playwright 16 passed / 4 opt-in skipped across desktop and mobile; Java enrichment
+  8 tests plus 15 Python Flink/deployment-unit tests passed (6 Kafka integration skips); both Go modules passed
+  test and vet; deployment 27 passed; Compose rendered; all required runtime components were ready, both
+  established Flink job IDs remained running and every reported consumer lag was zero.
+
+See [`glaramara-phase-d-summary.md`](glaramara-phase-d-summary.md) for contracts, commands, limitations and
+the future Flink engineering path.
+
+Incremental-wave validation then completed live run `810ae2fe-7a9f-4f83-a188-23dee7fa7d1c` against both
+active waves: 14,000 snapshot rows, 9,800 discovery-only rows and 4,200 independently loaded holdout rows.
+Orchestrate proposed a novel five-new-beneficiary/£2,500-total `PT24H` challenge at 4,838 ms. Combined recall
+rose from 17.46% to 23.41%, with 15 additional fraud labels and 17 additional genuine challenges; the new
+candidate remains unreviewed `BACKTESTED`. Reports now separate the three active deterministic signals from
+all prior `NOT_DEPLOYED` candidates, and the UI distinguishes the current dataset from historical 8,000-row
+snapshots. Two earlier failed live runs were confirmed as non-extractable agent response shapes rejected before
+candidate persistence or evaluation; parser tolerance, prompt precision and diagnostic error categories were
+improved without weakening the strict proposal schema. Existing waves, reviews and runtime state were kept.
+
 ## Existing 16-payment baseline and shadow reference
 
 The controlled fixture contains 16 payments. Its deterministic reference is **11 approved, 2 challenged,
@@ -153,7 +204,7 @@ challenges. It published 24 revision-driven shadow messages for 16 transactions.
 [`MILESTONE_REPORT.md`](../../fraud-decision-engine/MILESTONE_REPORT.md). These synthetic, unlabelled
 results are not production accuracy evidence.
 
-## Phase B/C operating mode
+## Phase B/C/D operating mode
 
 Required and implemented mode is **fictional, simulated, shadow-only, no ledger effect**. The immutable
 deterministic verdict remains payment authority; LightGBM and the Go action remain experimental shadow
@@ -213,9 +264,10 @@ Observed verification on 2 November 2026:
 
 ## Orchestrate boundary
 
-Only repository source under `watsonx-orchestrate/fraud-intelligence/` may manage the single Phase C agent.
-Do not edit AskOrchestrate or add collaborators, tools or agents without a later milestone. Model changes must
-be measured against the strict evaluation before importing only `fraud_intelligence` into development.
+Repository source under `watsonx-orchestrate/fraud-intelligence/` manages the Phase C agent; source under
+`watsonx-orchestrate/fraud-rule-discovery/` manages the separate Phase D agent. AskOrchestrate and the Phase C
+agent were not modified. Neither agent has deployment authority. Model changes must be measured against the
+appropriate strict local schema before importing only the intended agent into development.
 
 ## Limitations and outstanding work
 
@@ -234,6 +286,8 @@ be measured against the strict evaluation before importing only `fraud_intellige
   injection. The Python ADK adapter remains standalone diagnostic tooling, not an application fallback.
 - Orchestrate ADK 2.19.1 warns that planner style is deprecated. Planner is retained because this ADK version
   requires it for structured output; migrate only after validating equivalent strict output support.
+- Phase D backtesting is ordered batch simulation, not exact Flink operational replay: it omits watermarks,
+  late-event handling, checkpoint recovery and physical duplicate behaviour.
 - Outbox delivery retries indefinitely; there is no terminal publication-failure state or operator retry API.
 - Trusted customer/account/location context and beneficiary names remain only in the immutable banking
   snapshot. The strict raw/enriched contract exposes the minimal server-derived beneficiary payment count;
@@ -254,9 +308,10 @@ be measured against the strict evaluation before importing only `fraud_intellige
 - ML: `agents/src/fraud_agents/ml/`, `agents/artifacts/baseline/metadata.json`
 - Correlation: `fraud-assessment-correlator/internal/{assessment/model,store/store}.go`
 - Shadow: `fraud-decision-engine/internal/{policy/policy,store/store}.go`
-- Banking/Phase C: `agents/migrations/versions/{0006_glaramara_banking,0007_glaramara_phase_b,0008_raw_event_time_clock,0009_release_banking_watermarks,0010_glaramara_phase_c}.py`,
+- Banking/Phase C/D: `agents/migrations/versions/{0006_glaramara_banking,0007_glaramara_phase_b,0008_raw_event_time_clock,0009_release_banking_watermarks,0010_glaramara_phase_c,0011_glaramara_phase_d,0012_fraud_lab_wave_supersession}.py`,
   `glaramara-bank/lib/{server,fraud-intelligence}/`, `glaramara-bank/app/api/v1/payments/`,
-  `watsonx-orchestrate/fraud-intelligence/`
+  `glaramara-bank/app/api/v1/fraud-operations/`, `glaramara-bank/lib/fraud-rule-discovery/`,
+  `agents/src/fraud_agents/fraud_lab/`, `watsonx-orchestrate/{fraud-intelligence,fraud-rule-discovery}/`
 
 At later milestones, update this handoff with observed commands/results, the system overview for
 flow changes, and the nearest component README. Link evidence instead of duplicating logs.

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BarChart3,
   Bell,
   Clock3,
   CreditCard,
@@ -42,6 +43,26 @@ function ShellContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { customer, customers, sessionError, setCustomerId, switching } = useCustomer();
   const copy = pageCopy[pathname] ?? pageCopy["/"];
+
+  if (pathname.startsWith("/fraud-operations")) {
+    return (
+      <div className="min-h-screen bg-[#f5f7f3] text-[#172c25]">
+        <header className="border-b border-[#dfe7dc] bg-[#173f33] text-white">
+          <div className="mx-auto flex max-w-[1440px] flex-col gap-4 px-5 py-5 md:flex-row md:items-center md:justify-between md:px-10">
+            <div className="flex items-center gap-4"><div className="rounded-xl bg-white p-2"><Brand /></div><div><p className="text-[10px] font-extrabold tracking-[.17em] text-[#bad7c3]">INTERNAL DEMONSTRATION</p><h1 className="mt-1 text-xl font-extrabold">Fraud Operations</h1></div></div>
+            <div className="flex items-center gap-3">
+              <BarChart3 className="hidden size-5 text-[#bcd8c4] sm:block" />
+              <label htmlFor="analyst-persona" className="sr-only">Switch fictional persona</label>
+              <select id="analyst-persona" value={customer.id} onChange={(event) => void setCustomerId(event.target.value)} disabled={switching} className="max-w-[240px] rounded-lg border border-[#ffffff33] bg-[#275a47] px-3 py-2 text-xs font-bold text-white outline-none">
+                {customers.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}
+              </select>
+            </div>
+          </div>
+        </header>
+        <main id="main-content" className="mx-auto max-w-[1440px] px-4 py-6 md:px-10 md:py-8">{children}<footer className="mt-7 text-[10px] text-[#5f6f64]">Glaramara Fraud Operations · Fictional people, synthetic transactions and simulated controls.</footer></main>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex min-h-screen max-w-[1440px] bg-[#F5F7F3] text-[#172c25]">

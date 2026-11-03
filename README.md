@@ -54,6 +54,11 @@ The optional server-side Fraud Intelligence adapter uses either a credential-fre
 existing IBM watsonx Orchestrate agent through IAM and REST. Its reassessment is simulated and append-only;
 missing, invalid, or unavailable live evidence conservatively becomes `REQUIRES_FURTHER_REVIEW`.
 
+The separate Fraud Operations persona provides Phase D rule discovery over immutable, synthetic PostgreSQL
+history. A standalone Orchestrate agent can propose one constrained rule; Glaramara validates and backtests it
+against an unseen holdout before an analyst records approval or rejection. Approval is an implementation
+backlog decision only and never deploys a rule.
+
 ## Run the unified demo
 
 Install Podman and a Compose provider, then from a fresh clone:
@@ -82,7 +87,9 @@ state-preserving shutdown, and the live `orchestrate` configuration.
 - CPU LightGBM and Go Action Selection Control in experimental shadow-only mode.
 - PostgreSQL inbox/outbox, idempotency, retries, and durable correlation history.
 - Glaramara: a Next.js fictional bank UI with customer sessions, beneficiaries, simulated payment attempts,
-  status polling, and adaptive security checks.
+  status polling, adaptive security checks, and a role-protected synthetic Fraud Operations dashboard.
+- Extensible deterministic fraud-lab waves, strict AI rule proposals, held-out backtesting and append-only
+  analyst review. `make fraud-lab-next-wave` adds the optional second period idempotently.
 - Optional Phoenix/OpenTelemetry infrastructure for local observability.
 
 ## Repository layout

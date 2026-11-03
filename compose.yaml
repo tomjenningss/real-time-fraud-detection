@@ -153,7 +153,7 @@ services:
 
   migrations:
     <<: *python-service
-    command: ["alembic", "upgrade", "head"]
+    command: ["sh", "-c", "alembic upgrade head && fraud-lab-seed --wave initial"]
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     restart: "no"
@@ -281,6 +281,10 @@ services:
       FRAUD_INTELLIGENCE_PROVIDER: ${FRAUD_INTELLIGENCE_PROVIDER}
       FRAUD_INTELLIGENCE_MODEL: ${FRAUD_INTELLIGENCE_MODEL}
       FRAUD_INTELLIGENCE_TIMEOUT_MS: ${FRAUD_INTELLIGENCE_TIMEOUT_MS}
+      FRAUD_RULE_DISCOVERY_PROVIDER: ${FRAUD_RULE_DISCOVERY_PROVIDER}
+      FRAUD_RULE_DISCOVERY_AGENT_ID: ${FRAUD_RULE_DISCOVERY_AGENT_ID}
+      FRAUD_RULE_DISCOVERY_MODEL: ${FRAUD_RULE_DISCOVERY_MODEL}
+      FRAUD_RULE_DISCOVERY_TIMEOUT_MS: ${FRAUD_RULE_DISCOVERY_TIMEOUT_MS}
       WATSONX_ORCHESTRATE_API_KEY: ${WATSONX_ORCHESTRATE_API_KEY}
       WATSONX_ORCHESTRATE_URL: ${WATSONX_ORCHESTRATE_URL}
       NODE_ENV: production
@@ -300,6 +304,8 @@ services:
     volumes:
       - ./confluent-flink/scripts:/flink-scripts:ro
       - ./deployment:/deployment:ro
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     profiles: [tools]
 
   smoke-runner:

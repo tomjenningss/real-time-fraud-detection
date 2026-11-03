@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 
 import { apiErrorResponse, readJsonBody } from "@/lib/server/api-errors";
 import {
@@ -6,12 +7,12 @@ import {
   listDemoCustomers,
   listDemoLocations,
   resolveDemoSession,
-  sessionRequestSchema,
 } from "@/lib/server/banking-repository";
 import { requireSameOrigin } from "@/lib/server/origin";
 import {
   issueDemoSession,
-  readDemoSession,
+  issueAnalystSession,
+  readSignedSession,
   setDemoSessionCookie,
 } from "@/lib/server/session";
 
@@ -32,8 +33,28 @@ async function sessionResponse(customerId: string, locationId?: string) {
       expiresAt: new Date(issued.claims.exp * 1000).toISOString(),
     },
     customer,
-    customers,
+    customers: [...customers, ANALYST_PERSONA],
     locations,
+  });
+  setDemoSessionCookie(response, issued);
+  response.headers.set("Cache-Control", "no-store");
+  return response;
+}
+
+const ANALYST_PERSONA = {
+  id: "fraud-analyst-alex-morgan", slug: "fraud-analyst-alex-morgan", name: "Alex Morgan — Fraud Analyst",
+  firstName: "Alex", lastName: "Morgan", initials: "AM", role: "FRAUD_ANALYST" as const,
+};
+const personaRequestSchema = z.object({ customerId: z.string().min(1), demoLocationId: z.string().uuid().optional() });
+
+async function analystResponse() {
+  const customers = await listDemoCustomers();
+  const issued = issueAnalystSession();
+  const response = NextResponse.json({
+    session: { customerId: ANALYST_PERSONA.id, demoLocationId: null, role: "FRAUD_ANALYST", expiresAt: new Date(issued.claims.exp * 1000).toISOString() },
+    customer: ANALYST_PERSONA,
+    customers: [...customers, ANALYST_PERSONA],
+    locations: [],
   });
   setDemoSessionCookie(response, issued);
   response.headers.set("Cache-Control", "no-store");
@@ -42,7 +63,8 @@ async function sessionResponse(customerId: string, locationId?: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    const existing = readDemoSession(request);
+    const existing = readSignedSession(request);
+    if (existing && "role" in existing && existing.role === "FRAUD_ANALYST") return await analystResponse();
     if (existing) return await sessionResponse(existing.customerId, existing.demoLocationId);
 
     const { customer, location } = await findDefaultDemoCustomer();
@@ -56,7 +78,9 @@ export async function POST(request: NextRequest) {
   try {
     requireSameOrigin(request);
     const body = await readJsonBody(request);
-    const input = sessionRequestSchema.parse(body);
+    const input = personaRequestSchema.parse(body);
+    if (input.customerId === ANALYST_PERSONA.id) return await analystResponse();
+    z.string().uuid().parse(input.customerId);
     return await sessionResponse(input.customerId, input.demoLocationId);
   } catch (error) {
     return apiErrorResponse(error);

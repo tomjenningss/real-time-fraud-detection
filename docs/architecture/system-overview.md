@@ -116,7 +116,7 @@ Investigation content is audit context, never policy input. Duplicate/obsolete r
 
 ## PostgreSQL schemas and transaction boundaries
 
-Alembic currently ends at `0010_glaramara_phase_c`:
+Alembic currently ends at `0012_fraud_lab_wave_supersession`:
 
 - Python: consumed events, immutable payment decisions, investigations/attempts/audit, durable outbox,
   budget and investigation context.
@@ -128,6 +128,9 @@ Alembic currently ends at `0010_glaramara_phase_c`:
   event time without storing a verdict.
 - Phase C: durable customer investigations, append-only events and answers, immutable Fraud Intelligence
   extractions and independent simulated reassessments with schema/model/policy provenance.
+- Phase D: immutable wave-scoped synthetic transactions, discovery snapshots, validated rule candidates,
+  deterministic held-out backtests, append-only analyst reviews and append-only wave supersession provenance.
+  These tables have no foreign key or write path to banking attempts, balances or payment decisions.
 
 Consumers finish their database transaction before Kafka commit. Publishers lease outbox rows and mark them
 published after Kafka acknowledgement. PostgreSQL is authoritative; Kafka stays at least once.
@@ -201,12 +204,40 @@ Root Compose selects a deterministic fixture for reproducible local validation. 
 backend-only live mode and invokes the existing agent through native TypeScript IAM/REST; Glaramara does not
 spawn the Python ADK runner or fall back to mock after a live failure.
 
+## Phase D fraud rule discovery
+
+Phase D is an isolated batch-analysis path. The migration job deterministically seeds 8,000 fictional raw
+events from UUIDv5 identities and a fixed seed after Alembic. Complete customer/scenario groups are assigned
+70/30 to `DISCOVERY` and `EVALUATION`, preventing related-event leakage. The existing 50,000-row LightGBM
+corpus is not reused because it lacks raw chronological beneficiary histories and leakage-safe scenario
+groups. Baseline signals reproduce `fast-path-policy/1.1.0`; they are evidence, never ground-truth labels.
+
+At run creation, PostgreSQL captures the active ready wave IDs, manifests, row count and canonical SHA-256.
+The report reads only discovery rows and contains bounded aggregates, at most 16 pseudonymous examples,
+permitted feature/window contracts and previous proposal fingerprints. The standalone
+`fraud_rule_discovery` Orchestrate agent has no tools, collaborators, memory, database access or deployment
+authority. Local Zod validation rejects unknown features, unsafe operators/windows, OR/NOT, code and unknown
+evidence references. Provider, agent, model, schema, request hash and latency come from application code.
+
+Only after candidate persistence does the evaluator read evaluation rows from the same snapshot. It orders
+events chronologically and maintains customer, customer-beneficiary and beneficiary state, then records
+candidate-only, baseline and combined TP/FP/TN/FN, precision, recall, overlap and incremental effects.
+Supported threshold semantics match the batch feature definitions; Flink watermarks, late events,
+checkpointing and operational deduplication are deliberately not simulated.
+
+The signed session contract remains backward compatible and adds the server-mapped persona
+`fraud-analyst-alex-morgan`. Fraud Operations pages and APIs require `FRAUD_ANALYST`; customer sessions are
+rejected server-side. Reviews are terminal append-only decisions. `APPROVED_FOR_IMPLEMENTATION` explicitly
+means pending engineering work and has no Kafka, Flink, router or banking side effect.
+
 ## Configuration and deployment
 
 Root `compose.yaml` owns isolated Kafka, PostgreSQL, Flink, migrations, router, Python outbox/scorer, both
 Go services and Glaramara. Traffic uses Compose DNS; default host ports are `19092`, `55433`, `18081`, `18082`,
-`18083` and `3000`. `make up` migrates through `0010_glaramara_phase_c`, creates topics, ensures one of each
-Flink job, captures Python start boundaries once, then starts applications. `make down` saves both Flink jobs
+`18083` and `3000`. `make up` migrates through `0012_fraud_lab_wave_supersession`, idempotently seeds the
+initial fraud-lab wave, creates topics, ensures one of each Flink job, captures Python start boundaries once,
+then starts applications. `make fraud-lab-next-wave` optionally appends a second immutable period without a
+new service or topic. `make down` saves both Flink jobs
 and does not remove volumes.
 See `DEPLOYMENT.md`.
 
@@ -223,6 +254,13 @@ payment count needed by the deterministic rule; customer/account/location detail
 outside Flink, and the unchanged LightGBM feature schema ignores the count.
 
 ML-active mode selection is deferred to Phase B.1. LightGBM and the Go action remain shadow-only.
+
+Approved Phase D candidates are also inactive. A future engineering phase would implement a reviewed,
+versioned Java feature/signal contract, exercise deterministic and savepoint-compatibility tests, and embed
+the transaction-scoped signal in `payments.enriched.demo`, because that is the authoritative router input.
+The Python policy would explicitly recognise the new version while preserving hard-block precedence. A
+controlled rollout would monitor shadow evidence and support rollback to the prior job/policy/savepoint. No
+configuration topic, Broadcast State, generated code or dynamic compilation exists in Phase D.
 
 The live adapter is validated end to end against the TechZone development tenant through a second Glaramara
 server bound only to `127.0.0.1`. Native server-side TypeScript exchanges the ignored `.env.local` API key for

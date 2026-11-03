@@ -50,6 +50,8 @@ export default defineConfig({
           GLARAMARA_SESSION_SECRET:
             process.env.GLARAMARA_SESSION_SECRET ??
             "phase-b-playwright-only-session-secret-000000000000",
+          GLARAMARA_PUBLIC_ORIGIN: baseURL,
+          GLARAMARA_COOKIE_SECURE: "false",
         },
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,

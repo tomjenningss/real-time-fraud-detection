@@ -10,7 +10,8 @@ export type DemoLocation = {
 export type DemoSessionResponse = {
   session: {
     customerId: string;
-    demoLocationId: string;
+    demoLocationId: string | null;
+    role?: "CUSTOMER" | "FRAUD_ANALYST";
     expiresAt: string;
   };
   customers: DemoCustomer[];

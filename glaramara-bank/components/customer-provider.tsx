@@ -72,6 +72,8 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
           setLocations(response.locations);
           setCustomerId(response.session.customerId);
           setSessionReady(true);
+          if (response.session.role === "FRAUD_ANALYST") window.location.assign("/fraud-operations");
+          else if (window.location.pathname.startsWith("/fraud-operations")) window.location.assign("/");
         } catch (cause) {
           setSessionError(
             cause instanceof Error ? cause.message : "The fictional banking session could not be changed.",

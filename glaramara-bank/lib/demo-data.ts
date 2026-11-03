@@ -5,6 +5,7 @@ export type DemoCustomer = {
   firstName: string;
   lastName: string;
   initials: string;
+  role?: "CUSTOMER" | "FRAUD_ANALYST";
 };
 
 export type Transaction = {
