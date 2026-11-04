@@ -47,6 +47,7 @@ const nodePositions: Record<InvestigationStageId, { x: number; y: number }> = {
   structured_evidence: { x: 386, y: 626 },
   governed_reassessment: { x: 573, y: 626 },
   simulated_outcome: { x: 573, y: 758 },
+  customer_guidance: { x: 386, y: 758 },
 };
 
 const edges: Array<{
@@ -69,6 +70,7 @@ const edges: Array<{
   { id: "provider-structured", from: "fraud_intelligence_provider", to: "structured_evidence", path: "M363 674 H386", kind: "reassessment" },
   { id: "structured-reassessment", from: "structured_evidence", to: "governed_reassessment", path: "M550 674 H573", kind: "reassessment" },
   { id: "reassessment-outcome", from: "governed_reassessment", to: "simulated_outcome", path: "M655 722 V758", kind: "reassessment" },
+  { id: "outcome-guidance", from: "simulated_outcome", to: "customer_guidance", path: "M573 806 H550", kind: "reassessment" },
 ];
 
 export function FraudIntelligencePanel({ paymentId }: { paymentId: string }) {
@@ -224,7 +226,7 @@ export function FraudIntelligencePanel({ paymentId }: { paymentId: string }) {
             </div>
           </div>
           <div className="overflow-x-auto px-2 pb-4" data-testid="fraud-architecture-diagram">
-            <svg viewBox="0 0 750 866" className="mx-auto block min-w-[620px]" role="img" aria-label="Live fraud-platform dependency diagram">
+            <svg viewBox="0 0 750 866" className="mx-auto block w-full min-w-[620px] lg:min-w-0" role="img" aria-label="Live fraud-platform dependency diagram">
               <defs>
                 <filter id="system-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
                 <marker id="system-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#769282" /></marker>
@@ -323,6 +325,8 @@ function EvidenceDrawer({ stage, onClose }: { stage: InvestigationStage; onClose
   const summary = Array.isArray(stage.details.humanSummary)
     ? stage.details.humanSummary.filter((item): item is string => typeof item === "string") : [];
   const provenance = Array.isArray(stage.details.provenance) ? stage.details.provenance : [];
+  const contribution = asObject(stage.details.contribution);
+  const guidance = asObject(stage.details.guidance);
   const raw = stage.details.structuredResponse ?? stage.rawJson ?? stage.details;
   return (
     <div className="absolute inset-0 z-20 flex justify-end bg-[#173f332b] backdrop-blur-[2px]" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
@@ -340,6 +344,9 @@ function EvidenceDrawer({ stage, onClose }: { stage: InvestigationStage; onClose
           {stage.durationMs !== null && <Pill>{formatDuration(stage.durationMs)}</Pill>}
         </div>
         <p className="mt-4 text-[11px] leading-relaxed text-[#536b5d]">{stage.summary}</p>
+
+        {contribution && <OrchestrateContribution contribution={contribution} />}
+        {stage.id === "customer_guidance" && guidance && <GuidanceContribution guidance={guidance} />}
 
         {summary.length > 0 && (
           <div className="mt-5 rounded-[15px] border border-[#cfe2cb] bg-[linear-gradient(145deg,#eef8e9,#f9fcf7)] p-4">
@@ -385,6 +392,124 @@ function EvidenceDrawer({ stage, onClose }: { stage: InvestigationStage; onClose
   );
 }
 
+function GuidanceContribution({ guidance }: { guidance: Record<string, JsonValue> }) {
+  const rendered = asObject(guidance.rendered);
+  const templates = Array.isArray(guidance.templateReferences) ? guidance.templateReferences : [];
+  const findings = Array.isArray(guidance.evidenceFindingIds)
+    ? guidance.evidenceFindingIds.filter((item): item is string => typeof item === "string") : [];
+  const steps = Array.isArray(rendered?.steps)
+    ? rendered.steps.filter((item): item is string => typeof item === "string") : [];
+  return (
+    <div className="mt-5 space-y-3" data-testid="guidance-contribution">
+      <ContributionSection eyebrow="GOVERNED GUIDANCE · PERSISTED" title="Why this guidance was selected">
+        <dl className="grid grid-cols-[105px_1fr] gap-x-3 gap-y-2 text-[10px]">
+          <dt className="text-[#738278]">Category</dt>
+          <dd className="font-bold text-[#294b3a]">{humanise(String(guidance.category ?? "unavailable"))}</dd>
+          <dt className="text-[#738278]">Outcome</dt>
+          <dd className="font-bold text-[#294b3a]">{humanise(String(guidance.simulatedOutcome ?? "unavailable"))}</dd>
+          <dt className="text-[#738278]">Evidence</dt>
+          <dd className="break-words font-bold text-[#294b3a]">{findings.length ? findings.join(", ") : "Generic safe guidance"}</dd>
+          <dt className="text-[#738278]">Templates</dt>
+          <dd className="break-words font-bold text-[#294b3a]">{templates.map(formatJsonValue).join(" · ")}</dd>
+        </dl>
+      </ContributionSection>
+      <ContributionSection eyebrow="CUSTOMER MESSAGE · APPROVED TEMPLATE" title={String(rendered?.heading ?? "Persisted customer guidance")}>
+        <p className="text-[10px] leading-relaxed text-[#405b4b]">{String(rendered?.context ?? "Unavailable")}</p>
+        <ol className="mt-3 space-y-2 text-[10px] leading-relaxed text-[#405b4b]">
+          {steps.map((step, index) => <li className="flex gap-2" key={step}><strong>{index + 1}.</strong>{step}</li>)}
+        </ol>
+        {typeof rendered?.paymentStatus === "string" && <p className="mt-3 rounded-lg bg-[#edf5e9] p-2.5 text-[10px] font-semibold text-[#294b3a]">{rendered.paymentStatus}</p>}
+      </ContributionSection>
+    </div>
+  );
+}
+
+function OrchestrateContribution({ contribution }: {
+  contribution: Record<string, JsonValue>;
+}) {
+  const explanation = typeof contribution.customerExplanation === "string"
+    ? contribution.customerExplanation : null;
+  const findings = asObject(contribution.extractedFindings);
+  const indicators = Array.isArray(contribution.fraudIndicators)
+    ? contribution.fraudIndicators.filter((item): item is string => typeof item === "string") : [];
+  const provenance = Array.isArray(contribution.evidenceProvenance)
+    ? contribution.evidenceProvenance : [];
+  const rules = Array.isArray(contribution.matchedDeterministicRules)
+    ? contribution.matchedDeterministicRules : [];
+  const action = typeof contribution.simulatedAction === "string"
+    ? contribution.simulatedAction : "PENDING";
+  return (
+    <div className="mt-5 space-y-3" data-testid="orchestrate-contribution">
+      <ContributionSection eyebrow="CUSTOMER EVIDENCE · PERSISTED" title="What the customer said">
+        <blockquote className="border-l-2 border-[#7baa72] pl-3 text-[11px] font-semibold leading-relaxed text-[#294b3a]">
+          {explanation ?? "No free-text explanation was persisted."}
+        </blockquote>
+      </ContributionSection>
+
+      <ContributionSection eyebrow="AI EXTRACTION · NO DECISION AUTHORITY" title="What Orchestrate found">
+        <dl className="grid grid-cols-[122px_1fr] gap-x-3 gap-y-2 text-[10px]">
+          {["paymentRecognition", "beneficiaryRelationship", "paymentPurpose", "thirdPartyInfluence",
+            "verificationClaims", "uncertainty"].map((key) => (
+            <div className="contents" key={key}>
+              <dt className="text-[#738278]">{humanise(key)}</dt>
+              <dd className="break-words font-bold text-[#294b3a]">
+                {findings && key in findings ? formatJsonValue(findings[key]) : "Unavailable"}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </ContributionSection>
+
+      <ContributionSection eyebrow="AI INDICATORS · SOURCE LINKED" title="Fraud indicators and provenance">
+        <div className="flex flex-wrap gap-1.5">
+          {indicators.map((indicator) => <Pill key={indicator}>{indicator.replaceAll("_", " ")}</Pill>)}
+        </div>
+        <div className="mt-3 space-y-2">
+          {provenance.map((item, index) => (
+            <div key={index} className="rounded-lg border border-[#e0e8dd] bg-white p-2.5 text-[9px] leading-relaxed text-[#53675b]">
+              {formatJsonValue(item)}
+            </div>
+          ))}
+        </div>
+      </ContributionSection>
+
+      <ContributionSection eyebrow="DETERMINISTIC POLICY · VERSIONED" title="Matched policy conditions">
+        <div className="space-y-2">
+          {rules.map((rule, index) => (
+            <div key={index} className="rounded-lg border border-[#d9e5d5] bg-white p-3 text-[10px] leading-relaxed text-[#405b4b]">
+              {formatPolicyRule(rule)}
+            </div>
+          ))}
+          {rules.length === 0 && <p className="text-[10px] text-[#6f7f75]">No persisted rule match is available.</p>}
+        </div>
+      </ContributionSection>
+
+      <div className="rounded-[15px] border border-[#bcd4ae] bg-[#e9f4df] p-4">
+        <p className="text-[8px] font-extrabold tracking-[.13em] text-[#527348]">SIMULATED ACTION · LEDGER EFFECT NONE</p>
+        <p className="mt-1.5 text-base font-extrabold text-[#234c37]">{action.replaceAll("_", " ")}</p>
+        <p className="mt-1 text-[9px] leading-relaxed text-[#587060]">
+          Original authoritative verdict: {String(contribution.authoritativeVerdict ?? "unavailable")}.
+          Orchestrate supplied evidence only; deterministic policy selected this simulated action.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ContributionSection({ eyebrow, title, children }: {
+  eyebrow: string;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-[15px] border border-[#dce7d8] bg-[#f8fbf6] p-4">
+      <p className="text-[8px] font-extrabold tracking-[.12em] text-[#69806e]">{eyebrow}</p>
+      <h4 className="mt-1 text-[12px] font-extrabold text-[#244839]">{title}</h4>
+      <div className="mt-3">{children}</div>
+    </section>
+  );
+}
+
 function ControlButton({ children, onClick, disabled = false }: { children: React.ReactNode; onClick: () => void; disabled?: boolean }) {
   return <button type="button" onClick={onClick} disabled={disabled} className="flex items-center gap-1.5 rounded-lg border border-[#ffffff2a] bg-[#ffffff12] px-2.5 py-1.5 text-[9px] font-extrabold text-white transition hover:bg-[#ffffff20] disabled:opacity-40">{children}</button>;
 }
@@ -405,6 +530,10 @@ function isScalar(value: JsonValue): value is string | number | boolean | null {
   return value === null || ["string", "number", "boolean"].includes(typeof value);
 }
 
+function asObject(value: JsonValue | undefined): Record<string, JsonValue> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : null;
+}
+
 function humanise(value: string) {
   return value.replace(/([a-z])([A-Z])/g, "$1 $2").replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
 }
@@ -420,8 +549,31 @@ function formatDuration(value: number) {
 function formatJsonValue(value: JsonValue) {
   if (typeof value === "string") return value;
   if (value && typeof value === "object" && !Array.isArray(value) && typeof value.claim === "string") {
-    const sources = Array.isArray(value.sourceQuestionIds) ? value.sourceQuestionIds.join(", ") : "persisted response";
+    const legacySources = Array.isArray(value.sourceQuestionIds)
+      ? value.sourceQuestionIds.join(", ") : null;
+    const sources = Array.isArray(value.sources)
+      ? value.sources.map((source) => {
+          const item = asObject(source);
+          return item && typeof item.questionId === "string" && typeof item.excerpt === "string"
+            ? `${item.questionId}: “${item.excerpt}”` : null;
+        }).filter(Boolean).join(" · ")
+      : legacySources ?? "persisted response";
     return `${value.claim} · ${sources}`;
   }
   return JSON.stringify(value);
+}
+
+function formatPolicyRule(value: JsonValue) {
+  const rule = asObject(value);
+  if (!rule) return formatJsonValue(value);
+  const id = typeof rule.ruleId === "string" ? rule.ruleId : "Unknown rule";
+  const summary = typeof rule.summary === "string" ? rule.summary : "";
+  const conditions = Array.isArray(rule.conditions)
+    ? rule.conditions.map((condition) => {
+        const item = asObject(condition);
+        if (!item || typeof item.condition !== "string") return null;
+        return `${item.condition} → ${formatJsonValue(item.actual ?? null)}`;
+      }).filter(Boolean)
+    : [];
+  return [id, summary, ...conditions].filter(Boolean).join(" · ");
 }

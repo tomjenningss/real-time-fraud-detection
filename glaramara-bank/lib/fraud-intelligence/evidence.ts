@@ -2,74 +2,115 @@ import { z } from "zod";
 
 import { buildMockEvidence } from "@/lib/fraud-intelligence/mock-evidence.mjs";
 
-export const EVIDENCE_SCHEMA_VERSION = "fraud-intelligence-evidence/1.0.0";
+export const EVIDENCE_SCHEMA_VERSION = "fraud-intelligence-evidence/1.1.0";
 
-const sourceIds = z.array(z.string().min(1).max(96)).min(1).max(6);
+const questionId = z.string().min(1).max(96);
+const source = z.object({
+  questionId,
+  excerpt: z.string().min(1).max(500),
+}).strict();
 
 export const fraudEvidenceSchema = z.object({
   schemaVersion: z.literal(EVIDENCE_SCHEMA_VERSION),
   paymentRecognition: z.enum(["RECOGNISED", "NOT_RECOGNISED", "UNCERTAIN"]),
   beneficiaryRelationship: z.enum(["KNOWN", "NEW", "UNCERTAIN"]),
+  paymentPurpose: z.enum([
+    "GOODS_OR_SERVICES", "FRIENDS_OR_FAMILY", "INVESTMENT", "SAFE_ACCOUNT", "OTHER", "UNCERTAIN",
+  ]),
+  thirdPartyInfluence: z.enum([
+    "NONE", "EXPECTED", "UNEXPECTED", "BANK_IMPERSONATION", "UNCERTAIN",
+  ]),
+  verificationClaims: z.array(z.enum([
+    "MET_BENEFICIARY_IN_PERSON", "CHECKED_BENEFICIARY_DETAILS", "INVOICE_RECEIVED",
+  ])).max(3),
   scamIndicators: z.array(z.enum([
-    "UNEXPECTED_CONTACT",
-    "PRESSURE_OR_SECRECY",
-    "SAFE_ACCOUNT",
-    "IMPERSONATION",
-    "INVESTMENT",
-    "REMOTE_ACCESS",
-    "NONE",
-  ])).min(1).max(8),
+    "UNEXPECTED_CONTACT", "PRESSURE_OR_SECRECY", "URGENCY", "SAFE_ACCOUNT",
+    "BANK_IMPERSONATION", "THIRD_PARTY_BENEFICIARY", "INVESTMENT", "REMOTE_ACCESS", "NONE",
+  ])).min(1).max(9),
   contradictions: z.array(z.object({
     summary: z.string().min(1).max(240),
-    sourceQuestionIds: sourceIds,
-  })).max(6),
+    sourceQuestionIds: z.array(questionId).min(1).max(6),
+  }).strict()).max(6),
   uncertainty: z.enum(["LOW", "MEDIUM", "HIGH"]),
-  missingEvidence: z.array(z.string().min(1).max(96)).max(8),
+  missingEvidence: z.array(questionId).max(8),
   provenance: z.array(z.object({
+    findingId: z.string().min(1).max(96),
     claim: z.string().min(1).max(240),
-    sourceQuestionIds: sourceIds,
-  })).min(1).max(16),
+    sources: z.array(source).min(1).max(6),
+  }).strict()).min(4).max(24),
   clarificationQuestion: z.object({
     needed: z.boolean(),
     id: z.string().max(80),
     prompt: z.string().max(200),
     options: z.array(z.string().min(1).max(80)).max(4),
     reason: z.string().max(160),
-  }),
+  }).strict(),
 }).strict().superRefine((value, context) => {
-  if (new Set(value.scamIndicators).size !== value.scamIndicators.length) {
-    context.addIssue({ code: "custom", path: ["scamIndicators"], message: "Indicators must be unique" });
+  for (const [path, values] of [
+    ["verificationClaims", value.verificationClaims],
+    ["scamIndicators", value.scamIndicators],
+    ["missingEvidence", value.missingEvidence],
+  ] as const) {
+    if (new Set(values).size !== values.length) {
+      context.addIssue({ code: "custom", path: [path], message: `${path} values must be unique` });
+    }
   }
   if (value.scamIndicators.includes("NONE") && value.scamIndicators.length > 1) {
     context.addIssue({ code: "custom", path: ["scamIndicators"], message: "NONE is exclusive" });
   }
-  const hasSource = (questionId: string) => value.provenance.some(
-    (item) => item.sourceQuestionIds.includes(questionId),
-  );
-  for (const questionId of ["payment_recognition", "beneficiary_relationship"]) {
-    if (!hasSource(questionId)) {
+  const findingIds = new Set(value.provenance.map((item) => item.findingId));
+  if (findingIds.size !== value.provenance.length) {
+    context.addIssue({
+      code: "custom",
+      path: ["provenance"],
+      message: "Each findingId may appear only once",
+    });
+  }
+  const requiredFindingIds = [
+    "paymentRecognition",
+    "beneficiaryRelationship",
+    "paymentPurpose",
+    "thirdPartyInfluence",
+    ...value.verificationClaims.map((item) => `verificationClaim:${item}`),
+    ...value.scamIndicators.filter((item) => item !== "NONE").map((item) => `scamIndicator:${item}`),
+  ];
+  for (const findingId of requiredFindingIds) {
+    if (!findingIds.has(findingId)) {
       context.addIssue({
         code: "custom",
         path: ["provenance"],
-        message: `Provenance must support ${questionId}`,
+        message: `Provenance must support ${findingId}`,
       });
     }
   }
-  const indicatorSources: Partial<Record<(typeof value.scamIndicators)[number], string>> = {
-    UNEXPECTED_CONTACT: "contact_influence",
-    PRESSURE_OR_SECRECY: "pressure_or_secrecy",
-    SAFE_ACCOUNT: "payment_purpose",
-    IMPERSONATION: "contact_influence",
-    INVESTMENT: "payment_purpose",
-    REMOTE_ACCESS: "remote_access",
+  const allowedSources = (findingId: string): Set<string> => {
+    const fixed: Record<string, string[]> = {
+      paymentRecognition: ["payment_recognition"],
+      beneficiaryRelationship: ["beneficiary_relationship"],
+      paymentPurpose: ["payment_purpose", "payment_circumstances", "other_purpose"],
+      thirdPartyInfluence: ["contact_influence", "payment_circumstances"],
+      "scamIndicator:UNEXPECTED_CONTACT": ["contact_influence", "payment_circumstances"],
+      "scamIndicator:PRESSURE_OR_SECRECY": ["pressure_or_secrecy", "payment_circumstances"],
+      "scamIndicator:URGENCY": ["payment_circumstances", "pressure_or_secrecy"],
+      "scamIndicator:SAFE_ACCOUNT": ["payment_purpose", "payment_circumstances"],
+      "scamIndicator:BANK_IMPERSONATION": ["payment_circumstances", "contact_influence"],
+      "scamIndicator:THIRD_PARTY_BENEFICIARY": ["payment_circumstances"],
+      "scamIndicator:INVESTMENT": ["payment_purpose", "payment_circumstances"],
+      "scamIndicator:REMOTE_ACCESS": ["remote_access", "payment_circumstances"],
+      "scamIndicator:NONE": ["contact_influence", "payment_circumstances"],
+    };
+    if (findingId.startsWith("verificationClaim:")) {
+      return new Set(["payment_circumstances", "other_purpose"]);
+    }
+    return new Set(fixed[findingId] ?? []);
   };
-  for (const indicator of value.scamIndicators) {
-    const questionId = indicatorSources[indicator];
-    if (questionId && !hasSource(questionId)) {
+  for (const item of value.provenance) {
+    const allowed = allowedSources(item.findingId);
+    if (allowed.size === 0 || item.sources.some((itemSource) => !allowed.has(itemSource.questionId))) {
       context.addIssue({
         code: "custom",
-        path: ["provenance"],
-        message: `Provenance must support ${indicator}`,
+        path: ["provenance", item.findingId],
+        message: `Finding ${item.findingId} cites an unsupported question`,
       });
     }
   }
@@ -105,6 +146,27 @@ export type MinimalInvestigationContext = {
   answers: Array<{ questionId: string; value: string; provenance: "CUSTOMER" }>;
 };
 
+export function validateFraudEvidence(
+  candidate: unknown,
+  context: MinimalInvestigationContext,
+): FraudEvidence {
+  const evidence = fraudEvidenceSchema.parse(candidate);
+  const answers = new Map(context.answers.map((answer) => [answer.questionId, answer.value]));
+  for (const item of evidence.provenance) {
+    for (const cited of item.sources) {
+      const answer = answers.get(cited.questionId);
+      if (!answer || !answer.includes(cited.excerpt)) {
+        throw new z.ZodError([{
+          code: "custom",
+          path: ["provenance", item.findingId, "sources"],
+          message: `Provenance excerpt is not present in ${cited.questionId}`,
+        }]);
+      }
+    }
+  }
+  return evidence;
+}
+
 export function mockedEvidence(context: MinimalInvestigationContext): FraudEvidence {
-  return fraudEvidenceSchema.parse(buildMockEvidence(context));
+  return validateFraudEvidence(buildMockEvidence(context), context);
 }

@@ -1,8 +1,8 @@
 import "server-only";
 
 import {
-  fraudEvidenceSchema,
   mockedEvidence,
+  validateFraudEvidence,
   type FraudEvidence,
   type MinimalInvestigationContext,
 } from "@/lib/fraud-intelligence/evidence";
@@ -69,7 +69,7 @@ function findSchemaEvidence(value: unknown): unknown | undefined {
   }
   if (value && typeof value === "object") {
     const record = value as Record<string, unknown>;
-    if (record.schemaVersion === "fraud-intelligence-evidence/1.0.0") return record;
+    if (record.schemaVersion === "fraud-intelligence-evidence/1.1.0") return record;
     for (const item of Object.values(record)) {
       const evidence = findSchemaEvidence(item);
       if (evidence !== undefined) return evidence;
@@ -113,7 +113,7 @@ export async function extractFraudEvidence(context: MinimalInvestigationContext)
     return {
       evidence: mockedEvidence(context),
       provider: "deterministic-fixture",
-      model: "mock-fraud-intelligence/1.0.0",
+      model: "mock-fraud-intelligence/1.1.0",
       latencyMs: Math.max(0, Math.round(performance.now() - started)),
     };
   }
@@ -123,7 +123,7 @@ export async function extractFraudEvidence(context: MinimalInvestigationContext)
   const envelope = await runRestAdapter(context);
   if (!envelope.ok) throw new Error(`Fraud Intelligence failed: ${envelope.errorType ?? "UNKNOWN"}`);
   return {
-    evidence: fraudEvidenceSchema.parse(envelope.evidence),
+    evidence: validateFraudEvidence(envelope.evidence, context),
     provider: "watsonx-orchestrate-rest",
     model: process.env.FRAUD_INTELLIGENCE_MODEL?.trim() || "groq/openai/gpt-oss-120b",
     latencyMs: envelope.latencyMs ?? 0,

@@ -40,11 +40,9 @@ test("payment UI submits idempotently and contains no client-side verdict rules"
   assert.match(payment, /useSearchParams/);
   assert.match(payment, /requestedBeneficiaryId/);
   assert.match(payment, /Change recipient/);
-  assert.match(payment, /Submit fictional payment/);
-  assert.match(payment, /never moves money or changes this account balance/);
+  assert.match(payment, /Send payment/);
   assert.match(status, /payment\?\.status/);
-  assert.match(status, /immutable Python decision alone controls/);
-  assert.match(status, /cannot change or relax the result above/);
+  assert.match(status, /This payment has not been sent/);
   assert.match(status, /authoritativePending \|\| \(!shadowFinished && polls < 80\)/);
   assert.match(status, /polls < 80 \? 1_500 : 10_000/);
   assert.doesNotMatch(payment, /amount\s*>?=\s*(5000|10000|20000|25000)/);
@@ -58,6 +56,6 @@ test("navigation provides both desktop and mobile banking access", () => {
     assert.match(shell, new RegExp(label));
   }
   assert.match(shell, /Mobile navigation/);
-  assert.match(shell, /Fictional demo account/);
-  assert.match(shell, /INTERACTIVE DEMO/);
+  assert.match(shell, /Demo account/);
+  assert.doesNotMatch(shell, /INTERACTIVE DEMO|Fictional demo account/);
 });

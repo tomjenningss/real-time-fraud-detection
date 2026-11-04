@@ -48,7 +48,7 @@ def _find_evidence(value: Any) -> dict[str, Any] | None:
                 return found
         return None
     if isinstance(value, dict):
-        if value.get("schemaVersion") == "fraud-intelligence-evidence/1.0.0":
+        if value.get("schemaVersion") == "fraud-intelligence-evidence/1.1.0":
             return value
         for item in value.values():
             found = _find_evidence(item)

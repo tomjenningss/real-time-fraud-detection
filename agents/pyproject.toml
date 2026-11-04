@@ -36,6 +36,8 @@ fraud-outbox-publisher = "fraud_agents.outbox_service:main"
 fraud-ml = "fraud_agents.ml.cli:main"
 fraud-shadow-scorer = "fraud_agents.ml.consumer:main"
 fraud-lab-seed = "fraud_agents.fraud_lab.seed:main"
+fraud-agentic-lab-seed = "fraud_agents.fraud_lab.agentic_seed:main"
+fraud-lab-dataset-worker = "fraud_agents.fraud_lab.dataset_worker:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/fraud_agents"]

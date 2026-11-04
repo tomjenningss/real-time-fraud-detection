@@ -25,20 +25,23 @@ wait_for_health jobmanager 36
 
 "$repo_dir/deployment/capture_offsets.sh"
 
-echo "Starting Python, Go and Glaramara application services"
+echo "Starting Python, Go, Glaramara and Control Center application services"
 compose up -d \
-  fraud-router outbox-publisher lightgbm-scorer \
-  fraud-assessment-correlator fraud-decision-engine glaramara-bank
+  fraud-router outbox-publisher lightgbm-scorer fraud-lab-dataset-worker \
+  fraud-assessment-correlator fraud-decision-engine glaramara-bank control-center
 
 wait_for_health fraud-router 36
 wait_for_health outbox-publisher 36
 wait_for_health lightgbm-scorer 36
+wait_for_health fraud-lab-dataset-worker 36
 wait_for_health fraud-assessment-correlator 36
 wait_for_health fraud-decision-engine 36
 wait_for_health glaramara-bank 36
+wait_for_health control-center 72
 wait_for_log fraud-router '"event":"router_ready"' 30
 wait_for_log outbox-publisher '"event":"outbox_ready"' 30
 wait_for_log lightgbm-scorer '"event": "shadow_scorer_ready"' 30
+wait_for_log fraud-lab-dataset-worker '"event": "fraud_lab_dataset_worker_ready"' 30
 wait_for_log fraud-assessment-correlator 'correlator ready' 30
 wait_for_log fraud-decision-engine 'shadow decision engine ready' 30
 

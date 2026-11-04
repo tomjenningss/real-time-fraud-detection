@@ -124,6 +124,9 @@ type ReassessmentRow = {
   outcome: string;
   reason_codes: unknown;
   evidence_snapshot: JsonObject;
+  policy_trace: unknown;
+  guidance_contract_version: string | null;
+  guidance_payload: JsonObject | null;
   reassessed_at: Date;
 };
 
@@ -205,6 +208,17 @@ function humanEvidenceSummary(payload: JsonObject | null): string[] {
   }
   if (typeof payload.beneficiaryRelationship === "string") {
     summary.push(`Beneficiary relationship: ${payload.beneficiaryRelationship.replaceAll("_", " ").toLowerCase()}.`);
+  }
+  if (typeof payload.paymentPurpose === "string") {
+    summary.push(`Payment purpose: ${payload.paymentPurpose.replaceAll("_", " ").toLowerCase()}.`);
+  }
+  if (typeof payload.thirdPartyInfluence === "string") {
+    summary.push(`Third-party influence: ${payload.thirdPartyInfluence.replaceAll("_", " ").toLowerCase()}.`);
+  }
+  if (Array.isArray(payload.verificationClaims) && payload.verificationClaims.length > 0) {
+    summary.push(`Customer-stated verification: ${payload.verificationClaims
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.replaceAll("_", " ").toLowerCase()).join(", ")}.`);
   }
   if (Array.isArray(payload.scamIndicators)) {
     const indicators = payload.scamIndicators.filter((item): item is string => typeof item === "string");
@@ -319,7 +333,8 @@ export async function getFraudIntelligenceView(
         `, [customerInvestigation.customer_investigation_id]),
         query<ReassessmentRow>(`
           SELECT reassessment_id, extraction_id, policy_version, outcome, reason_codes,
-                 evidence_snapshot, reassessed_at
+                 evidence_snapshot, policy_trace, guidance_contract_version,
+                 guidance_payload, reassessed_at
           FROM customer_fraud_reassessments
           WHERE customer_investigation_id = $1 ORDER BY reassessed_at, reassessment_id
         `, [customerInvestigation.customer_investigation_id]),
@@ -417,7 +432,17 @@ export async function getFraudIntelligenceView(
       observedAt: iso(customerInvestigation?.updated_at),
       durationMs: customerInvestigation ? duration(customerInvestigation.started_at, customerInvestigation.questionnaire_completed_at) : null,
       evidenceReferences: customerInvestigation ? [`customer-investigation:${customerInvestigation.customer_investigation_id}`] : [],
-      details: jsonObject(customerInvestigation ? { investigationId: customerInvestigation.customer_investigation_id, questionnaireVersion: customerInvestigation.questionnaire_version, status: customerInvestigation.status, answers: answers.rows.map((answer) => ({ questionId: answer.question_id, source: answer.question_source, answeredAt: iso(answer.answered_at) })) } : {}),
+      details: jsonObject(customerInvestigation ? {
+        investigationId: customerInvestigation.customer_investigation_id,
+        questionnaireVersion: customerInvestigation.questionnaire_version,
+        status: customerInvestigation.status,
+        answers: answers.rows.map((answer) => ({
+          questionId: answer.question_id,
+          value: typeof answer.answer_payload.value === "string" ? answer.answer_payload.value : null,
+          source: answer.question_source,
+          answeredAt: iso(answer.answered_at),
+        })),
+      } : {}),
     }));
 
   const providerIsWatsonx = latestExtraction?.provider === "watsonx-orchestrate-rest";
@@ -451,6 +476,25 @@ export async function getFraudIntelligenceView(
         errorType: latestExtraction.error_type,
         provenance: latestExtraction.response_payload?.provenance ?? [],
         structuredResponse: latestExtraction.response_payload,
+        contribution: {
+          customerResponses: answers.rows.map((answer) => ({
+            questionId: answer.question_id,
+            value: typeof answer.answer_payload.value === "string" ? answer.answer_payload.value : null,
+            answeredAt: iso(answer.answered_at),
+          })),
+          customerExplanation: answers.rows.find(
+            (answer) => answer.question_id === "payment_circumstances",
+          )?.answer_payload.value ?? null,
+          extractedFindings: latestExtraction.response_payload,
+          fraudIndicators: latestExtraction.response_payload?.scamIndicators ?? [],
+          evidenceProvenance: latestExtraction.response_payload?.provenance ?? [],
+          matchedDeterministicRules: latestReassessment?.policy_trace ?? [],
+          simulatedAction: latestReassessment?.outcome ?? null,
+          policyVersion: latestReassessment?.policy_version ?? null,
+          customerGuidance: latestReassessment?.guidance_payload ?? null,
+          authoritativeVerdict: base.payment_status,
+          ledgerEffect: "NONE",
+        },
       } : {}),
     }));
 
@@ -474,7 +518,7 @@ export async function getFraudIntelligenceView(
       : challenged ? "No governed reassessment has been recorded." : "Not applicable.", {
       occurredAt: iso(latestReassessment?.reassessed_at), observedAt: iso(latestReassessment?.reassessed_at),
       evidenceReferences: latestReassessment ? [`reassessment:${latestReassessment.reassessment_id}`] : [],
-      details: jsonObject(latestReassessment ? { policyVersion: latestReassessment.policy_version, reasonCodes: latestReassessment.reason_codes, evidenceSnapshot: latestReassessment.evidence_snapshot, originalVerdict: base.payment_status, immutableOriginalDecision: true } : {}),
+      details: jsonObject(latestReassessment ? { policyVersion: latestReassessment.policy_version, reasonCodes: latestReassessment.reason_codes, policyTrace: latestReassessment.policy_trace, evidenceSnapshot: latestReassessment.evidence_snapshot, originalVerdict: base.payment_status, immutableOriginalDecision: true } : {}),
     }));
   stages.push(stage("simulated_outcome", "Glaramara", "Simulated outcome", "REASSESSMENT",
     !challenged ? "NOT_APPLICABLE" : latestReassessment ? "COMPLETE" : customerInvestigation?.status === "FAILED" ? "FAILED" : "PENDING",
@@ -484,6 +528,33 @@ export async function getFraudIntelligenceView(
       occurredAt: iso(latestReassessment?.reassessed_at), observedAt: iso(latestReassessment?.reassessed_at),
       evidenceReferences: latestReassessment ? [`reassessment:${latestReassessment.reassessment_id}`] : [],
       details: jsonObject(latestReassessment ? { outcome: latestReassessment.outcome, ledgerEffect: "NONE", simulated: true, originalVerdict: base.payment_status } : {}),
+    }));
+  const guidanceStatus: InvestigationStageStatus = !challenged ? "NOT_APPLICABLE"
+    : latestReassessment?.guidance_payload ? "COMPLETE"
+      : latestReassessment ? "NOT_OBSERVED"
+        : customerInvestigation?.status === "FAILED" ? "FAILED" : "PENDING";
+  stages.push(stage("customer_guidance", "Glaramara", "Prevention guidance", "REASSESSMENT",
+    guidanceStatus, latestReassessment?.guidance_payload ? "DIRECT" : "UNOBSERVED",
+    latestReassessment?.guidance_payload
+      ? `${latestReassessment.guidance_contract_version} selected and rendered persisted customer guidance.`
+      : latestReassessment ? "This historical reassessment predates persisted customer guidance."
+        : challenged ? "No persisted customer guidance is available yet." : "Not applicable.", {
+      occurredAt: iso(latestReassessment?.guidance_payload ? latestReassessment.reassessed_at : null),
+      observedAt: iso(latestReassessment?.guidance_payload ? latestReassessment.reassessed_at : null),
+      evidenceReferences: latestReassessment?.guidance_payload
+        ? [`reassessment:${latestReassessment.reassessment_id}`, ...(
+            Array.isArray(latestReassessment.guidance_payload.evidenceFindingIds)
+              ? latestReassessment.guidance_payload.evidenceFindingIds.map((id) => `finding:${id}`)
+              : []
+          )] : [],
+      details: jsonObject(latestReassessment?.guidance_payload ? {
+        contractVersion: latestReassessment.guidance_contract_version,
+        guidance: latestReassessment.guidance_payload,
+        sourcePolicyVersion: latestReassessment.policy_version,
+        sourcePolicyTrace: latestReassessment.policy_trace,
+        persisted: true,
+        regeneratedOnReplay: false,
+      } : { historicalRecord: Boolean(latestReassessment), regeneratedOnReplay: false }),
     }));
 
   events.push(
@@ -513,6 +584,7 @@ export async function getFraudIntelligenceView(
   for (const reassessment of reassessments.rows) {
     events.push(timelineEvent(`reassessment:${reassessment.reassessment_id}`, "governed_reassessment", "COMPLETE", reassessment.reassessed_at, "Governed reassessment completed", `reassessment:${reassessment.reassessment_id}`));
     events.push(timelineEvent(`outcome:${reassessment.reassessment_id}`, "simulated_outcome", "COMPLETE", reassessment.reassessed_at, `Simulated outcome: ${reassessment.outcome}`, `reassessment:${reassessment.reassessment_id}`));
+    if (reassessment.guidance_payload) events.push(timelineEvent(`guidance:${reassessment.reassessment_id}`, "customer_guidance", "COMPLETE", reassessment.reassessed_at, "Persisted prevention guidance selected", `reassessment:${reassessment.reassessment_id}`));
   }
   events.sort((left, right) => left.occurredAt.localeCompare(right.occurredAt) || left.id.localeCompare(right.id));
 

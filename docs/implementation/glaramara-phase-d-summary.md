@@ -10,6 +10,26 @@ snapshot-bound discovery runs, validated candidates, backtests and append-only r
 append-only supersession records so a flawed immutable simulation wave can be preserved but excluded from new
 snapshots. No Phase D table references customer banking, the shared outbox, balances or payment decisions.
 
+### Configurable dataset extension (4 November 2026)
+
+Alembic `0017_fraud_lab_datasets` adds immutable dataset metadata/membership, one explicit active selection
+per environment and append-only activation events without changing the wave/supersession model. Revision
+`0018_dataset_run_backfill` associates a legacy run only when its exact one-wave snapshot ID and row count
+match the backfilled dataset; it does not change evidence, hashes or results. Revision
+`0019_active_dataset_integrity` rejects cross-environment selection and deletion of the singleton active
+pointer. New runs persist the selected
+dataset ID and snapshot only its member waves.
+
+The dedicated `fraud-lab-dataset-worker` reuses the Python generator and supports only 8,000, 10,000 and
+20,000 rows. Generation and activation are analyst-only, idempotent and independent of analysis. One request
+may execute per environment; failed/interrupted work is terminal and leaves no partial wave. The UI makes
+generation, explicit activation and the separate Orchestrate/backtest action distinct.
+
+Observed API-to-`READY` timings were 1.546 s, 1.945 s and 2.979 s respectively; generator-only timings were
+0.226 s, 0.281 s and 0.565 s. All three counts and digests were exact and deterministic. Activation isolation,
+historical-run equality, concurrent rejection, idempotent replay and stale-worker recovery passed without a
+live Orchestrate request.
+
 The initial generator uses Python 3.11, a fixed seed, UUIDv5 identities and raw chronological events. Complete
 customer/scenario groups receive a 70/30 discovery/evaluation assignment. It includes ordinary activity,
 existing velocity/hopping/high-value cases, fraud-labelled extended payments to several new beneficiaries,
@@ -43,6 +63,11 @@ The signed demo session is backward compatible. Only the server-recognised
 The dashboard displays waves, runs, evidence, conditions, examples and honest backtest trade-offs. Reviews
 derive the reviewer from the signed session and are terminal append-only records. The only approval state is
 `APPROVED_FOR_IMPLEMENTATION`.
+
+From a running deployment configured with `FRAUD_RULE_DISCOVERY_PROVIDER=orchestrate`,
+`make fraud-lab-live-analysis` selects the signed analyst persona and exercises the same protected API used
+by the UI. It fails closed unless the persisted run records `watsonx-orchestrate-rest`, then prints snapshot,
+proposal, duplicate and backtest provenance. It never submits an analyst review or activates a rule.
 
 ## Live result
 
@@ -144,6 +169,15 @@ runs, including the two-wave run, passed the strict contract.
 The dashboard now labels 14,000 as the current active dataset and labels each run count as its historical
 snapshot. When an 8,000-row run is opened, the detail shows both “Historical analysis snapshot: 8,000” and
 “Current active dataset: 14,000.” Focused desktop/mobile Playwright coverage passes for this distinction.
+
+On 3 November 2026, the new Make journey completed as run
+`34f2cc12-264d-4aa2-9429-ba4ca596fa4b` against both active waves and all 14,000 rows. Orchestrate proposed
+`FRD-001`, requiring at least three distinct new beneficiaries and at least GBP 500 total to new
+beneficiaries in 24 hours. Its canonical fingerprint exactly duplicated candidate
+`cda93d8c-418d-45bf-a139-4efe24880085`. On the 4,200-row holdout, baseline TP/FP/TN/FN was
+44/12/3936/208; candidate-only was 68/65/3883/184; combined was 88/70/3878/164. The duplicate added 44
+fraud detections and 58 genuine challenges beyond baseline, with 31 overlapping detections. It remains
+`BACKTESTED`; the command performed no review or deployment.
 
 ## Future Flink activation design
 

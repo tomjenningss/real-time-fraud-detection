@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, ShieldCheck, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 
@@ -115,12 +115,6 @@ export default function BeneficiariesPage() {
         )}
       </div>
 
-      <Card className="mt-5 flex items-start gap-3 border-[#d9e8d4] bg-[#e8f1e5] p-4">
-        <ShieldCheck className="mt-0.5 size-5 shrink-0 text-[#2f704c]" aria-hidden="true" />
-        <p className="text-[11px] leading-relaxed text-[#47634f]">
-          Names, account numbers and payment histories are fictional. Beneficiaries persist, but simulated payments never move money.
-        </p>
-      </Card>
     </section>
   );
 }

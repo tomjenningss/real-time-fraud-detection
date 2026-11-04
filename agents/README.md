@@ -106,6 +106,35 @@ RUN_ML_KAFKA_INTEGRATION=1 KAFKA_BOOTSTRAP_SERVERS=localhost:9092 \
 
 ## Glaramara Phase B banking schema and outbox
 
+## Agentic investigation laboratory foundation
+
+Revision `0016_agentic_lab` adds a separate immutable synthetic laboratory for a future tool-using Fraud
+Investigation Agent. It does not replace Phase D and has no foreign keys or write paths to banking,
+decisions, Kafka, or customer Fraud Intelligence. Future waves contain group-safe `DISCOVERY`, `VALIDATION`,
+and `FINAL_HOLDOUT` partitions. The current seed command is idempotent:
+
+```sh
+DATABASE_URL=postgresql://... .venv/bin/fraud-agentic-lab-seed
+```
+
+Only future machine-authenticated investigation tools may query discovery and validation data. Final holdout
+access remains intentionally unimplemented until candidate freezing and one-shot evaluation are enforced.
+
+## Configurable Phase D Fraud Lab datasets
+
+Revisions `0017_fraud_lab_datasets`, `0018_dataset_run_backfill` and `0019_active_dataset_integrity` preserve
+the existing immutable Phase D
+waves while adding versioned dataset manifests, explicit per-environment activation and append-only activation
+events. The migration backfills the existing 8,000-row wave; matching historical runs gain only a dataset
+reference, while their snapshot manifest, digest, proposal and backtest remain unchanged.
+
+`fraud-lab-dataset-worker` is a fixed-purpose PostgreSQL worker using the existing
+`fraud_agents.fraud_lab.synthetic` generator. It accepts no command text or arbitrary Python. Only 8,000,
+10,000 and 20,000 rows with the versioned `multi_new_beneficiary` scenario are supported. The API owns
+request validation and idempotency; the worker claims one request, generates one immutable wave and commits
+the wave, rows, membership and terminal `READY` state atomically. Failed work leaves no partial wave and
+stale `GENERATING` claims fail closed for safe retry with a new idempotency key.
+
 Alembic revision `0006_glaramara_banking` adds persistent fictional customers, accounts, beneficiaries,
 allowlisted demo locations, immutable booked transactions and immutable simulated payment-attempt records.
 It seeds deterministic Alex Morgan, Priya Shah and Daniel Evans fixtures. Demo balances, booked rows and

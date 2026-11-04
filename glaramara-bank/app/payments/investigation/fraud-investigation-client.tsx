@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, ChevronRight, RefreshCw, ShieldCheck, ShieldX } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronRight, Headphones, RefreshCw, ShieldCheck, ShieldX } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -131,7 +131,7 @@ export function FraudInvestigationClient() {
         </div>
         <h2 className="text-2xl font-bold tracking-[-.6px]">A quick security check</h2>
         <p className="mt-2 max-w-[560px] text-xs leading-relaxed text-[#59695e]">
-          We’ll ask only the questions relevant to this payment. Your answers become evidence for a controlled reassessment; they never override the original fraud decision by themselves.
+          We’ll ask only the questions relevant to this payment. The payment has not been sent while we complete these checks.
         </p>
         {error && <p className="mt-4 text-xs text-[#9a403b]" role="alert">{error}</p>}
         <div className="mt-6 flex flex-wrap gap-2.5">
@@ -234,21 +234,75 @@ function QuestionForm({ question, busy, onSubmit }: {
 function ResolutionCard({ investigation }: {
   investigation: FraudInvestigation;
 }) {
-  const outcome = investigation.resolution!.outcome;
-  const content = outcome === "CLEARED"
-    ? { title: "Security check complete", body: "This payment passed our additional security checks. No money has moved as part of this demonstration.", icon: CheckCircle2, colour: "text-[#2f7448] bg-[#e8f5e7]" }
+  const [reviewRequested, setReviewRequested] = useState(false);
+  const resolution = investigation.resolution!;
+  const outcome = resolution.outcome;
+  const guidance = resolution.guidance;
+  const fallback = outcome === "ADDITIONAL_VERIFICATION"
+    ? {
+        title: "We need to verify the beneficiary",
+          body: "We need to verify the beneficiary before this payment can continue. The payment has not been sent.",
+        icon: ShieldCheck,
+        colour: "text-[#2f7448] bg-[#e8f5e7]",
+      }
+    : outcome === "CLEARED"
+    ? { title: "Security check complete", body: "This payment passed our additional security checks.", icon: CheckCircle2, colour: "text-[#2f7448] bg-[#e8f5e7]" }
     : outcome === "DECLINED"
-      ? { title: "We can’t approve this payment", body: "Based on the answers you provided, this payment hasn’t passed our security checks. No money has left your account.", icon: ShieldX, colour: "text-[#9a403b] bg-[#fbe8e6]" }
-      : { title: "We need to keep this payment on hold", body: "We couldn’t complete enough checks to approve this payment. No money has left your account.", icon: AlertTriangle, colour: "text-[#8a6421] bg-[#fff4dc]" };
-  const Icon = content.icon;
+      ? {
+          title: "We’ve stopped this payment to help keep your money safe",
+          body: "We stopped this payment. No money was sent. End any unexpected contact and check the request another way.",
+          icon: ShieldX,
+          colour: "text-[#9a403b] bg-[#fbe8e6]",
+        }
+      : outcome === "REFER_TO_ANALYST"
+        ? { title: "We need to review this further", body: "We couldn’t complete enough checks to approve this payment. It has not been sent.", icon: AlertTriangle, colour: "text-[#8a6421] bg-[#fff4dc]" }
+        : { title: "We need to keep this payment on hold", body: "We couldn’t complete enough checks to approve this payment. No money has left your account.", icon: AlertTriangle, colour: "text-[#8a6421] bg-[#fff4dc]" };
+  const Icon = outcome === "DECLINED" ? ShieldX : fallback.icon;
+  const colour = outcome === "DECLINED" ? "text-[#9a403b] bg-[#fbe8e6]" : fallback.colour;
   return (
     <Card className="max-w-[680px] p-6 md:p-8" aria-live="polite">
-      <div className={`grid size-[66px] place-items-center rounded-[20px] ${content.colour}`}><Icon className="size-8" aria-hidden="true" /></div>
-      <h2 className="mt-4 text-2xl font-bold tracking-[-.6px]">{content.title}</h2>
-      <p className="mt-2 text-xs leading-relaxed text-[#59695e]">{content.body}</p>
-      <div className="mt-5 rounded-[11px] border border-[#e3ecd9] bg-[#f0f6e9] p-[14px] text-[11px] leading-relaxed text-[#4f6658]">
-        This was a simulated payment. Your balance has not changed.
-      </div>
+      <div className={`grid size-[66px] place-items-center rounded-[20px] ${colour}`}><Icon className="size-8" aria-hidden="true" /></div>
+      <h2 className="mt-4 text-2xl font-bold tracking-[-.6px]">{outcome === "DECLINED" ? fallback.title : guidance?.rendered.heading ?? fallback.title}</h2>
+      {guidance?.customerStatement && (
+        <div className="mt-4 rounded-xl border border-[#dfe8dc] bg-[#f8fbf6] p-4">
+          <p className="text-[10px] font-extrabold uppercase tracking-[.1em] text-[#4f6658]">What you told us</p>
+          <blockquote className="mt-2 border-l-2 border-[#78a86e] pl-3 text-xs font-semibold leading-relaxed text-[#294b3a]">
+            “{guidance.customerStatement}”
+          </blockquote>
+        </div>
+      )}
+      <p className="mt-4 text-sm leading-relaxed text-[#405b4b]">{guidance?.rendered.context ?? fallback.body}</p>
+      {guidance && (
+        <ol className="mt-5 space-y-3">
+          {guidance.rendered.steps.map((step, index) => (
+            <li className="flex gap-3 text-sm leading-relaxed text-[#294b3a]" key={step}>
+              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[#e7f1df] text-[11px] font-extrabold text-[#36684b]">{index + 1}</span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+      {guidance && (
+        <div className="mt-5 rounded-xl border border-[#eadfbd] bg-[#fff9e9] p-4 text-xs leading-relaxed text-[#66542d]">
+          <strong className="block text-[#55451f]">Payment status</strong>
+          <span className="mt-1 block">{guidance.rendered.paymentStatus}</span>
+        </div>
+      )}
+      {outcome !== "CLEARED" && (
+        <section className="mt-5 rounded-xl border border-[#dfe5dc] bg-[#fbfcfa] p-4" aria-labelledby="specialist-review-heading">
+          <h3 id="specialist-review-heading" className="text-sm font-bold text-[#243f33]">Think this payment is genuine?</h3>
+          <p className="mt-1.5 text-xs leading-relaxed text-[#647269]">If you’ve independently checked the request, you can ask for a specialist review.</p>
+          <Button className="mt-3 w-full" variant="secondary" type="button" disabled={reviewRequested} onClick={() => setReviewRequested(true)}>
+            <Headphones className="mr-2 size-4" aria-hidden="true" />
+            {reviewRequested ? "Review request noted" : "Request a fraud specialist review"}
+          </Button>
+          {reviewRequested ? (
+            <p className="mt-3 text-[11px] leading-relaxed text-[#53695b]" role="status">Demo acknowledgement: your request has been noted on this page only. No fraud specialist has been contacted and nothing has been stored.</p>
+          ) : (
+            <p className="mt-3 text-[11px] leading-relaxed text-[#7a867e]">This demonstration is not connected to a specialist review service.</p>
+          )}
+        </section>
+      )}
       <div className="mt-6 flex flex-wrap gap-2.5">
         <Button variant="secondary" asChild><Link href={`/payments/status?paymentId=${encodeURIComponent(investigation.paymentId)}`}>View payment</Link></Button>
         <Button variant="secondary" asChild><Link href="/">Overview</Link></Button>

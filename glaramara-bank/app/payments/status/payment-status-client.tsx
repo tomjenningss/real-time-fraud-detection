@@ -26,28 +26,28 @@ const statusContent = {
   PENDING: {
     badge: "PENDING",
     title: "We’re checking this payment",
-    description: "The payment is safely queued while the fraud platform produces its authoritative decision.",
+    description: "Your payment details are safe while we complete our checks.",
     icon: Clock3,
     colour: "bg-[#edf3e9] text-[#49735b]",
   },
   APPROVED: {
     badge: "APPROVED",
     title: "Payment approved",
-    description: "The deterministic fraud policy approved this fictional payment.",
+    description: "We’ve completed our checks and approved this payment.",
     icon: CheckCircle2,
     colour: "bg-[#e8f5e7] text-[#2f7448]",
   },
   CHALLENGED: {
     badge: "CHALLENGED",
     title: "Payment needs an extra check",
-    description: "The deterministic fraud policy selected a challenge. No money has moved.",
+    description: "We need a little more information. This payment has not been sent.",
     icon: ShieldAlert,
     colour: "bg-[#fff4dc] text-[#8a6421]",
   },
   BLOCKED: {
     badge: "BLOCKED",
     title: "Payment blocked",
-    description: "The deterministic fraud policy blocked this fictional payment.",
+    description: "We couldn’t approve this payment. It has not been sent.",
     icon: ShieldX,
     colour: "bg-[#fbe8e6] text-[#9a403b]",
   },
@@ -125,7 +125,7 @@ export function PaymentStatusClient() {
         <Icon className="size-8" aria-hidden="true" />
       </div>
       <div className={cn("mb-2 inline-flex rounded-lg px-2.5 py-[7px] text-[10px] font-extrabold tracking-[.05em]", content.colour)}>
-        {content.badge} · DETERMINISTIC POLICY
+        {content.badge}
       </div>
       <h2 className="text-2xl font-bold tracking-[-.6px]">{content.title}</h2>
       <p className="mt-2 max-w-[540px] text-xs leading-relaxed text-[#7b8a80]">
@@ -144,22 +144,14 @@ export function PaymentStatusClient() {
           {payment.status === "PENDING" && (
             <div className="rounded-[11px] border border-[#e3ecd9] bg-[#f0f6e9] p-[14px] text-[11px] leading-relaxed text-[#617969]">
               {payment.processing.delayed
-                ? "Processing is taking longer than usual. The durable outbox will keep retrying safely; this is not an approval or a block."
-                : payment.processing.publicationStatus === "PUBLISHED"
-                  ? "Kafka accepted the event. Flink enrichment and deterministic policy are still processing it."
-                  : "The payment event is in the PostgreSQL outbox and will be retried automatically if Kafka is unavailable."}
-            </div>
-          )}
-
-          {payment.authoritativeDecision && (
-            <div className="rounded-[11px] border border-[#d9ead6] bg-[#f4f9f1] p-[14px] text-[11px] leading-relaxed text-[#55705e]">
-              <strong>Authoritative result:</strong> {payment.status} from {payment.authoritativeDecision.policyVersion}. This immutable Python decision alone controls the customer-facing status.
+                ? "This is taking longer than usual, but you don’t need to submit the payment again."
+                : "We’re carrying out our usual security checks. This page will update automatically."}
             </div>
           )}
 
           {payment.status === "CHALLENGED" && (
             <div className="mt-4 rounded-[11px] border border-[#ecd9af] bg-[#fff9ea] p-[14px] text-[11px] leading-relaxed text-[#735c2f]">
-              <strong>Help us understand this payment.</strong> Answer a few short questions so Fraud Intelligence can extract evidence for a separate, controlled reassessment. Completing the check does not automatically clear the payment.
+              <strong>Help us understand this payment.</strong> Answer a few short questions to complete the security check. The payment has not been sent.
               <div className="mt-3">
                 <Button asChild>
                   <Link href={`/payments/investigation?paymentId=${encodeURIComponent(payment.id)}`}>
@@ -170,22 +162,6 @@ export function PaymentStatusClient() {
             </div>
           )}
 
-          <div className="mt-4 rounded-[11px] border border-[#e5e8e2] bg-white p-[14px] text-[11px] leading-relaxed text-[#6f7f73]">
-            <strong>Experimental shadow evaluation:</strong>{" "}
-            {payment.experimentalShadow?.status === "EVALUATED"
-              ? `${payment.experimentalShadow.proposedAction} from ${payment.experimentalShadow.policyVersion}`
-              : payment.experimentalShadow
-                ? `${payment.experimentalShadow.status} under ${payment.experimentalShadow.policyVersion}`
-                : "waiting for independent LightGBM evidence and Go correlation"}
-            . This evidence cannot change or relax the result above.
-            {payment.experimentalShadow?.modelVersion && (
-              <> Model: {payment.experimentalShadow.modelVersion}; features: {payment.experimentalShadow.featureSchemaVersion}.</>
-            )}
-          </div>
-
-          <div className="mt-4 rounded-[11px] border border-[#e3ecd9] bg-[#f0f6e9] p-[14px] text-[11px] leading-relaxed text-[#617969]">
-            Simulated payment only. No ledger entry was created and the fictional balance is unchanged.
-          </div>
         </>
       )}
 

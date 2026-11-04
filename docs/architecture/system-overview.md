@@ -182,16 +182,19 @@ transaction, ledger entry or balance mutation occurs.
 
 The session-scoped technical view is available on payment status and customer security-check pages. Its
 owner-scoped `GET /api/v1/payments/{paymentId}/fraud-intelligence` endpoint projects existing durable rows
-into current stages plus an ordered replay timeline. It reads the banking outbox, router inbox/decision,
+into current stages plus an ordered timeline. It reads the banking outbox, router inbox/decision,
 LightGBM source event, correlation history, Go shadow evaluations and, when applicable, Phase C evidence.
 It contains no mutation or provider invocation path.
 
-The diagram preserves the real fork after Flink: deterministic routing and LightGBM run independently, both
-feed revisioned Go correlation, and only correlation feeds the Go shadow decision engine. The separate
-questionnaire/provider/evidence/reassessment lane begins only after an authoritative `CHALLENGED` verdict.
+When enabled, the customer response remains unchanged and a collapsed `Fraud decision breakdown` is appended
+below it. The disclosure groups observed Flink evidence, authoritative routing, shadow-only LightGBM and Go
+evidence, provider findings and payment outcome; it omits unobserved transaction data. A sibling collapsed
+`Architecture flow` renders the persisted stage dependency diagram and evidence drawers in a right-hand column
+on wide screens and stacks below the journey on smaller screens. The separate
+questionnaire/provider/evidence/reassessment evidence exists only after an authoritative `CHALLENGED` verdict.
 Historical rows without retained enrichment payloads use an explicit `DOWNSTREAM_INFERRED` observation from
-the router inbox; absent evidence remains `NOT_OBSERVED`. Replay compresses persisted timestamp gaps in the
-browser and never republishes an event or records playback state.
+the router inbox; absent evidence remains `NOT_OBSERVED`. Viewing or expanding the disclosure never republishes
+an event, invokes a provider or changes a decision.
 
 ## Phase C customer evidence and reassessment
 
@@ -214,16 +217,31 @@ return the current state, and a bounded stale claim can be recovered without exc
 The adapter sends only a pseudonymous transaction reference, amount/currency,
 prior-beneficiary flag, deterministic signal names, required evidence keys and completed question/answer
 pairs. Every pair retains its question ID and `CUSTOMER` provenance, including the circumstances explanation.
-The SaaS tenant never calls localhost. The canonical `fraud_intelligence` agent has no tools,
-collaborators, memory or knowledge base and returns only `fraud-intelligence-evidence/1.0.0`. Local Zod
-validation additionally enforces non-empty indicators, exclusive `NONE`, bounded clarification and semantic
-question provenance. An optional clarification can cause one second and final invocation; the database caps
-the total at two.
+The SaaS tenant never calls localhost. Canonical agent `fraud_intelligence/1.1.0` has no tools,
+collaborators, memory or knowledge base and returns only `fraud-intelligence-evidence/1.1.0`. The contract
+separates purpose, third-party influence, customer-stated verification claims, scam indicators, uncertainty
+and exact answer excerpts. Local Zod validation rejects missing finding provenance and any excerpt not
+present in the cited persisted answer. An optional clarification can cause one second and final invocation;
+the database caps the total at two.
 
-Policy `customer-evidence-reassessment/1.0.0` consumes only validated evidence. It clears only complete,
-recognised, low-uncertainty evidence with no scam indicator; defined unrecognised/scam conditions decline;
-missing, contradictory, uncertain, invalid or unavailable evidence requires further review. Results are
-simulated and append-only. They do not update `payment_decisions`, `banking_accounts` or booked transactions.
+Policy `customer-evidence-reassessment/1.1.0` consumes only validated evidence. High-risk scam indicators
+take precedence and produce a simulated decline. One deliberately narrow new-beneficiary service-payment rule
+can produce `ADDITIONAL_VERIFICATION`, but it records that independent beneficiary verification remains
+mandatory. Incomplete, uncertain, contradictory, unmatched, invalid or unavailable evidence produces
+`REFER_TO_ANALYST`; absence of an indicator never implies safety. Alembic
+`0014_evidence_reassessment` adds the compatible outcomes and immutable JSON policy trace while retaining
+historical v1.0 outcomes. Results are simulated and append-only. They do not update `payment_decisions`,
+`banking_accounts` or booked transactions.
+
+After reassessment, `fraud-prevention-guidance/1.0.0` deterministically selects and composes an approved
+customer template from provenance-backed findings and the simulated outcome. Bank/safe-account,
+family/trusted-person impersonation, unexpected pressure, new high-value beneficiary, uncertain evidence and
+the narrow service-payment path have separate templates. Customer free text is inert quoted data and cannot
+provide instructions or alter a template. Missing, invalid or contradictory evidence selects generic safe
+guidance. Alembic `0015_fraud_guidance` stores the complete rendered message, category, template versions,
+finding IDs and supporting provenance on the immutable reassessment row; nullable columns keep older rows
+readable without regenerating guidance. The retail screen and System-view replay read this persisted payload
+only. Guidance cannot authorise a payment, schedule a callback, invoke Orchestrate or create a ledger effect.
 Root Compose selects a deterministic fixture for reproducible local validation. Provider `orchestrate` is the
 backend-only live mode and invokes the existing agent through native TypeScript IAM/REST; Glaramara does not
 spawn the Python ADK runner or fall back to mock after a live failure.
@@ -236,7 +254,19 @@ events from UUIDv5 identities and a fixed seed after Alembic. Complete customer/
 corpus is not reused because it lacks raw chronological beneficiary histories and leakage-safe scenario
 groups. Baseline signals reproduce `fast-path-policy/1.1.0`; they are evidence, never ground-truth labels.
 
-At run creation, PostgreSQL captures the active ready wave IDs, manifests, row count and canonical SHA-256.
+Revisions `0017_fraud_lab_datasets`, `0018_dataset_run_backfill` and `0019_active_dataset_integrity` add an
+immutable dataset identity above
+the existing immutable waves. A dataset records generator version, deterministic seed, requested/actual row
+counts, scenario, lifecycle and content digest; immutable membership maps it to preserved waves.
+`fraud_lab_active_datasets` holds one explicit selection per environment and append-only activation events
+retain the selection audit trail. The initial 8,000-row wave is backfilled without changing wave or snapshot
+content. A dedicated Python worker, built from the existing agents image, accepts only database requests for
+8,000, 10,000 or 20,000 rows and invokes the existing deterministic generator; it has no command-execution or
+Orchestrate boundary.
+
+At run creation, PostgreSQL captures only the selected active dataset's ready wave IDs, dataset ID, manifests,
+row count and canonical SHA-256. Activation changes only the future-selection pointer. Existing runs continue
+to read their persisted wave manifest, proposal and backtest, so a later selection cannot alter their result.
 The report reads only discovery rows and contains bounded aggregates, at most 16 pseudonymous examples,
 permitted feature/window contracts and previous proposal fingerprints. The standalone
 `fraud_rule_discovery` Orchestrate agent has no tools, collaborators, memory, database access or deployment
@@ -258,10 +288,11 @@ means pending engineering work and has no Kafka, Flink, router or banking side e
 
 Root `compose.yaml` owns isolated Kafka, PostgreSQL, Flink, migrations, router, Python outbox/scorer, both
 Go services and Glaramara. Traffic uses Compose DNS; default host ports are `19092`, `55433`, `18081`, `18082`,
-`18083` and `3000`. `make up` migrates through `0013_fraud_intel_view`, idempotently seeds the
+`18083` and `3000`. `make up` migrates through the current Alembic head, idempotently seeds the
 initial fraud-lab wave, creates topics, ensures one of each Flink job, captures Python start boundaries once,
-then starts applications. `make fraud-lab-next-wave` optionally appends a second immutable period without a
-new service or topic. `make down` saves both Flink jobs
+then starts applications, including the narrowly scoped `fraud-lab-dataset-worker`.
+`make fraud-lab-next-wave` remains available for historical incremental-wave reproduction; configurable
+datasets do not supersede or rewrite it. `make down` saves both Flink jobs
 and does not remove volumes.
 See `DEPLOYMENT.md`.
 
@@ -269,6 +300,14 @@ Protected golden `confluent-flink`, `part3` and `fraud-observability` projects a
 reuse, reset or implicitly stop their networks, offsets, state or volumes; see `docs/golden-reference.md`.
 
 ## Remaining boundaries
+
+## Future agentic investigation boundary
+
+The additive `fraud_investigation_*` laboratory is separate from Phase D and every banking/payment table.
+It generates deterministic synthetic waves with `DISCOVERY`, `VALIDATION`, and `FINAL_HOLDOUT` partitions;
+whole scenario groups remain partition-confined. It is groundwork for a future tool-using analyst agent.
+No current agent, UI, API, or provider may access its final holdout, and it has no authority over payments,
+Kafka, Flink, policy, or deployment.
 
 Phase B is asynchronous by design. There is no synchronous authorisation API, balance mutation, production
 feature store, calibrated model, terminal outbox failure state or automatic challenge resolution. Pending UI

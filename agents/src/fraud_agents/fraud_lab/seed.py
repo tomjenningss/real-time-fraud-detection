@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import uuid
 from dataclasses import astuple
 
 import psycopg
@@ -10,12 +11,71 @@ import psycopg
 from .synthetic import (
     INITIAL_SPEC,
     LEGACY_NEXT_WAVE_ID,
+    NAMESPACE,
     NEXT_SPEC,
     REPAIR_SPEC,
     WaveSpec,
     generate_wave,
     wave_summary,
 )
+
+LEGACY_DATASET_ID = uuid.UUID("a5d67ed2-e42c-5dcb-8e75-765b36d8299a")
+
+
+def ensure_seed_dataset(
+    connection: psycopg.Connection,
+    spec: WaveSpec,
+    summary: dict[str, object],
+) -> None:
+    """Create the initial active dataset when migrations ran before the first wave existed."""
+    if spec not in (INITIAL_SPEC, REPAIR_SPEC):
+        return
+    with connection.transaction(), connection.cursor() as cursor:
+        cursor.execute("SELECT to_regclass('fraud_lab_datasets')")
+        if cursor.fetchone()[0] is None:
+            return
+        cursor.execute("SELECT 1 FROM fraud_lab_active_datasets WHERE environment_id = 'glaramara-local'")
+        if cursor.fetchone():
+            return
+        dataset_id = (
+            LEGACY_DATASET_ID
+            if spec == INITIAL_SPEC
+            else uuid.uuid5(NAMESPACE, f"dataset:{spec.wave_id}")
+        )
+        cursor.execute(
+            """INSERT INTO fraud_lab_datasets
+               (dataset_id, generator_version, seed, requested_transaction_count,
+                actual_transaction_count, fraud_scenario_id, status, content_sha256,
+                requested_by, idempotency_key, generation_started_at, generated_at)
+               VALUES (%s, %s, %s, 8000, 8000, %s, 'READY', %s,
+                       'system-seed', %s, now(), now())
+               ON CONFLICT (dataset_id) DO NOTHING""",
+            (
+                dataset_id,
+                summary["generator_version"],
+                summary["seed"],
+                spec.pattern,
+                summary["content_sha256"],
+                f"seed:{spec.wave_id}",
+            ),
+        )
+        cursor.execute(
+            """INSERT INTO fraud_lab_dataset_waves (dataset_id, wave_id, ordinal)
+               VALUES (%s, %s, 1) ON CONFLICT DO NOTHING""",
+            (dataset_id, spec.wave_id),
+        )
+        cursor.execute(
+            """INSERT INTO fraud_lab_active_datasets
+               (environment_id, dataset_id, activated_by)
+               VALUES ('glaramara-local', %s, 'system-seed')""",
+            (dataset_id,),
+        )
+        cursor.execute(
+            """INSERT INTO fraud_lab_dataset_activation_events
+               (activation_id, environment_id, dataset_id, activated_by)
+               VALUES (%s, 'glaramara-local', %s, 'system-seed')""",
+            (uuid.uuid5(NAMESPACE, f"activation:{dataset_id}"), dataset_id),
+        )
 
 
 def seed_wave(connection: psycopg.Connection, spec: WaveSpec) -> dict[str, object]:
@@ -89,6 +149,7 @@ def main() -> None:
     spec = INITIAL_SPEC if args.wave == "initial" else NEXT_SPEC if args.wave == "next" else REPAIR_SPEC
     with psycopg.connect(database_url) as connection:
         result = seed_wave(connection, spec)
+        ensure_seed_dataset(connection, spec, result)
         if args.wave == "repair-initial":
             with connection.transaction():
                 connection.execute(

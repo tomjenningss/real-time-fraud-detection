@@ -85,9 +85,15 @@ PostgreSQL and reaches Kafka indirectly through the shared outbox publisher.
 Only genuinely `CHALLENGED` attempts can start a Phase C security check. The questionnaire is versioned and
 durable. The server sends a minimal pseudonymous context to the selected Fraud Intelligence provider; mock mode
 is deterministic and offline, while `orchestrate` uses the existing IBM watsonx Orchestrate agent through IAM
-and its non-streaming REST endpoint. API credentials remain server-only. Provider errors, invalid responses,
-timeouts, and unavailable evidence produce an append-only `REQUIRES_FURTHER_REVIEW` result; they never fall
+and its non-streaming REST endpoint. API credentials remain server-only. Under v1.1, provider errors, invalid
+responses, timeouts, and unavailable evidence produce an append-only `REFER_TO_ANALYST` result; they never fall
 back to mock or affect the original verdict.
+
+The subsequent `fraud-prevention-guidance/1.0.0` layer is deterministic rather than generative. It selects
+approved, versioned protective steps using only persisted provenance-backed findings and the reassessment
+outcome. The selected category, evidence references, template versions and rendered customer message are
+stored with the reassessment. Historical rows may have no guidance and remain readable; replay never
+regenerates it or calls Orchestrate. Guidance has no payment, ledger or callback authority.
 
 ## Deployment and recovery
 

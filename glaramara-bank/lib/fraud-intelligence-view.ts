@@ -21,7 +21,8 @@ export type InvestigationStageId =
   | "fraud_intelligence_provider"
   | "structured_evidence"
   | "governed_reassessment"
-  | "simulated_outcome";
+  | "simulated_outcome"
+  | "customer_guidance";
 
 export type JsonValue =
   | string

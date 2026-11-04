@@ -274,7 +274,7 @@ function PaymentJourney() {
             <div>
               <h2 className="text-[21px] font-bold tracking-[-.8px] md:text-[23px]">One last look</h2>
               <p className="mb-[22px] mt-1 text-xs leading-relaxed text-[#859288]">
-                Check the fictional payment details before sending them to the fraud platform.
+                Check the payment details before continuing.
               </p>
               <div className="my-[18px] flex items-center justify-center rounded-[15px] border border-[#dfe8db] bg-[#fbfdf9] px-3 py-[18px]">
                 <span className="text-[34px] font-semibold text-[#55715c]">£</span>
@@ -287,9 +287,6 @@ function PaymentJourney() {
               <ReviewLine label="Account" value={`•••• ${recipient.accountNumber.slice(-4)}`} />
               <ReviewLine label="Reference" value={reference.trim()} />
               <div className="my-5 h-px bg-[#e7ebe5]" />
-              <div className="rounded-[11px] border border-[#e3ecd9] bg-[#f0f6e9] p-[14px] text-[11px] leading-relaxed text-[#617969]">
-                <strong>Simulation boundary:</strong> submission creates an immutable payment attempt and fraud event, but it never moves money or changes this account balance.
-              </div>
               {error && (
                 <p className="mt-2 text-[11px] font-semibold text-[#a64b45]" role="alert">
                   {error}
@@ -303,7 +300,7 @@ function PaymentJourney() {
                   {submitting ? (
                     <><LoaderCircle className="mr-2 size-4 animate-spin" /> Submitting securely…</>
                   ) : (
-                    "Submit fictional payment"
+                    "Send payment"
                   )}
                 </Button>
               </div>
@@ -318,18 +315,14 @@ function PaymentJourney() {
           <h3 className="mb-2 mt-[14px] text-sm font-bold tracking-[-.3px]">Payment protection</h3>
           <p className="text-xs leading-relaxed text-[#849287]">We’ll help you spot anything that doesn’t look quite right.</p>
           {[
-            "PostgreSQL transactional outbox",
-            "Kafka and Flink enrichment",
-            "LightGBM scoring",
-            "Go shadow decision engine",
+            "Check the recipient details carefully",
+            "Never share a password or security code",
+            "Pause if someone is pressuring you to pay",
           ].map((label) => (
             <div key={label} className="flex items-start gap-2 border-t border-[#e7ebe5] py-3 text-[11px] leading-normal text-[#77877a]">
               <span>✳</span> {label}
             </div>
           ))}
-          <div className="mt-4 rounded-[11px] border border-[#e3ecd9] bg-[#f0f6e9] p-[14px] text-[11px] leading-relaxed text-[#617969]">
-            The customer status always comes from the immutable Python decision. ML and Go remain experimental shadow evidence.
-          </div>
         </aside>
       </div>
     </section>

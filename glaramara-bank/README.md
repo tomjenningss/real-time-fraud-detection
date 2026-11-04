@@ -24,6 +24,9 @@ from this application.
   recoverable within the existing invocation budget.
 - Fraud Intelligence extracts strict semantic evidence; a separate deterministic policy writes only a
   simulated investigation resolution. It cannot mutate the original verdict, ledger or balance.
+- `fraud-prevention-guidance/1.0.0` then selects an approved, versioned message from source-linked findings.
+  The exact rendered message, template references and evidence provenance are persisted with the simulated
+  reassessment, so refresh and replay never regenerate advice or call Orchestrate.
 - Every account, card, transaction and beneficiary is fictional.
 - The separate `/fraud-operations` persona analyses only immutable synthetic fraud-lab history. It can
   propose, backtest and review a future control, but cannot change a payment verdict or deploy a rule.
@@ -73,21 +76,34 @@ from `payment_decisions`.
 
 ### Live Fraud Intelligence system view
 
-The session-scoped `System view` toggle adds a developer/demo visualisation to payment status and the
-customer security check without changing the retail journey when disabled. The read-only projection endpoint
+The session-scoped `System view` toggle adds a collapsible `Fraud decision breakdown` below the existing
+payment status or customer security guidance without changing or replacing the retail journey. The read-only projection endpoint
 assembles persisted outbox acknowledgements, router/Flink evidence, LightGBM source events, Go correlation
 revisions, shadow evaluations, questionnaire history, extraction metadata and simulated reassessments. It
-never publishes, invokes a provider or writes replay state.
+never publishes, invokes a provider or writes UI state.
 
 Alembic `0013_fraud_intel_view` adds nullable `payment_decisions.enrichment_evidence`. The router writes its
 already validated `FlinkEvidence` in the same immutable decision transaction; decision IDs, evidence hashes,
 outbox events, duplicate handling and Kafka commit ordering are unchanged. Historical decisions remain null
 and the UI labels their Flink stage as downstream-inferred when only the router inbox proves observation.
 
-Replay freezes the latest fetched timeline, compresses its real timestamp gaps, preserves parallel router and
-LightGBM ordering, and animates connector traversal at 1×, 2× or 4×. Pause, resume and restart are entirely
-client-side. Persisted extraction responses are summarised deterministically from contracted fields and remain
-available as formatted structured JSON with provider/model/schema/latency provenance.
+The breakdown is collapsed by default and groups only transaction-scoped evidence that the projection has
+actually observed: Flink signals/features, the authoritative router decision and rules, shadow-only LightGBM
+and Go evidence, watsonx Orchestrate findings when that provider was used, and the original/reassessed payment
+outcome. A separate collapsed `Architecture flow` sits beside the customer journey on wide screens and stacks
+below it on smaller screens, restoring the live persisted dependency diagram and its read-only evidence drawers
+without replacing the customer response. Missing components and invented defaults
+are not rendered. The customer-facing resolution card quotes an
+actual saved explanation when present, follows it with two or three approved protective steps, and always
+states clearly when a challenged payment has not been sent. It never displays indicator enums, confidence
+scores, rule IDs or an unsupported callback promise. Historical reassessments without a guidance payload are
+shown as not observed rather than backfilled.
+
+Guidance templates may personalise bounded wording from validated evidence provenance. For example, a
+customer-reported daughter-abroad request can name the daughter, unexpected contact, reported circumstances
+and urgency while explicitly stating that identity and circumstances were not independently verified. The
+renderer never asks watsonx to decide an outcome, never interpolates arbitrary free text into approved advice,
+and falls back to generic safe guidance when provider evidence is missing, invalid or contradictory.
 
 ## Local development
 
@@ -133,8 +149,19 @@ manifest, sends only discovery-partition aggregates and bounded pseudonymous exa
 `fraud-rule-proposal/1.0.0` result, and only then reads the held-out evaluation partition. Approval records
 `APPROVED_FOR_IMPLEMENTATION`; it never activates or publishes a control.
 
-The initial 8,000-row wave is seeded by the migration job during `make up`. The optional additive extension
-is reproducible and idempotent:
+The Fraud Scenario Lab above the investigation workflow separates three actions:
+
+1. `Generate new dataset` enqueues exactly 8,000, 10,000 or 20,000 rows for the fixed-purpose Python worker.
+2. `Activate completed dataset` requires explicit confirmation and selects evidence only for future runs.
+3. `Run new analysis` snapshots that active dataset and then invokes the configured discovery provider.
+
+Generation and activation never invoke Orchestrate. Dataset status is durable, requests are idempotent per
+analyst/key, one generation may run per environment, interrupted work fails closed, and every generated
+dataset retains its seed, generator version, scenario and digest. Historical runs continue to display their
+original immutable snapshots and backtests.
+
+The initial 8,000-row wave is seeded and backfilled as the active dataset by the migration job during
+`make up`. The optional historical additive-wave command remains reproducible and idempotent:
 
 ```sh
 make fraud-lab-next-wave
@@ -144,6 +171,17 @@ It appends a distinct beneficiary fan-in period without resetting prior waves, s
 backtests or reviews. The batch evaluator recomputes supported temporal features in chronological order, but
 does not emulate Flink watermarks, late-event handling, checkpoints or operational deduplication.
 
+With the running Glaramara service configured with `FRAUD_RULE_DISCOVERY_PROVIDER=orchestrate`, run one
+complete live discovery and held-out backtest from the repository root:
+
+```sh
+make fraud-lab-live-analysis
+```
+
+The target fails closed if `.env` is not configured for Orchestrate or if the completed run does not record
+the live REST provider. It prints the immutable snapshot, proposal, duplicate reference, and computed metrics.
+It does not approve, deploy, or activate the candidate.
+
 `FRAUD_INTELLIGENCE_PROVIDER` selects `mock` or `orchestrate`. The browser never calls the provider directly:
 the final questionnaire answer causes the Glaramara backend to run the existing extraction workflow
 automatically, and refresh recovery reads the persisted investigation state. Root Compose defaults to `mock` for a
@@ -151,7 +189,7 @@ deterministic, credential-free demonstration. `orchestrate` invokes the existing
 Next.js backend. It reads only
 `WATSONX_ORCHESTRATE_API_KEY` and `WATSONX_ORCHESTRATE_URL` from the server environment, obtains a cached IAM
 token and calls the existing agent through its supported non-streaming chat-completions endpoint. Never use
-`NEXT_PUBLIC_` names for either credential. Live failures produce `REQUIRES_FURTHER_REVIEW` and never fall
+`NEXT_PUBLIC_` names for either credential. Live failures produce `REFER_TO_ANALYST` under policy v1.1 and never fall
 back to mock. The standalone Python adapter remains in the Orchestrate source directory for diagnostics, but
 Glaramara no longer spawns it.
 

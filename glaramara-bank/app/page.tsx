@@ -114,14 +114,14 @@ export default function OverviewPage() {
           </div>
           <h2 className="mt-[13px] text-sm font-bold">Protected by Glaramara</h2>
           <p className="mt-2 text-xs leading-relaxed text-[#47634f]">
-            Fictional payments now travel through the existing fraud platform with an immutable policy result.
+            Every payment is checked before it is approved.
           </p>
         </Card>
 
         <Card className="border-[#dfeaca] bg-[#f0f4e8] p-[22px] sm:col-span-2 xl:col-span-1">
-          <p className="text-[10px] font-extrabold tracking-[.15em] text-[#49644f]">SIMULATION BOUNDARY</p>
+          <p className="text-[10px] font-extrabold tracking-[.15em] text-[#49644f]">MAKE A PAYMENT</p>
           <p className="my-2 text-[11px] leading-relaxed text-[#52675a]">
-            Accounts and payments are fictional. Fraud decisions are real platform outputs, but no ledger entry or balance change occurs.
+            Choose a recipient, check the details and follow the security guidance before you continue.
           </p>
           <Button asChild className="w-full">
             <Link href="/payments">Explore the payment journey →</Link>

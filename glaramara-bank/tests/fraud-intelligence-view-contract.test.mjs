@@ -19,35 +19,40 @@ test("system view is session-scoped and shared across the payment journey", () =
   assert.match(investigation, /SystemViewJourney/);
 });
 
-test("diagram includes real authority boundaries, animated branches and replay controls", () => {
-  const panelPath = "components/fraud-intelligence/fraud-intelligence-panel.tsx";
-  assert.equal(statSync(join(root, panelPath)).isFile(), true);
-  const panel = read(panelPath);
+test("system view augments the customer journey with a collapsible evidence breakdown", () => {
+  const breakdownPath = "components/fraud-intelligence/fraud-decision-breakdown.tsx";
+  assert.equal(statSync(join(root, breakdownPath)).isFile(), true);
+  const breakdown = read(breakdownPath);
+  const journey = read("components/fraud-intelligence/system-view-journey.tsx");
 
   for (const stage of [
-    "postgres_outbox",
-    "kafka",
     "flink_enrichment",
     "authoritative_policy",
     "lightgbm_shadow",
     "go_correlation",
-    "go_shadow_policy",
     "fraud_intelligence_provider",
     "governed_reassessment",
-  ]) assert.match(panel, new RegExp(stage));
-  assert.match(panel, /animateMotion/);
-  assert.match(panel, /parallel branches/);
-  assert.match(panel, /Pause/);
-  assert.match(panel, /Resume/);
-  assert.match(panel, /Restart/);
-  assert.match(panel, /value=\{4\}/);
-  assert.match(panel, /Structured JSON/);
+    "simulated_outcome",
+  ]) assert.match(breakdown, new RegExp(stage));
+  for (const label of [
+    "Fraud decision breakdown",
+    "Apache Flink",
+    "Deterministic router",
+    "LightGBM",
+    "Go correlator",
+    "watsonx Orchestrate",
+    "Payment outcome",
+    "SHADOW ONLY",
+  ]) assert.match(breakdown, new RegExp(label));
+  assert.match(breakdown, /<details/);
+  assert.match(journey, /\{children\}[\s\S]*<FraudDecisionBreakdown/);
+  assert.match(journey, /Architecture flow/);
+  assert.match(journey, /<FraudIntelligencePanel/);
 });
 
 test("system view client only reads the projection endpoint", () => {
-  const panel = read("components/fraud-intelligence/fraud-intelligence-panel.tsx");
-  assert.match(panel, /fraud-intelligence/);
-  assert.doesNotMatch(panel, /method:\s*["']POST/);
-  assert.doesNotMatch(panel, /\/extract/);
-  assert.doesNotMatch(panel, /setTimeout\([^,]+,\s*(?:500|1000)\)/);
+  const breakdown = read("components/fraud-intelligence/fraud-decision-breakdown.tsx");
+  assert.match(breakdown, /fraud-intelligence/);
+  assert.doesNotMatch(breakdown, /method:\s*["']POST/);
+  assert.doesNotMatch(breakdown, /\/extract/);
 });

@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import urllib.error
 import urllib.request
 from collections import Counter
 from datetime import UTC, datetime, timedelta
@@ -152,6 +153,17 @@ def publish(brokers: str, rows: list[dict]) -> None:
 
 
 def main() -> None:
+    control_center_base_url = os.environ.get(
+        "CONTROL_CENTER_BASE_URL", "http://control-center:9021"
+    )
+    try:
+        with urllib.request.urlopen(f"{control_center_base_url}/", timeout=10) as response:
+            print(f"Control Center connectivity: reachable (HTTP {response.status})")
+    except (OSError, urllib.error.URLError) as error:
+        # Control Center is operational tooling, not part of the fraud decision path.
+        # Keep its probe visible but do not make the publishing acceptance test depend on it.
+        print(f"Control Center connectivity: unavailable (advisory only): {error}")
+
     glaramara_base_url = os.environ.get("GLARAMARA_BASE_URL", "http://glaramara-bank:3000")
     with urllib.request.urlopen(f"{glaramara_base_url}/api/v1/health", timeout=10) as response:
         if response.status != 200:

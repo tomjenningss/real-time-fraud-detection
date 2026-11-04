@@ -120,9 +120,29 @@ export type FraudInvestigation = {
   reassessmentLifecycle: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
   lifecycleUpdatedAt: string;
   resolution: {
-    outcome: "CLEARED" | "REQUIRES_FURTHER_REVIEW" | "DECLINED";
+    outcome: "CLEARED" | "REQUIRES_FURTHER_REVIEW" | "DECLINED"
+      | "ADDITIONAL_VERIFICATION" | "REFER_TO_ANALYST";
     policyVersion: string;
     reasonCodes: string[];
+    policyTrace: unknown[];
+    guidance: {
+      contractVersion: "fraud-prevention-guidance/1.0.0";
+      category: string;
+      simulatedOutcome: string;
+      personalised: boolean;
+      customerStatement: string | null;
+      evidenceFindingIds: string[];
+      evidenceProvenance: unknown[];
+      templateReferences: Array<{ templateId: string; version: string }>;
+      rendered: {
+        heading: string;
+        context: string;
+        steps: string[];
+        paymentStatus: string;
+        reviewMessage: string;
+        simulationNotice: string;
+      };
+    } | null;
     reassessedAt: string;
     simulated: true;
     ledgerEffect: "NONE";

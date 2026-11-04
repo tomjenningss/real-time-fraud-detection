@@ -239,8 +239,54 @@ export type MockBankingApi = {
 type MockInvestigationOptions = {
   extractionDelayMs?: number;
   extractionFailure?: boolean;
-  outcome?: "CLEARED" | "REQUIRES_FURTHER_REVIEW" | "DECLINED";
+  outcome?: "CLEARED" | "REQUIRES_FURTHER_REVIEW" | "DECLINED"
+    | "ADDITIONAL_VERIFICATION" | "REFER_TO_ANALYST";
 };
+
+function mockGuidance(
+  outcome: NonNullable<FraudInvestigation["resolution"]>["outcome"],
+  customerStatement: string | null,
+): NonNullable<FraudInvestigation["resolution"]>["guidance"] {
+  const family = outcome === "DECLINED";
+  const additional = outcome === "ADDITIONAL_VERIFICATION";
+  return {
+    contractVersion: "fraud-prevention-guidance/1.0.0",
+    category: family ? "FAMILY_OR_TRUSTED_PERSON_IMPERSONATION"
+      : additional ? "SERVICE_PAYMENT_ADDITIONAL_VERIFICATION" : "UNCERTAIN_OR_INCOMPLETE",
+    simulatedOutcome: outcome,
+    personalised: family || additional,
+    customerStatement,
+    evidenceFindingIds: family ? ["paymentPurpose", "scamIndicator:UNEXPECTED_CONTACT"] : [],
+    evidenceProvenance: [],
+    templateReferences: [{
+      templateId: family ? "family-or-trusted-person-impersonation"
+        : additional ? "service-payment-independent-verification" : "uncertain-or-incomplete-evidence",
+      version: "1.0.0",
+    }],
+    rendered: {
+      heading: family ? "We’ve stopped this payment to help keep your money safe"
+        : additional ? "Let’s independently verify the beneficiary" : "We need to check this payment further",
+      context: family
+        ? "You told us the request came through unexpected contact, you were asked to act urgently, and you were directed to send money to another beneficiary. We have not independently verified who contacted you. Criminals can impersonate someone you trust, and AI can make a voice sound familiar, but this does not prove that happened."
+        : additional
+          ? "Your reported checks do not establish that the beneficiary account is safe."
+          : "We could not safely personalise the advice from the available evidence. That does not mean the payment is safe.",
+      steps: family ? [
+        "End the current call or conversation.",
+        "Contact the person using a trusted number you already had.",
+        "Independently confirm the request before attempting another payment.",
+      ] : [
+        "Pause and do not attempt the payment again yet.",
+        "Independently check the person, business and account details.",
+        "Return to the payment only after the request has been confirmed.",
+      ],
+      paymentStatus: family ? "We stopped this payment. No money was sent."
+        : "This payment needs further review. No money has been sent.",
+      reviewMessage: "You can review the payment details in Glaramara.",
+      simulationNotice: "This is a simulated payment. Your balance has not changed.",
+    },
+  };
+}
 
 function cloneBeneficiaries(): Record<string, Beneficiary[]> {
   return Object.fromEntries(
@@ -377,6 +423,8 @@ export async function mockPhaseABankingApi(
         outcome: "REQUIRES_FURTHER_REVIEW",
         policyVersion: "customer-evidence-reassessment/1.0.0",
         reasonCodes: ["AGENT_TIMEOUTERROR"],
+        policyTrace: [],
+        guidance: null,
         reassessedAt: "2026-11-02T09:00:01.000Z",
         simulated: true,
         ledgerEffect: "NONE",
@@ -389,10 +437,15 @@ export async function mockPhaseABankingApi(
     investigation.canExtract = false;
     investigation.reassessmentLifecycle = "COMPLETED";
     investigation.lifecycleUpdatedAt = new Date().toISOString();
+    const outcome = options.outcome ?? "DECLINED";
+    const customerStatement = investigation.answers.payment_circumstances?.value ?? null;
     investigation.resolution = {
-      outcome: options.outcome ?? "DECLINED",
+      outcome,
       policyVersion: "customer-evidence-reassessment/1.0.0",
-      reasonCodes: ["DEFINED_SCAM_INDICATOR"],
+      reasonCodes: ["SCAM_PATTERN_SAFE_ACCOUNT"],
+      policyTrace: [],
+      guidance: ["DECLINED", "ADDITIONAL_VERIFICATION", "REFER_TO_ANALYST"].includes(outcome)
+        ? mockGuidance(outcome, customerStatement) : null,
       reassessedAt: "2026-11-02T09:00:01.000Z",
       simulated: true,
       ledgerEffect: "NONE",

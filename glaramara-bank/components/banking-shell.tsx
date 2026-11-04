@@ -33,7 +33,7 @@ const pageCopy: Record<string, { eyebrow: string; title: (firstName: string) => 
   "/activity": { eyebrow: "GLARAMARA BANK · PERSONAL", title: () => "Your activity" },
   "/beneficiaries": { eyebrow: "GLARAMARA BANK · PERSONAL", title: () => "Your beneficiaries" },
   "/cards": { eyebrow: "GLARAMARA BANK · PERSONAL", title: () => "Your cards" },
-  "/payments/status": { eyebrow: "SIMULATED BANKING · NO MONEY MOVES", title: () => "Payment status" },
+  "/payments/status": { eyebrow: "GLARAMARA BANK · PERSONAL", title: () => "Payment status" },
 };
 
 function isActive(pathname: string, href: string) {
@@ -62,7 +62,7 @@ function ShellContent({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
-        <main id="main-content" className="mx-auto max-w-[1440px] px-4 py-6 md:px-10 md:py-8">{children}<footer className="mt-7 text-[10px] text-[#5f6f64]">Glaramara Fraud Operations · Fictional people, synthetic transactions and simulated controls.</footer></main>
+        <main id="main-content" className="mx-auto max-w-[1440px] px-4 py-6 md:px-10 md:py-8">{children}<footer className="mt-7 text-[10px] text-[#5f6f64]">Glaramara Fraud Operations · Demo account</footer></main>
       </div>
     );
   }
@@ -128,9 +128,6 @@ function ShellContent({ children }: { children: React.ReactNode }) {
                 ))}
               </select>
             </div>
-            <small id="desktop-customer-caption" className="ml-[47px] mt-1 block text-[10px] text-[#5b6b61]">
-              Fictional demo account
-            </small>
           </div>
         </div>
       </aside>
@@ -144,13 +141,6 @@ function ShellContent({ children }: { children: React.ReactNode }) {
             </h1>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <div
-              aria-label="INTERACTIVE DEMO"
-              className="flex items-center gap-[7px] rounded-full border border-[#d6e5c9] bg-[#e7f1df] px-[11px] py-[9px] text-[10px] font-bold tracking-[.03em] text-[#356645] md:text-[11px]"
-            >
-              <span className="size-[7px] rounded-full bg-[#62ab63]" />
-              <span><span className="hidden sm:inline">INTERACTIVE </span>DEMO</span>
-            </div>
             <label
               className="relative flex cursor-pointer items-center gap-0 rounded-full border border-[#dce5d8] bg-white px-2 py-2 text-[10px] font-extrabold tracking-[.04em] text-[#315d48] shadow-[0_4px_14px_#173f3308] sm:gap-2 sm:px-2.5"
               title="Developer view of persisted fraud-platform evidence"
@@ -188,7 +178,7 @@ function ShellContent({ children }: { children: React.ReactNode }) {
           </div>
           <div className="min-w-0 flex-1">
             <label htmlFor="mobile-customer" className="block text-[9px] font-extrabold tracking-[.12em] text-[#5d6e63]">
-              FICTIONAL CUSTOMER
+              CUSTOMER
             </label>
             <select
               id="mobile-customer"
@@ -219,7 +209,7 @@ function ShellContent({ children }: { children: React.ReactNode }) {
         <div className="animate-fade-in">{children}</div>
         <footer className="mt-7 flex items-center gap-2 text-[10px] leading-relaxed text-[#5f6f64]">
           <span className="size-1.5 rounded-full bg-[#96ba8b]" />
-          Glaramara Bank · All accounts, transactions and decisions are fictional.
+          Demo account
         </footer>
       </main>
 

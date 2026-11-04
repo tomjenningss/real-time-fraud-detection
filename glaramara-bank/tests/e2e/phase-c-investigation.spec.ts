@@ -46,8 +46,16 @@ test("adapts, recovers and completes the Phase C investigation accessibly", asyn
   await selectAndContinue(page, "Yes");
   await expect(page.getByRole("heading", { name: "We’re reviewing your payment" })).toBeVisible();
 
-  await expect(page.getByRole("heading", { name: "We can’t approve this payment" })).toBeVisible();
-  await expect(page.getByText("This was a simulated payment. Your balance has not changed.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "We’ve stopped this payment to help keep your money safe" })).toBeVisible();
+  await expect(page.getByText("What you told us")).toBeVisible();
+  await expect(page.getByText(/unfamiliar number said my daughter abroad needed urgent help/)).toBeVisible();
+  await expect(page.getByText("End the current call or conversation.")).toBeVisible();
+  await expect(page.getByText(/trusted number you already had/)).toBeVisible();
+  await expect(page.getByText(/no money (?:has been|was) sent/i)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Think this payment is genuine?" })).toBeVisible();
+  await page.getByRole("button", { name: "Request a fraud specialist review" }).click();
+  await expect(page.getByText(/noted on this page only/i)).toBeVisible();
+  await expect(page.getByText(/no fraud specialist has been contacted/i)).toBeVisible();
   expect(api.investigationMutations).toHaveLength(8);
   expect(api.investigationMutations.filter((item) => item.idempotencyKey)).toHaveLength(7);
   await expect.poll(() => page.evaluate(

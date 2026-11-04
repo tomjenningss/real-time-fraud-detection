@@ -21,6 +21,7 @@ const stageDefinitions: Array<[InvestigationStageId, string, InvestigationStage[
   ["structured_evidence", "Structured evidence", "REASSESSMENT", "SIMULATED"],
   ["governed_reassessment", "Governed reassessment", "REASSESSMENT", "SIMULATED"],
   ["simulated_outcome", "Simulated outcome", "REASSESSMENT", "SIMULATED"],
+  ["customer_guidance", "Prevention guidance", "REASSESSMENT", "SIMULATED"],
 ];
 
 function fixture(paymentId: string): FraudIntelligenceView {
@@ -41,12 +42,79 @@ function fixture(paymentId: string): FraudIntelligenceView {
     durationMs: 12,
     evidenceReferences: [`test:${id}`],
     details: id === "fraud_intelligence_provider" ? {
-      humanSummary: ["Payment recognition: recognised.", "Contracted uncertainty: low."],
+      humanSummary: [
+        "Payment recognition: recognised.",
+        "Payment purpose: goods or services.",
+        "Contracted uncertainty: low.",
+      ],
       provider: "watsonx-orchestrate-rest",
       model: "test-model",
       latencyMs: 214,
-      provenance: [{ claim: "payment recognised", sourceQuestionIds: ["payment_recognition"] }],
-      structuredResponse: { schemaVersion: "fraud-intelligence-evidence/1.0.0", uncertainty: "LOW" },
+      provenance: [{
+        findingId: "paymentPurpose",
+        claim: "payment purpose is goods or services",
+        sources: [{ questionId: "payment_circumstances", excerpt: "I’m paying a builder." }],
+      }],
+      structuredResponse: {
+        schemaVersion: "fraud-intelligence-evidence/1.1.0",
+        paymentRecognition: "RECOGNISED",
+        beneficiaryRelationship: "NEW",
+        paymentPurpose: "GOODS_OR_SERVICES",
+        thirdPartyInfluence: "NONE",
+        verificationClaims: ["INVOICE_RECEIVED"],
+        uncertainty: "LOW",
+      },
+      contribution: {
+        customerExplanation: "I’m paying a builder.",
+        extractedFindings: {
+          paymentRecognition: "RECOGNISED",
+          beneficiaryRelationship: "NEW",
+          paymentPurpose: "GOODS_OR_SERVICES",
+          thirdPartyInfluence: "NONE",
+          verificationClaims: ["INVOICE_RECEIVED"],
+          uncertainty: "LOW",
+        },
+        fraudIndicators: ["NONE"],
+        evidenceProvenance: [{
+          findingId: "paymentPurpose",
+          claim: "payment purpose is goods or services",
+          sources: [{ questionId: "payment_circumstances", excerpt: "I’m paying a builder." }],
+        }],
+        matchedDeterministicRules: [{
+          ruleId: "CER-ADDITIONAL-VERIFY-NARROW-SERVICE-PAYMENT",
+          summary: "Independent beneficiary verification remains mandatory.",
+          conditions: [{ condition: "purpose is goods or services", actual: "GOODS_OR_SERVICES" }],
+        }],
+        simulatedAction: "ADDITIONAL_VERIFICATION",
+        authoritativeVerdict: "CHALLENGED",
+        ledgerEffect: "NONE",
+      },
+    } : id === "customer_guidance" ? {
+      contractVersion: "fraud-prevention-guidance/1.0.0",
+      persisted: true,
+      regeneratedOnReplay: false,
+      guidance: {
+        contractVersion: "fraud-prevention-guidance/1.0.0",
+        category: "SERVICE_PAYMENT_ADDITIONAL_VERIFICATION",
+        simulatedOutcome: "ADDITIONAL_VERIFICATION",
+        personalised: true,
+        customerStatement: "I’m paying a builder.",
+        evidenceFindingIds: ["paymentPurpose", "verificationClaim:INVOICE_RECEIVED"],
+        evidenceProvenance: [],
+        templateReferences: [{ templateId: "service-payment-independent-verification", version: "1.0.0" }],
+        rendered: {
+          heading: "Let’s independently verify the beneficiary",
+          context: "Customer-reported checks do not establish that the beneficiary account is safe.",
+          steps: [
+            "Contact the business using independently sourced details.",
+            "Confirm the account details through that trusted channel.",
+            "Wait for the independent beneficiary check.",
+          ],
+          paymentStatus: "This payment needs independent verification. No money has been sent.",
+          reviewMessage: "No callback or payment release has been scheduled.",
+          simulationNotice: "This is a simulated payment. Your balance has not changed.",
+        },
+      },
     } : { persisted: true },
     rawJson: null,
   }));
@@ -69,7 +137,7 @@ function fixture(paymentId: string): FraudIntelligenceView {
   };
 }
 
-test("persists system view and performs animated read-only replay", async ({ page }) => {
+test("persists system view and reveals read-only evidence below the customer response", async ({ page }) => {
   const api = await mockPhaseABankingApi(page);
   await page.route("**/api/v1/payments/*/fraud-intelligence", async (route) => {
     const paymentId = new URL(route.request().url()).pathname.split("/").at(-2)!;
@@ -84,30 +152,34 @@ test("persists system view and performs animated read-only replay", async ({ pag
   await page.getByRole("button", { name: /Sam Bennett/ }).click();
   await page.getByRole("button", { name: "Continue →" }).click();
   await page.getByRole("button", { name: "Review payment →" }).click();
-  await page.getByRole("button", { name: "Submit fictional payment" }).click();
+  await page.getByRole("button", { name: "Send payment" }).click();
 
   const toggle = page.getByRole("checkbox", { name: /System view/ });
+  await expect(page.getByRole("heading", { name: "We’re checking this payment" })).toBeVisible();
+  await expect(page.getByText("Fraud decision breakdown", { exact: true })).toHaveCount(0);
   await toggle.check();
+  await expect(page.getByRole("heading", { name: "We’re checking this payment" })).toBeVisible();
+  const breakdown = page.getByText("Fraud decision breakdown", { exact: true });
+  await expect(breakdown).toBeVisible();
+  await breakdown.click();
+  for (const heading of ["Apache Flink", "Deterministic router", "LightGBM", "Go correlator", "watsonx Orchestrate", "Payment outcome"]) {
+    await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+  }
+  await expect(page.getByTestId("fraud-decision-breakdown").getByText("SHADOW ONLY", { exact: true })).toHaveCount(2);
+  await expect(page.getByTestId("fraud-decision-breakdown").getByText("CHALLENGED", { exact: true }).last()).toBeVisible();
+
   await expect(page.getByRole("heading", { name: "System investigation" })).toBeVisible();
   await expect(page.getByTestId("fraud-architecture-diagram")).toBeVisible();
   await expect(page.locator(".system-flow-particle").first()).toBeVisible();
-
-  await page.getByRole("button", { name: /Replay investigation/ }).click();
-  await expect(page.getByRole("button", { name: "Pause" })).toBeVisible();
-  await page.getByLabel("Speed").selectOption("4");
-  await page.getByRole("button", { name: "Pause" }).click();
-  await expect(page.getByRole("button", { name: "Resume" })).toBeVisible();
-  await page.getByRole("button", { name: "Resume" }).click();
-  await page.getByRole("button", { name: "Restart" }).click();
-
-  await page.getByRole("button", { name: /watsonx Orchestrate: complete/ }).click();
-  await expect(page.getByText("VALIDATED FINDINGS")).toBeVisible();
-  await expect(page.getByText("Payment recognition: recognised.")).toBeVisible();
-  await page.getByRole("button", { name: /Close evidence details/ }).click();
+  await page.getByText("Architecture flow", { exact: true }).click();
+  await expect(page.getByTestId("fraud-architecture-diagram")).toBeHidden();
+  await page.getByText("Architecture flow", { exact: true }).click();
+  await expect(page.getByTestId("fraud-architecture-diagram")).toBeVisible();
 
   await page.reload();
   await expect(toggle).toBeChecked();
-  await expect(page.getByRole("heading", { name: "System investigation" })).toBeVisible();
+  await expect(page.getByText("Fraud decision breakdown", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "We’re checking this payment" })).toBeVisible();
   expect(api.paymentRequests).toHaveLength(1);
   expect(api.investigationMutations).toHaveLength(0);
 });

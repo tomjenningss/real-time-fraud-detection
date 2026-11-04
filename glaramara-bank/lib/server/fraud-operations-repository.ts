@@ -19,7 +19,7 @@ import {
   SEMANTICS_NOTE,
 } from "@/lib/fraud-rule-discovery/evaluator";
 import { discoverRule } from "@/lib/fraud-rule-discovery/orchestrate-client";
-import { ApiError } from "@/lib/server/api-errors";
+import { ApiError, isPostgresError } from "@/lib/server/api-errors";
 import { query, withTransaction } from "@/lib/server/db";
 
 type WaveRow = {
@@ -34,6 +34,152 @@ type WaveRow = {
   evaluation_count: number;
   content_sha256: string;
 };
+
+type DatasetRow = {
+  dataset_id: string;
+  environment_id: string;
+  generator_version: string;
+  seed: string;
+  requested_transaction_count: number;
+  actual_transaction_count: number | null;
+  fraud_scenario_id: string;
+  status: "PENDING" | "GENERATING" | "READY" | "FAILED";
+  content_sha256: string | null;
+  requested_at: Date;
+  generation_started_at: Date | null;
+  generated_at: Date | null;
+  failure_code: string | null;
+  active: boolean;
+};
+
+const FRAUD_LAB_ENVIRONMENT = "glaramara-local";
+
+function mapDataset(row: DatasetRow) {
+  return {
+    id: row.dataset_id,
+    environmentId: row.environment_id,
+    generatorVersion: row.generator_version,
+    seed: row.seed,
+    requestedTransactionCount: row.requested_transaction_count,
+    actualTransactionCount: row.actual_transaction_count,
+    fraudScenarioId: row.fraud_scenario_id,
+    status: row.status,
+    contentSha256: row.content_sha256,
+    requestedAt: row.requested_at.toISOString(),
+    generationStartedAt: row.generation_started_at?.toISOString() ?? null,
+    generatedAt: row.generated_at?.toISOString() ?? null,
+    failureCode: row.failure_code,
+    active: row.active,
+  };
+}
+
+const datasetSelection = `
+  SELECT dataset.*, (active.dataset_id IS NOT NULL) AS active
+  FROM fraud_lab_datasets dataset
+  LEFT JOIN fraud_lab_active_datasets active
+    ON active.environment_id = dataset.environment_id AND active.dataset_id = dataset.dataset_id
+  WHERE dataset.environment_id = $1`;
+
+export async function listFraudLabDatasets() {
+  const result = await query<DatasetRow>(`${datasetSelection} ORDER BY dataset.requested_at DESC`, [FRAUD_LAB_ENVIRONMENT]);
+  return result.rows.map(mapDataset);
+}
+
+export async function getFraudLabDataset(datasetId: string) {
+  const result = await query<DatasetRow>(`${datasetSelection} AND dataset.dataset_id = $2`, [FRAUD_LAB_ENVIRONMENT, datasetId]);
+  if (!result.rows[0]) throw new ApiError(404, "FRAUD_LAB_DATASET_NOT_FOUND", "That Fraud Lab dataset was not found.");
+  return mapDataset(result.rows[0]);
+}
+
+export const datasetGenerationRequestSchema = z.object({
+  transactionCount: z.union([z.literal(8_000), z.literal(10_000), z.literal(20_000)]),
+}).strict();
+
+export async function requestFraudLabDataset(
+  analystId: string,
+  idempotencyKey: string,
+  input: z.infer<typeof datasetGenerationRequestSchema>,
+) {
+  let datasetId = "";
+  try {
+    datasetId = await withTransaction(async (client) => {
+      await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [`fraud-lab-generation:${FRAUD_LAB_ENVIRONMENT}`]);
+      const replay = await client.query<{ dataset_id: string; requested_transaction_count: number }>(
+        `SELECT dataset_id::text, requested_transaction_count FROM fraud_lab_datasets
+         WHERE requested_by = $1 AND idempotency_key = $2`,
+        [analystId, idempotencyKey],
+      );
+      if (replay.rows[0]) {
+        if (replay.rows[0].requested_transaction_count !== input.transactionCount) {
+          throw new ApiError(409, "IDEMPOTENCY_KEY_REUSED", "That idempotency key belongs to a different generation request.");
+        }
+        return replay.rows[0].dataset_id;
+      }
+      const running = await client.query(
+        `SELECT 1 FROM fraud_lab_datasets WHERE environment_id = $1 AND status IN ('PENDING', 'GENERATING')`,
+        [FRAUD_LAB_ENVIRONMENT],
+      );
+      if (running.rowCount) {
+        throw new ApiError(409, "FRAUD_LAB_GENERATION_IN_PROGRESS", "Another Fraud Lab dataset is already being generated.");
+      }
+      const id = randomUUID();
+      const seed = BigInt(`0x${id.replaceAll("-", "").slice(0, 15)}`).toString();
+      await client.query(
+        `INSERT INTO fraud_lab_datasets
+           (dataset_id, environment_id, generator_version, seed, requested_transaction_count,
+            fraud_scenario_id, status, requested_by, idempotency_key)
+         VALUES ($1, $2, 'fraud-lab-generator/1.1.0', $3, $4,
+                 'multi_new_beneficiary', 'PENDING', $5, $6)`,
+        [id, FRAUD_LAB_ENVIRONMENT, seed, input.transactionCount, analystId, idempotencyKey],
+      );
+      return id;
+    });
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    if (isPostgresError(error, "23505")) {
+      throw new ApiError(409, "FRAUD_LAB_GENERATION_CONFLICT", "The generation request conflicted with another request.");
+    }
+    throw error;
+  }
+  return getFraudLabDataset(datasetId);
+}
+
+export const datasetActivationRequestSchema = z.object({
+  confirmation: z.literal("ACTIVATE"),
+}).strict();
+
+export async function activateFraudLabDataset(datasetId: string, analystId: string) {
+  await withTransaction(async (client) => {
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [`fraud-lab-activation:${FRAUD_LAB_ENVIRONMENT}`]);
+    const dataset = await client.query<{ status: string }>(
+      `SELECT status FROM fraud_lab_datasets WHERE dataset_id = $1 AND environment_id = $2 FOR SHARE`,
+      [datasetId, FRAUD_LAB_ENVIRONMENT],
+    );
+    if (!dataset.rows[0]) throw new ApiError(404, "FRAUD_LAB_DATASET_NOT_FOUND", "That Fraud Lab dataset was not found.");
+    if (dataset.rows[0].status !== "READY") {
+      throw new ApiError(409, "FRAUD_LAB_DATASET_NOT_READY", "Only a completed Fraud Lab dataset can be activated.");
+    }
+    const current = await client.query<{ dataset_id: string }>(
+      `SELECT dataset_id::text FROM fraud_lab_active_datasets WHERE environment_id = $1 FOR UPDATE`,
+      [FRAUD_LAB_ENVIRONMENT],
+    );
+    if (current.rows[0]?.dataset_id === datasetId) return;
+    await client.query(
+      `INSERT INTO fraud_lab_active_datasets (environment_id, dataset_id, activated_by)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (environment_id) DO UPDATE
+       SET dataset_id = EXCLUDED.dataset_id, activated_by = EXCLUDED.activated_by, activated_at = now()`,
+      [FRAUD_LAB_ENVIRONMENT, datasetId, analystId],
+    );
+    await client.query(
+      `INSERT INTO fraud_lab_dataset_activation_events
+         (activation_id, environment_id, dataset_id, previous_dataset_id, activated_by)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [randomUUID(), FRAUD_LAB_ENVIRONMENT, datasetId, current.rows[0]?.dataset_id ?? null, analystId],
+    );
+  });
+  return getFraudLabDataset(datasetId);
+}
 
 type DiscoveryRow = HistoricalRow & {
   baseline_action: "APPROVED" | "CHALLENGED" | "BLOCKED";
@@ -175,21 +321,20 @@ async function buildDiscoveryReport(runId: string, waveIds: string[], snapshotSh
 }
 
 export async function getFraudOperationsDashboard() {
-  const [waves, totals, runs] = await Promise.all([
-    query<WaveRow>(`SELECT wave.* FROM fraud_lab_waves wave WHERE wave.status = 'READY'
-      AND NOT EXISTS (SELECT 1 FROM fraud_lab_wave_supersessions supersession
-                      WHERE supersession.superseded_wave_id = wave.wave_id)
-      ORDER BY wave.period_start`),
+  const [waves, totals, runs, datasets] = await Promise.all([
+    query<WaveRow>(`SELECT wave.* FROM fraud_lab_active_datasets active
+      JOIN fraud_lab_dataset_waves member ON member.dataset_id = active.dataset_id
+      JOIN fraud_lab_waves wave ON wave.wave_id = member.wave_id
+      WHERE active.environment_id = $1 ORDER BY member.ordinal`, [FRAUD_LAB_ENVIRONMENT]),
     query<{ total: string; fraud: string; detected: string }>(`
       SELECT count(*)::text AS total,
              count(*) FILTER (WHERE ground_truth_fraud)::text AS fraud,
              count(*) FILTER (WHERE ground_truth_fraud AND baseline_action <> 'APPROVED')::text AS detected
-      FROM fraud_lab_transactions transaction_row
-      WHERE NOT EXISTS (
-        SELECT 1 FROM fraud_lab_wave_supersessions supersession
-        WHERE supersession.superseded_wave_id = transaction_row.wave_id
-      )
-    `),
+      FROM fraud_lab_active_datasets active
+      JOIN fraud_lab_dataset_waves member ON member.dataset_id = active.dataset_id
+      JOIN fraud_lab_transactions transaction_row ON transaction_row.wave_id = member.wave_id
+      WHERE active.environment_id = $1
+    `, [FRAUD_LAB_ENVIRONMENT]),
     query<{ run_id: string; status: string; snapshot_row_count: number; started_at: Date; finished_at: Date | null; candidate_id: string | null; rule_name: string | null; candidate_status: string | null }>(`
       SELECT run.run_id::text, run.status, run.snapshot_row_count, run.started_at, run.finished_at,
              candidate.candidate_id::text, candidate.rule_name, candidate_status.status AS candidate_status
@@ -198,12 +343,15 @@ export async function getFraudOperationsDashboard() {
       LEFT JOIN fraud_rule_candidate_status candidate_status ON candidate_status.candidate_id = candidate.candidate_id
       ORDER BY run.started_at DESC LIMIT 20
     `),
+    listFraudLabDatasets(),
   ]);
   const total = Number(totals.rows[0]?.total ?? 0);
   const fraud = Number(totals.rows[0]?.fraud ?? 0);
   const detected = Number(totals.rows[0]?.detected ?? 0);
   return {
     synthetic: true,
+    activeDatasetId: datasets.find((dataset) => dataset.active)?.id ?? null,
+    datasets,
     dataset: { totalTransactions: total, fraudLabelled: fraud, baselineFraudDetected: detected, baselineCoverage: fraud ? detected / fraud : 0 },
     waves: waves.rows.map((wave) => ({
       id: wave.wave_id, schemaVersion: wave.dataset_schema_version, generatorVersion: wave.generator_version,
@@ -221,16 +369,16 @@ export async function getFraudOperationsDashboard() {
 
 export async function getDiscoveryRun(runId: string) {
   const result = await query<{
-    run_id: string; status: string; snapshot_manifest: unknown; snapshot_sha256: string; snapshot_row_count: number;
+    run_id: string; dataset_id: string | null; status: string; snapshot_manifest: unknown; snapshot_sha256: string; snapshot_row_count: number;
     provider: string | null; model: string | null; agent_id: string | null; latency_ms: number | null; error_type: string | null;
     started_at: Date; finished_at: Date | null; candidate_id: string | null; rule_fingerprint: string | null;
-    duplicate_of_candidate_id: string | null; proposal_payload: unknown | null; candidate_status: string | null;
+    discovery_report: unknown | null; duplicate_of_candidate_id: string | null; proposal_payload: unknown | null; candidate_status: string | null;
     metrics: unknown | null; example_references: unknown | null; evaluator_version: string | null; semantics_note: string | null;
     review_decision: string | null; review_reason: string | null; reviewed_at: Date | null;
   }>(`
-    SELECT run.run_id::text, run.status, run.snapshot_manifest, run.snapshot_sha256, run.snapshot_row_count,
+    SELECT run.run_id::text, run.dataset_id::text, run.status, run.snapshot_manifest, run.snapshot_sha256, run.snapshot_row_count,
            run.provider, run.model, run.agent_id, run.latency_ms, run.error_type, run.started_at, run.finished_at,
-           candidate.candidate_id::text, candidate.rule_fingerprint,
+           run.discovery_report, candidate.candidate_id::text, candidate.rule_fingerprint,
            candidate.duplicate_of_candidate_id::text, candidate.proposal_payload,
            candidate_status.status AS candidate_status, backtest.metrics, backtest.example_references,
            backtest.evaluator_version, backtest.semantics_note,
@@ -245,8 +393,9 @@ export async function getDiscoveryRun(runId: string) {
   const row = result.rows[0];
   if (!row) throw new ApiError(404, "DISCOVERY_RUN_NOT_FOUND", "That discovery run was not found.");
   return {
-    id: row.run_id, status: row.status, snapshot: row.snapshot_manifest, snapshotSha256: row.snapshot_sha256,
-    snapshotRowCount: row.snapshot_row_count, startedAt: row.started_at.toISOString(),
+    id: row.run_id, datasetId: row.dataset_id, status: row.status, snapshot: row.snapshot_manifest, snapshotSha256: row.snapshot_sha256,
+    snapshotRowCount: row.snapshot_row_count, discoveryReport: row.discovery_report,
+    startedAt: row.started_at.toISOString(),
     finishedAt: row.finished_at?.toISOString() ?? null, errorType: row.error_type,
     agent: row.provider ? { provider: row.provider, model: row.model, agentId: row.agent_id, latencyMs: row.latency_ms } : null,
     candidate: row.candidate_id ? {
@@ -266,13 +415,18 @@ export async function startDiscoveryAnalysis(analystId: string, idempotencyKey: 
       SELECT run_id::text FROM fraud_discovery_runs WHERE analyst_id = $1 AND idempotency_key = $2
     `, [analystId, idempotencyKey]);
     if (replay.rows[0]) return { runId: replay.rows[0].run_id, replay: true, waveIds: [] as string[], snapshotSha256: "" };
-    const waves = await client.query<WaveRow>(`SELECT wave.* FROM fraud_lab_waves wave
-      WHERE wave.status = 'READY' AND NOT EXISTS (
-        SELECT 1 FROM fraud_lab_wave_supersessions supersession
-        WHERE supersession.superseded_wave_id = wave.wave_id
-      ) ORDER BY wave.period_start FOR SHARE OF wave`);
+    const active = await client.query<{ dataset_id: string }>(`
+      SELECT dataset_id::text FROM fraud_lab_active_datasets
+      WHERE environment_id = $1 FOR SHARE
+    `, [FRAUD_LAB_ENVIRONMENT]);
+    if (!active.rows[0]) throw new ApiError(409, "FRAUD_LAB_EMPTY", "No synthetic Fraud Lab dataset is active.");
+    const datasetId = active.rows[0].dataset_id;
+    const waves = await client.query<WaveRow>(`SELECT wave.* FROM fraud_lab_dataset_waves member
+      JOIN fraud_lab_waves wave ON wave.wave_id = member.wave_id
+      WHERE member.dataset_id = $1 ORDER BY member.ordinal FOR SHARE OF wave`, [datasetId]);
     if (!waves.rowCount) throw new ApiError(409, "FRAUD_LAB_EMPTY", "No synthetic fraud lab wave is ready.");
     const manifest = {
+      datasetId,
       waves: waves.rows.map((wave) => ({ id: wave.wave_id, digest: wave.content_sha256, rowCount: wave.row_count })),
       datasetSchemaVersion: "fraud-lab-dataset/1.0.0",
     };
@@ -280,10 +434,10 @@ export async function startDiscoveryAnalysis(analystId: string, idempotencyKey: 
     runId = randomUUID();
     await client.query(`
       INSERT INTO fraud_discovery_runs
-        (run_id, analyst_id, idempotency_key, status, snapshot_wave_ids, snapshot_manifest,
+        (run_id, analyst_id, idempotency_key, dataset_id, status, snapshot_wave_ids, snapshot_manifest,
          snapshot_sha256, snapshot_row_count)
-      VALUES ($1, $2, $3, 'ANALYSING', $4, $5, $6, $7)
-    `, [runId, analystId, idempotencyKey, JSON.stringify(waves.rows.map((wave) => wave.wave_id)),
+      VALUES ($1, $2, $3, $4, 'ANALYSING', $5, $6, $7, $8)
+    `, [runId, analystId, idempotencyKey, datasetId, JSON.stringify(waves.rows.map((wave) => wave.wave_id)),
       JSON.stringify(manifest), snapshotSha256, waves.rows.reduce((sum, wave) => sum + wave.row_count, 0)]);
     return { runId, replay: false, waveIds: waves.rows.map((wave) => wave.wave_id), snapshotSha256 };
   });

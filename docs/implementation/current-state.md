@@ -3,6 +3,19 @@
 Handoff as of 3 November 2026. Start milestone work here; follow links for detail. Planned statements are not
 claims about deployed behaviour.
 
+## TechZone and agentic investigation foundation
+
+On 4 November 2026, a read-only TechZone Gate 0 check found `oc` client 4.22.18 but could not resolve the
+configured API endpoint. No cluster resources were applied or changed. The exact blocker and required
+read-only verification are recorded in [`techzone-gate-0.md`](techzone-gate-0.md).
+
+Repository work added Alembic `0016_agentic_lab`, an isolated deterministic three-partition Fraud
+Investigation laboratory, and an idempotent `fraud-agentic-lab-seed` entry point. Its immutable future
+waves distinguish `DISCOVERY`, `VALIDATION`, and `FINAL_HOLDOUT`; complete scenario groups stay within one
+partition. This is a local data-boundary foundation only: no Orchestrate tools, browser endpoints, payment
+path, customer Fraud Intelligence flow, or existing Phase D records changed. Focused generator/migration
+tests and Ruff passed. OpenShift artifacts remain unapplied templates pending Gate 0.
+
 ## Completed milestones
 
 ### Phase 0: protected baseline
@@ -91,8 +104,9 @@ Observed Phase B verification on 1 November 2026:
 ### Phase C: Glaramara Fraud Intelligence
 
 Phase C adds Alembic `0010_glaramara_phase_c`, an adaptive and recoverable Glaramara security check, the
-single TechZone `fraud_intelligence` agent, strict evidence validation and deterministic reassessment policy
-`customer-evidence-reassessment/1.0.0`. A questionnaire begins with three core questions and selects contact
+single TechZone `fraud_intelligence` agent, strict evidence validation and a versioned deterministic
+reassessment policy. The initial implementation used `customer-evidence-reassessment/1.0.0`; the current
+evidence-driven path is described below. A questionnaire begins with three core questions and selects contact
 or scam follow-ups only from versioned definitions when payment context or prior answers require them. One
 bounded agent clarification is permitted; it is not a free-form chatbot.
 
@@ -142,12 +156,14 @@ See [`glaramara-phase-c-summary.md`](glaramara-phase-c-summary.md) for contracts
 
 ### Live Fraud Intelligence visualiser
 
-Alembic `0013_fraud_intel_view` and the Glaramara `System view` expose the existing payment architecture as a
-read-only, animated system diagram. The toggle is scoped to the browser session and persists across payment
-status and security-check navigation. When disabled, the retail journey remains unchanged. When enabled, a
-responsive SVG/HTML panel shows the transactional outbox, Kafka acknowledgement, Flink event-time evidence,
-parallel authoritative Python and shadow LightGBM branches, Go correlation and shadow policy, plus the
-separate challenged-payment evidence/reassessment lane.
+Alembic `0013_fraud_intel_view` and the Glaramara `System view` expose persisted transaction evidence through
+a read-only, collapsible breakdown below the existing customer response. The toggle is scoped to the browser
+session and persists across payment status and security-check navigation. When disabled, the retail journey
+remains unchanged. When enabled, the same customer guidance remains in place and the breakdown groups observed
+Flink signals/features, authoritative Python policy evidence, shadow-only LightGBM and Go evidence, watsonx
+Orchestrate findings when present, and the original/reassessed payment outcome. A second collapsed
+`Architecture flow` restores the live stage diagram, animated evidence paths and read-only evidence drawers
+beside the customer journey on wide screens and below it on smaller screens.
 
 New router decisions retain the already validated Flink payload in the existing immutable decision insert.
 The inbox, decision, optional investigation and outbox still commit in one transaction before Kafka offset
@@ -155,11 +171,9 @@ commit; duplicate and conflicting evidence handling are unchanged. Historical ro
 owner-scoped projection endpoint reports those rows as downstream-inferred or not observed instead of
 inventing timestamps or features.
 
-Replay is browser-only: it freezes the latest persisted timeline, compresses timestamp gaps, preserves
-parallel branch ordering, animates particles along connectors, and supports pause, resume, restart and
-1×/2×/4× speeds. Provider details use the persisted provider/model/schema/latency values. Human-readable
-findings are a deterministic rendering of the validated extraction fields and the exact structured response
-remains expandable; replay cannot invoke Orchestrate or resubmit a payment.
+The UI reads only the existing owner-scoped projection. It omits unobserved components and does not synthesize
+scores, features or statuses. Provider details use persisted provider/model/schema/latency values. Expanding
+the breakdown cannot invoke Orchestrate, resubmit a payment or mutate the immutable decision.
 
 Observed verification on 3 November 2026:
 
@@ -178,8 +192,11 @@ Observed verification on 3 November 2026:
 
 ### Phase D: extensible AI-assisted fraud rule discovery
 
-Phase D adds Alembic `0011_glaramara_phase_d` and append-only repair provenance in `0012`, a fixed-seed
-8,000-row synthetic fraud laboratory, immutable discovery snapshots, standalone
+Phase D adds Alembic `0011_glaramara_phase_d`, append-only repair provenance in `0012`, and configurable
+dataset identity/activation in `0017`, legacy-run association in `0018` and active-selection hardening in
+`0019`. The fixed-seed synthetic fraud
+laboratory retains immutable waves and snapshots; analysts can independently generate and select exact
+8,000-, 10,000- or 20,000-row datasets. The standalone
 `fraud_rule_discovery`, strict `fraud-rule-proposal/1.0.0` validation, chronological held-out backtesting and
 the role-protected `/fraud-operations` analyst UI. The 50,000-row LightGBM training corpus remains unchanged
 and was rejected for discovery because it lacks raw beneficiary history and group-safe partitions.
@@ -216,6 +233,20 @@ Observed Phase D verification on 2 November 2026:
 
 See [`glaramara-phase-d-summary.md`](glaramara-phase-d-summary.md) for contracts, commands, limitations and
 the future Flink engineering path.
+
+Configurable-dataset verification on 4 November 2026 preserved the active 8,000-row legacy dataset and both
+existing 8,000-row investigation snapshots, candidates and backtests. The migration associated matching
+legacy runs by exact wave ID and row count without changing their manifests, hashes or results. The dedicated
+Python worker generated all supported sizes through the authenticated API; API-request-to-`READY` timings
+were 1.546 s / 1.945 s / 2.979 s for 8,000 / 10,000 / 20,000 rows. Pure generator timings were 0.226 s /
+0.281 s / 0.565 s. Repeating an idempotency key returned the same dataset, a concurrent request returned
+`409`, a stale generation transitioned to terminal `FAILED`, and a subsequent request succeeded. Temporary
+10,000-row activation exposed exactly one 10,000-row wave while historical run JSON remained unchanged; the
+8,000-row selection was then restored. No analysis endpoint or live Orchestrate call was made.
+
+Current focused verification: agents 111 passed / 8 opt-in skipped with Ruff clean; Glaramara 43 contracts,
+TypeScript and production build passed; four Phase D desktop/mobile browser cases passed; deployment 28
+passed; Compose rendered and migrations applied through `0019`.
 
 Incremental-wave validation then completed live run `810ae2fe-7a9f-4f83-a188-23dee7fa7d1c` against both
 active waves: 14,000 snapshot rows, 9,800 discovery-only rows and 4,200 independently loaded holdout rows.
@@ -301,8 +332,8 @@ Observed verification on 2 November 2026:
 ## Orchestrate boundary
 
 Repository source under `watsonx-orchestrate/fraud-intelligence/` manages the Phase C agent; source under
-`watsonx-orchestrate/fraud-rule-discovery/` manages the separate Phase D agent. AskOrchestrate and the Phase C
-agent were not modified. Neither agent has deployment authority. Model changes must be measured against the
+`watsonx-orchestrate/fraud-rule-discovery/` manages the separate Phase D agent. AskOrchestrate was not
+modified. Neither agent has deployment authority. Model changes must be measured against the
 appropriate strict local schema before importing only the intended agent into development.
 
 ## Automatic customer reassessment journey
@@ -326,6 +357,81 @@ Observed verification on 3 November 2026:
 - focused desktop/mobile Playwright: 10 passed, covering completed/cleared, declined, Orchestrate failure,
   duplicate answer submission and refresh recovery, with the existing adaptive and accessibility assertions
   retained.
+
+## Evidence-driven reassessment v1.1
+
+Alembic `0014_evidence_reassessment` preserves historical Phase C rows and adds compatible
+`ADDITIONAL_VERIFICATION` and `REFER_TO_ANALYST` outcomes plus an immutable JSON policy trace.
+`fraud-intelligence-evidence/1.1.0` records purpose, third-party influence, explicitly customer-stated
+verification claims, scam indicators, uncertainty and exact answer excerpts. The backend rejects an excerpt
+that is not present in its cited persisted answer. Agent `fraud_intelligence/1.1.0` remains extraction-only;
+`customer-evidence-reassessment/1.1.0` owns the simulated outcome.
+
+The narrow service-payment demonstration rule never treats self-report as proof of safety: it requires a
+recognised payment, new beneficiary, goods/services purpose, all three stated verification claims, acceptable
+influence, low uncertainty and no indicator, then requires independent beneficiary verification. High-risk
+rules run first. All incomplete, unreliable, unmatched or malformed evidence refers to an analyst.
+
+The System view's Orchestrate drawer joins only persisted data: the exact customer explanation, extracted
+findings, indicators and source excerpts, matched deterministic conditions, and simulated action. AI findings
+and deterministic policy are explicitly labelled. Replay remains a read-only animation of the fetched
+timeline and performs no provider invocation or investigation mutation.
+
+Observed verification on 3 November 2026:
+
+- the development `fraud_intelligence` agent alone was updated; AskOrchestrate was untouched;
+- live REST builder: 5,097 ms, `NONE`, rule
+  `CER-ADDITIONAL-VERIFY-NARROW-SERVICE-PAYMENT`, outcome `ADDITIONAL_VERIFICATION`;
+- live REST safe-account scam: 5,302 ms, `BANK_IMPERSONATION`, `SAFE_ACCOUNT`, `URGENCY`,
+  `PRESSURE_OR_SECRECY`, `UNEXPECTED_CONTACT`, rule `CER-DECLINE-SAFE-ACCOUNT`, outcome `DECLINED`;
+- live REST ambiguous evidence: 4,135 ms, beneficiary `UNCERTAIN`, uncertainty `MEDIUM`, rule
+  `CER-REFER-UNRELIABLE-EVIDENCE`, outcome `REFER_TO_ANALYST`;
+- production REST chat-completions evaluation passed 3/3 (mean 4,845 ms, median 5,097 ms, max 5,302 ms);
+- a real family-help journey initially failed closed because REST returned `UNEXPECTED_CONTACT` in the
+  influence field. The agent mapping and acceptance harness were corrected, the saved retry persisted valid
+  `UNEXPECTED` influence plus `UNEXPECTED_CONTACT` and `PRESSURE_OR_SECRECY` indicators, and the policy
+  selected `REFER_TO_ANALYST` for medium uncertainty. The original verdict remained `CHALLENGED`;
+- Glaramara unit/contracts 33 passed, production build and TypeScript passed; desktop/mobile Playwright
+  26 passed with 6 opt-in tests skipped; agents 99 passed with 8 opt-in tests skipped and Ruff passed;
+- Migration `0014_evidence_reassessment` remains the evidence-policy boundary; the later guidance-only
+  migration moves the current Alembic head to `0015_fraud_guidance`. All reassessments remain simulated with
+  original `CHALLENGED` provenance and `ledger_effect=NONE`.
+
+## Personalised fraud-prevention guidance v1.0
+
+Alembic `0015_fraud_guidance` adds nullable version and JSON payload fields to the immutable reassessment
+record. New reassessments persist `fraud-prevention-guidance/1.0.0`: selected category, source finding IDs and
+provenance, approved template identifiers/versions, exact customer statement (when one was saved), rendered
+heading/context/steps/status and the simulated outcome. Historical rows remain readable with no fabricated
+backfill. Replay reads the stored payload and performs no extraction or message generation.
+
+Guidance composition is deterministic and downstream of policy. High-risk bank/safe-account and
+family/trusted-person impersonation patterns take precedence, followed by unexpected pressure, the narrow
+service-payment path and a high-value first-beneficiary check. Unavailable, contradictory or insufficient
+evidence receives generic safe guidance. Free text is displayed only as escaped, explicitly customer-reported
+content and cannot change an approved template. Customer copy exposes no internal enums, confidence, rule IDs
+or callback promise; every message states that no payment was sent and the journey is simulated.
+
+The retail result now shows the actual saved statement, contextual concern, three protective steps, payment
+status and review route. The System view adds a persisted `Prevention guidance` node after the simulated
+outcome and exposes the complete evidence → policy → template trace to technical viewers.
+
+Observed verification on 3 November 2026:
+
+- no Orchestrate instructions or deployment changed; the existing evidence contract was sufficient and
+  AskOrchestrate remained untouched;
+- a real REST-path family-help extraction returned schema-valid v1.1 evidence in 4,721 ms with
+  `UNEXPECTED_CONTACT` and `PRESSURE_OR_SECRECY`; policy matched
+  `CER-DECLINE-PRESSURE-SECRECY` and guidance selected
+  `FAMILY_OR_TRUSTED_PERSON_IMPERSONATION` from the persisted purpose and indicator findings;
+- the live record retained authoritative `CHALLENGED`, `ledger_effect=NONE` and `is_simulated=true`;
+- Glaramara unit/contracts: 40 passed; TypeScript and production build passed; focused desktop/mobile
+  customer and System-view Playwright: 12 passed, including accessibility and mutation-free replay. The full
+  Playwright suite passed 26 with 6 explicitly opt-in live tests skipped;
+- migration tests: 4 passed with Ruff clean; the development database is at `0015_fraud_guidance` and a
+  database audit found zero altered original verdicts, ledger effects or non-simulated reassessments. Fourteen
+  historical rows remain readable with null guidance; the one new live row has exactly one extraction and one
+  reassessment after repeated read-only projection calls.
 
 ## Limitations and outstanding work
 

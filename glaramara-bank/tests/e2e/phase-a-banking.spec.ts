@@ -14,7 +14,7 @@ test("renders the approved forest-green bank shell and responsive navigation", a
   await expect(page.getByRole("heading", { name: /Good evening, Alex/ })).toBeVisible();
   await expect(page.getByText("£24,862.80", { exact: true })).toBeVisible();
   await expect(page.getByRole("img", { name: "Glaramara mountain mark" })).toBeVisible();
-  await expect(page.getByText("INTERACTIVE DEMO", { exact: true })).toBeVisible();
+  await expect(page.getByText("Demo account", { exact: true })).toBeVisible();
 
   await expect
     .poll(() => page.locator("body").evaluate((element) => getComputedStyle(element).backgroundColor))
@@ -53,7 +53,7 @@ test("renders the approved forest-green bank shell and responsive navigation", a
   await activeNavigation.getByRole("link", { name: "Activity", exact: true }).click();
   await expect(page.getByRole("heading", { name: /Your activity/ })).toBeVisible();
   await expect(page.getByText("Whole Foods Market", { exact: true })).toBeVisible();
-  await expect(page.getByText("All accounts, transactions and decisions are fictional.")).toBeVisible();
+  await expect(page.getByText("Demo account", { exact: true })).toBeVisible();
 });
 
 test("switches fictional customers through the same-origin session API", async ({ page }, testInfo) => {
@@ -114,13 +114,11 @@ test("submits the £10,000 payment idempotently and shows a real pending status"
 
   await expect(page.getByRole("heading", { name: "One last look" })).toBeVisible();
   await expect(page.getByText("£10,000.00", { exact: true })).toBeVisible();
-  await expect(page.getByText(/submission creates an immutable payment attempt/)).toBeVisible();
-  await page.getByRole("button", { name: "Submit fictional payment" }).click();
+  await page.getByRole("button", { name: "Send payment" }).click();
 
   await expect(page.getByRole("heading", { name: "We’re checking this payment" })).toBeVisible();
-  await expect(page.getByText("PENDING · DETERMINISTIC POLICY", { exact: true })).toBeVisible();
-  await expect(page.getByText(/No ledger entry was created/)).toBeVisible();
-  await expect(page.getByText(/waiting for independent LightGBM evidence/)).toBeVisible();
+  await expect(page.getByText("PENDING", { exact: true })).toBeVisible();
+  await expect(page.getByText(/usual security checks/)).toBeVisible();
   expect(bankingApi.paymentRequests).toHaveLength(1);
   expect(bankingApi.paymentRequests[0]).toMatchObject({
     body: {

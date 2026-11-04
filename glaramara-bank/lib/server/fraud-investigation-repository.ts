@@ -10,6 +10,11 @@ import {
   type MinimalInvestigationContext,
 } from "@/lib/fraud-intelligence/evidence";
 import {
+  buildFraudPreventionGuidance,
+  GUIDANCE_CONTRACT_VERSION,
+  type FraudPreventionGuidance,
+} from "@/lib/fraud-intelligence/guidance.mjs";
+import {
   extractFraudEvidence,
   fraudIntelligenceProvider,
 } from "@/lib/fraud-intelligence/orchestrate-client";
@@ -31,7 +36,7 @@ import { ApiError } from "@/lib/server/api-errors";
 import { query, withTransaction } from "@/lib/server/db";
 
 const AGENT_NAME = "fraud_intelligence";
-const AGENT_VERSION = "1.0.0";
+const AGENT_VERSION = "1.1.0";
 const REQUIRED_EVIDENCE_KEYS = ["payment_recognition", "beneficiary_relationship", "payment_purpose"];
 
 type InvestigationStatus =
@@ -74,9 +79,13 @@ type AnswerRow = {
 };
 
 type ReassessmentRow = {
-  outcome: "CLEARED" | "REQUIRES_FURTHER_REVIEW" | "DECLINED";
+  outcome: "CLEARED" | "REQUIRES_FURTHER_REVIEW" | "DECLINED"
+    | "ADDITIONAL_VERIFICATION" | "REFER_TO_ANALYST";
   policy_version: string;
   reason_codes: string[];
+  policy_trace: unknown[];
+  guidance_contract_version: string | null;
+  guidance_payload: FraudPreventionGuidance | null;
   reassessed_at: Date;
 } | null;
 
@@ -128,7 +137,8 @@ async function investigationJson(row: InvestigationRow) {
       ORDER BY answered_at, answer_id
     `, [row.customer_investigation_id]),
     query<Exclude<ReassessmentRow, null>>(`
-      SELECT outcome, policy_version, reason_codes, reassessed_at
+      SELECT outcome, policy_version, reason_codes, policy_trace,
+             guidance_contract_version, guidance_payload, reassessed_at
       FROM customer_fraud_reassessments
       WHERE customer_investigation_id = $1
       ORDER BY reassessed_at DESC, reassessment_id DESC
@@ -169,6 +179,8 @@ async function investigationJson(row: InvestigationRow) {
       outcome: reassessment.outcome,
       policyVersion: reassessment.policy_version,
       reasonCodes: reassessment.reason_codes,
+      policyTrace: reassessment.policy_trace,
+      guidance: reassessment.guidance_payload,
       reassessedAt: reassessment.reassessed_at.toISOString(),
       simulated: true,
       ledgerEffect: "NONE" as const,
@@ -482,8 +494,28 @@ export async function executeFraudIntelligence(customerId: string, paymentId: st
       }
 
       const policy = claimed.invocationNumber > 1 && result.evidence.clarificationQuestion.needed
-        ? { outcome: "REQUIRES_FURTHER_REVIEW" as const, reasonCodes: ["REPEATED_CLARIFICATION_NOT_ALLOWED"] }
+        ? {
+            outcome: "REFER_TO_ANALYST" as const,
+            reasonCodes: ["REPEATED_CLARIFICATION_NOT_ALLOWED"],
+            policyTrace: [{
+              ruleId: "CER-REFER-REPEATED-CLARIFICATION",
+              policyVersion: REASSESSMENT_POLICY_VERSION,
+              outcome: "REFER_TO_ANALYST",
+              summary: "A second AI-generated clarification is not permitted.",
+              conditions: [],
+              sourceQuestionIds: [],
+            }],
+          }
         : reassessFraudEvidence(result.evidence);
+      const customerExplanation = claimed.answers.find(
+        (answer) => answer.question_id === "payment_circumstances",
+      )?.answer_payload.value ?? null;
+      const guidance = buildFraudPreventionGuidance({
+        evidence: result.evidence,
+        reassessment: policy,
+        customerExplanation,
+        context: claimed.context.payment,
+      });
       const extraction = await client.query<{ extraction_id: string }>(`
         SELECT extraction_id FROM fraud_intelligence_extractions
         WHERE customer_investigation_id = $1 AND invocation_number = $2
@@ -491,11 +523,13 @@ export async function executeFraudIntelligence(customerId: string, paymentId: st
       await client.query(`
         INSERT INTO customer_fraud_reassessments
           (reassessment_id, customer_investigation_id, extraction_id, policy_version,
-           outcome, reason_codes, evidence_snapshot, original_payment_verdict)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, 'CHALLENGED')
+           outcome, reason_codes, evidence_snapshot, policy_trace, original_payment_verdict,
+           guidance_contract_version, guidance_payload)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'CHALLENGED', $9, $10)
       `, [
         randomUUID(), claimed.row.customer_investigation_id, extraction.rows[0].extraction_id,
         REASSESSMENT_POLICY_VERSION, policy.outcome, JSON.stringify(policy.reasonCodes), result.evidence,
+        JSON.stringify(policy.policyTrace), GUIDANCE_CONTRACT_VERSION, guidance,
       ]);
       await client.query(`
         UPDATE customer_fraud_investigations
@@ -514,6 +548,19 @@ export async function executeFraudIntelligence(customerId: string, paymentId: st
       ? error.name.toUpperCase() : "UNKNOWN";
     await withTransaction(async (client) => {
       const extractionId = randomUUID();
+      const failedPolicy = {
+        outcome: "REFER_TO_ANALYST" as const,
+        reasonCodes: [`AGENT_${errorType}`],
+      };
+      const customerExplanation = claimed.answers.find(
+        (answer) => answer.question_id === "payment_circumstances",
+      )?.answer_payload.value ?? null;
+      const guidance = buildFraudPreventionGuidance({
+        evidence: null,
+        reassessment: failedPolicy,
+        customerExplanation,
+        context: claimed.context.payment,
+      });
       await client.query(`
         INSERT INTO fraud_intelligence_extractions
           (extraction_id, customer_investigation_id, invocation_number, request_sha256,
@@ -530,14 +577,22 @@ export async function executeFraudIntelligence(customerId: string, paymentId: st
       await client.query(`
         INSERT INTO customer_fraud_reassessments
           (reassessment_id, customer_investigation_id, extraction_id, policy_version,
-           outcome, reason_codes, evidence_snapshot, original_payment_verdict)
-        VALUES ($1, $2, $3, $4, 'REQUIRES_FURTHER_REVIEW', $5, $6, 'CHALLENGED')
+           outcome, reason_codes, evidence_snapshot, policy_trace, original_payment_verdict,
+           guidance_contract_version, guidance_payload)
+        VALUES ($1, $2, $3, $4, 'REFER_TO_ANALYST', $5, $6, $7, 'CHALLENGED', $8, $9)
       `, [
         randomUUID(), claimed.row.customer_investigation_id, extractionId,
         REASSESSMENT_POLICY_VERSION, JSON.stringify([`AGENT_${errorType}`]), {
           schemaVersion: EVIDENCE_SCHEMA_VERSION,
           failure: errorType,
-        },
+        }, JSON.stringify([{
+          ruleId: "CER-REFER-EXTRACTION-UNAVAILABLE",
+          policyVersion: REASSESSMENT_POLICY_VERSION,
+          outcome: "REFER_TO_ANALYST",
+          summary: "Validated Fraud Intelligence evidence was unavailable.",
+          conditions: [{ condition: "schema-valid evidence is required", actual: errorType, findingIds: [] }],
+          sourceQuestionIds: [],
+        }]), GUIDANCE_CONTRACT_VERSION, guidance,
       ]);
       await client.query(`
         UPDATE customer_fraud_investigations
@@ -546,7 +601,7 @@ export async function executeFraudIntelligence(customerId: string, paymentId: st
       `, [claimed.row.customer_investigation_id]);
       await appendEvent(client, claimed.row.customer_investigation_id, "FAILED", {
         errorType,
-        conservativeOutcome: "REQUIRES_FURTHER_REVIEW",
+        conservativeOutcome: "REFER_TO_ANALYST",
       });
     });
   }

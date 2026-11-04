@@ -43,6 +43,9 @@ CHALLENGED Glaramara payment ─► versioned security questionnaire
                                       │
                                       ▼
                        simulated reassessment: never changes payment verdict
+                                      │
+                                      ▼
+                deterministic, persisted fraud-prevention guidance
 ```
 
 The deterministic fast path is the sole payment authority. It writes immutable `payment_decisions`; no
@@ -52,7 +55,13 @@ is at least once, with stable event IDs and PostgreSQL constraints as the dedupl
 For challenged Glaramara payments, the customer can complete a versioned, durable security questionnaire.
 The optional server-side Fraud Intelligence adapter uses either a credential-free deterministic `mock` or the
 existing IBM watsonx Orchestrate agent through IAM and REST. Its reassessment is simulated and append-only;
-missing, invalid, or unavailable live evidence conservatively becomes `REQUIRES_FURTHER_REVIEW`.
+missing, invalid, or unavailable v1.1 evidence conservatively becomes `REFER_TO_ANALYST`. High-risk scam
+evidence takes precedence; the narrow service-payment demonstration can only request additional independent
+beneficiary verification and never releases a payment.
+
+Versioned `fraud-prevention-guidance/1.0.0` follows that simulated reassessment. It composes approved customer
+messages from persisted, provenance-backed evidence; customer free text cannot supply instructions or change
+the template. Guidance is stored for deterministic replay and has no payment or ledger authority.
 
 The separate Fraud Operations persona provides Phase D rule discovery over immutable, synthetic PostgreSQL
 history. A standalone Orchestrate agent can propose one constrained rule; Glaramara validates and backtests it
@@ -89,7 +98,9 @@ state-preserving shutdown, and the live `orchestrate` configuration.
 - Glaramara: a Next.js fictional bank UI with customer sessions, beneficiaries, simulated payment attempts,
   status polling, adaptive security checks, and a role-protected synthetic Fraud Operations dashboard.
 - Extensible deterministic fraud-lab waves, strict AI rule proposals, held-out backtesting and append-only
-  analyst review. `make fraud-lab-next-wave` adds the optional second period idempotently.
+  analyst review. `make fraud-lab-next-wave` adds the optional second period idempotently;
+  `make fraud-lab-live-analysis` runs one non-deploying analysis and backtest and requires the live
+  watsonx Orchestrate provider.
 - Optional Phoenix/OpenTelemetry infrastructure for local observability.
 
 ## Repository layout

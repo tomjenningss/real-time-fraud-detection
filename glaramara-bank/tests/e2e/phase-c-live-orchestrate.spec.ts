@@ -11,7 +11,7 @@ test.describe("Phase C live Orchestrate journey", () => {
     expect(paymentId).toMatch(/^[0-9a-f-]{36}$/i);
     await page.goto(`/payments/status?paymentId=${encodeURIComponent(paymentId)}`);
 
-    await expect(page.getByText("CHALLENGED · DETERMINISTIC POLICY", { exact: true })).toBeVisible();
+    await expect(page.getByText("CHALLENGED", { exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Start security check" }).click();
     await expect(page.getByRole("heading", { name: "A quick security check" })).toBeVisible();
     await page.getByRole("button", { name: /Start check/ }).click();
@@ -29,12 +29,11 @@ test.describe("Phase C live Orchestrate journey", () => {
     }
     await expect(page.getByRole("heading", { name: "We’re reviewing your payment" })).toBeVisible();
 
-    await expect(page.getByRole("heading", { name: "Security check complete" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "We’d like to help you check this payment" })).toBeVisible({
       timeout: 90_000,
     });
-    await expect(page.getByText("This was a simulated payment. Your balance has not changed.")).toBeVisible();
+    await expect(page.getByText(/Contact the person using a trusted number/)).toBeVisible();
     await page.getByRole("link", { name: "View payment" }).click();
-    await expect(page.getByText("CHALLENGED · DETERMINISTIC POLICY", { exact: true })).toBeVisible();
-    await expect(page.getByText(/No ledger entry was created/)).toBeVisible();
+    await expect(page.getByText("CHALLENGED", { exact: true })).toBeVisible();
   });
 });

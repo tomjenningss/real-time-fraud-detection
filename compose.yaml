@@ -159,6 +159,26 @@ services:
     restart: "no"
     profiles: [tools]
 
+  fraud-lab-dataset-worker:
+    image: localhost/fraud-platform-dev-agents:latest
+    build:
+      context: ./agents
+      dockerfile: Dockerfile
+    command: ["fraud-lab-dataset-worker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    healthcheck:
+      test: ["CMD", "python", "-m", "fraud_agents.fraud_lab.dataset_healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    mem_limit: 512m
+    restart: unless-stopped
+
   fraud-router:
     <<: *python-service
     command: ["fraud-router"]
@@ -299,6 +319,39 @@ services:
     mem_limit: 512m
     restart: unless-stopped
 
+  control-center:
+    image: docker.io/confluentinc/cp-enterprise-control-center-next-gen:2.5.1
+    hostname: control-center
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      CONTROL_CENTER_BOOTSTRAP_SERVERS: kafka:29092
+      CONTROL_CENTER_REPLICATION_FACTOR: "1"
+      CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: "1"
+      CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: "1"
+      CONFLUENT_METRICS_TOPIC_REPLICATION: "1"
+      CONTROL_CENTER_MODE_ENABLE: management
+      CONTROL_CENTER_PROMETHEUS_ENABLE: "false"
+      CONTROL_CENTER_REST_LISTENERS: http://0.0.0.0:9021
+      PORT: "9021"
+    ports:
+      - "127.0.0.1:${CONTROL_CENTER_HOST_PORT}:9021"
+    volumes:
+      - control-center-data:/var/lib/confluent-control-center
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9021/ >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 36
+      start_period: 60s
+    ulimits:
+      nofile:
+        soft: 16384
+        hard: 16384
+    mem_limit: 768m
+    restart: unless-stopped
+
   platform-cli:
     image: localhost/fraud-platform-dev-agents:latest
     volumes:
@@ -314,6 +367,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       GLARAMARA_BASE_URL: http://glaramara-bank:3000
+      CONTROL_CENTER_BASE_URL: http://control-center:9021
     volumes:
       - ./deployment:/deployment:ro
     profiles: [tools]
@@ -322,4 +376,5 @@ volumes:
   kafka-data:
   postgres-data:
   flink-checkpoints:
+  control-center-data:
 

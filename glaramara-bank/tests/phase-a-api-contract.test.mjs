@@ -106,7 +106,9 @@ test("Phase C keeps customer evidence and reassessment separate from payment aut
   assert.doesNotMatch(repository, /UPDATE\s+payment_decisions/i);
   assert.doesNotMatch(repository, /UPDATE\s+banking_accounts/i);
   assert.doesNotMatch(repository, /INSERT INTO banking_transactions/i);
-  assert.match(policy, /customer-evidence-reassessment\/1\.0\.0/);
+  assert.match(policy, /customer-evidence-reassessment\/1\.1\.0/);
+  assert.match(policy, /CER-ADDITIONAL-VERIFY-NARROW-SERVICE-PAYMENT/);
+  assert.match(policy, /independent beneficiary verification remains mandatory/);
   assert.match(questionnaire, /conditionalQuestionIds/);
   assert.match(questionnaire, /glaramara-fraud-questionnaire\/1\.1\.0/);
   assert.match(questionnaire, /payment_circumstances/);
@@ -148,7 +150,7 @@ test("live Fraud Intelligence REST adapter stays backend-only and does not spawn
   assert.match(adapter, /\/chat\/completions/);
   assert.match(adapter, /stream:\s*false/);
   assert.match(adapter, /Authorization:\s*`Bearer \$\{accessToken\}`/);
-  assert.match(adapter, /fraudEvidenceSchema\.parse\(envelope\.evidence\)/);
+  assert.match(adapter, /validateFraudEvidence\(envelope\.evidence, context\)/);
   assert.match(iam, /WATSONX_ORCHESTRATE_API_KEY/);
   assert.match(adapter, /WATSONX_ORCHESTRATE_URL/);
   assert.doesNotMatch(`${adapter}\n${iam}`, /NEXT_PUBLIC_/);

@@ -36,9 +36,11 @@ check_health taskmanager "Flink TaskManager"
 check_health fraud-router "Python router"
 check_health outbox-publisher "Python outbox publisher"
 check_health lightgbm-scorer "LightGBM scorer"
+check_health fraud-lab-dataset-worker "Fraud Lab dataset worker"
 check_health fraud-assessment-correlator "Go assessment correlator"
 check_health fraud-decision-engine "Go shadow decision engine"
 check_health glaramara-bank "Glaramara bank"
+check_health control-center "Confluent Control Center Next-Gen"
 
 if compose exec -T kafka kafka-broker-api-versions --bootstrap-server kafka:29092 >/dev/null 2>&1; then
   echo "Kafka protocol readiness: ready"
@@ -71,6 +73,7 @@ fi
 correlator_port=$(env_value CORRELATOR_HOST_PORT)
 engine_port=$(env_value SHADOW_ENGINE_HOST_PORT)
 glaramara_port=$(env_value GLARAMARA_HOST_PORT)
+control_center_port=$(env_value CONTROL_CENTER_HOST_PORT)
 if curl -fsS "http://127.0.0.1:$correlator_port/readyz" >/dev/null 2>&1; then
   echo "Go assessment correlator HTTP readiness: ready"
 else
@@ -87,6 +90,12 @@ if curl -fsS "http://127.0.0.1:$glaramara_port/api/v1/health" >/dev/null 2>&1; t
   echo "Glaramara HTTP readiness: ready"
 else
   echo "Glaramara HTTP readiness: unavailable"
+  failures=$((failures + 1))
+fi
+if curl -fsS "http://127.0.0.1:$control_center_port/" >/dev/null 2>&1; then
+  echo "Control Center HTTP readiness: ready"
+else
+  echo "Control Center HTTP readiness: unavailable"
   failures=$((failures + 1))
 fi
 
