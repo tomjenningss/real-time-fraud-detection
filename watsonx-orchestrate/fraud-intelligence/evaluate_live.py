@@ -116,9 +116,11 @@ def find_schema_evidence(value: Any) -> dict[str, Any] | None:
     return None
 
 
-def invoke_rest(payload: dict[str, Any], access_token: str) -> dict[str, Any]:
+def invoke_rest(
+    payload: dict[str, Any], access_token: str, agent_id: str = AGENT_ID
+) -> dict[str, Any]:
     base_url = os.environ["WATSONX_ORCHESTRATE_URL"].rstrip("/")
-    endpoint = f"{base_url}/v1/orchestrate/{AGENT_ID}/chat/completions"
+    endpoint = f"{base_url}/v1/orchestrate/{agent_id}/chat/completions"
     body = json.dumps(
         {
             "messages": [{"role": "user", "content": json.dumps(payload)}],
@@ -139,11 +141,10 @@ def invoke_rest(payload: dict[str, Any], access_token: str) -> dict[str, Any]:
     with request.urlopen(rest_request, timeout=90) as response:
         response_payload = json.load(response)
     evidence = find_schema_evidence(response_payload)
-    if evidence is None:
-        raise RuntimeError("REST response contained no schema-versioned evidence")
     return {
         "evidence": evidence,
         "latencyMs": round((time.monotonic() - started) * 1000),
+        "rawResponse": response_payload,
     }
 
 

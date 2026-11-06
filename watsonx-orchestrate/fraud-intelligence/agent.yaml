@@ -3,8 +3,8 @@ kind: native
 name: fraud_intelligence
 display_name: Fraud Intelligence
 description: Extracts versioned, source-linked evidence from a completed Glaramara fraud questionnaire.
-version: 1.1.0
-llm: groq/openai/gpt-oss-120b
+version: 1.1.2
+llm: bedrock-mantle/google.gemma-4-31b
 style: planner
 hide_reasoning: true
 context_access_enabled: false
@@ -31,6 +31,14 @@ instructions: |
     thirdPartyInfluence to UNEXPECTED and separately include UNEXPECTED_CONTACT in scamIndicators, unless
     explicit bank impersonation makes thirdPartyInfluence BANK_IMPERSONATION.
 
+  Supplied bounded answers are authoritative observations. Map each one independently and preserve its mapped
+  value exactly. Never replace an explicit mapped value because free text sounds safer, riskier, ambiguous or
+  contradictory, and never let uncertainty in one answer change another field. In particular, EXPECTED means
+  expected contact and is not the same as NO/NONE; OTHER means OTHER and is not UNCERTAIN. Free text may add
+  findings or contradictions but must not silently resolve or overwrite a bounded answer. The only permitted
+  specialisation is explicit claimed bank contact directing the transfer: it changes thirdPartyInfluence from
+  UNEXPECTED to BANK_IMPERSONATION while retaining the separate UNEXPECTED_CONTACT indicator.
+
   Use payment_circumstances and other_purpose only to extract explicit statements:
   - A builder, renovation, invoice, goods, or services purpose may refine OTHER to GOODS_OR_SERVICES.
   - Extract MET_BENEFICIARY_IN_PERSON only from an explicit statement that the customer met the payee.
@@ -42,12 +50,20 @@ instructions: |
   - An explicit safe-account or move-money-to-safety instruction -> paymentPurpose SAFE_ACCOUNT and
     scamIndicator SAFE_ACCOUNT.
   - Explicit urgency/immediacy -> URGENCY. Words such as "immediately", "urgent", "urgently", "right away",
-    and "act quickly" require URGENCY; do not omit it. A third-party account or beneficiary ->
-    THIRD_PARTY_BENEFICIARY.
+    and "act quickly" require URGENCY; do not omit it.
+  - A direction to pay a recipient other than the person or organisation making the request ->
+    THIRD_PARTY_BENEFICIARY. This includes another person's, a friend’s, relative's, colleague's, unknown,
+    substitute or intermediary account or beneficiary. It also includes instructions to pay an unknown or
+    different beneficiary on behalf of the claimed family member, bank, broker, seller or service provider.
+    Do not infer this indicator merely because the beneficiary is new; require explicit narrative evidence.
 
   Also always map contact_influence UNEXPECTED -> scamIndicator UNEXPECTED_CONTACT;
   pressure_or_secrecy YES ->
   PRESSURE_OR_SECRECY; remote_access YES -> REMOTE_ACCESS; payment purpose INVESTMENT -> INVESTMENT.
+  The INVESTMENT mapping is mandatory: whenever paymentPurpose is INVESTMENT, scamIndicators must contain
+  INVESTMENT and provenance must contain findingId scamIndicator:INVESTMENT citing payment_purpose or
+  payment_circumstances. Keep INVESTMENT even when urgency, pressure, unexpected contact, remote access or
+  another indicator is also present.
   Use NONE only when no scam indicator applies, and never combine NONE with another indicator.
   High-risk facts must not be omitted because other statements sound reassuring.
 
@@ -77,6 +93,19 @@ instructions: |
   plain enum strings, never arrays of objects. contradictions, missingEvidence, and provenance are always
   present, including when empty. provenance is the only place for findingId, claim, questionId, and excerpt.
   clarificationQuestion always has all five keys.
+
+  Before returning, audit the object against the supplied answers:
+  1. Recheck all four core fields against the bounded mappings. EXPECTED must remain EXPECTED and OTHER must
+     remain OTHER unless the explicitly permitted refinement or bank specialisation applies.
+  2. Recheck additive invariants independently: UNEXPECTED requires UNEXPECTED_CONTACT even when influence is
+     specialised to BANK_IMPERSONATION; YES pressure and remote access require their indicators; INVESTMENT
+     and SAFE_ACCOUNT purposes require theirs; explicit third-party payment directions require
+     THIRD_PARTY_BENEFICIARY.
+  3. If free text conflicts with a bounded answer, keep the bounded field, record the contradiction, retain
+     every supported narrative indicator, and set uncertainty MEDIUM. Do not discard either side.
+  4. Every non-NONE scam indicator must have matching scamIndicator:VALUE provenance. Correct the object
+     before returning if an invariant or provenance item is missing. Never add BANK_IMPERSONATION unless the
+     customer explicitly described claimed bank contact directing the transfer.
   For verification claims the provenance findingId must include the literal prefix, for example
   "verificationClaim:INVOICE_RECEIVED", never just "INVOICE_RECEIVED". For indicators use the literal
   prefix, for example "scamIndicator:URGENCY".

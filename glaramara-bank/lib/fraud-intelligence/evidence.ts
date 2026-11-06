@@ -152,6 +152,95 @@ export function validateFraudEvidence(
 ): FraudEvidence {
   const evidence = fraudEvidenceSchema.parse(candidate);
   const answers = new Map(context.answers.map((answer) => [answer.questionId, answer.value]));
+  const invariantIssues: Array<{ path: PropertyKey[]; message: string }> = [];
+  const requireValue = (
+    questionId: string,
+    field: keyof FraudEvidence,
+    allowedValues: readonly unknown[],
+  ): void => {
+    const answer = answers.get(questionId);
+    if (answer !== undefined && !allowedValues.includes(evidence[field])) {
+      invariantIssues.push({
+        path: [field],
+        message: `${field} violates the bounded ${questionId}=${answer} mapping`,
+      });
+    }
+  };
+  const requireIndicator = (
+    questionId: string,
+    answerValue: string,
+    indicator: FraudEvidence["scamIndicators"][number],
+  ): void => {
+    if (answers.get(questionId) === answerValue && !evidence.scamIndicators.includes(indicator)) {
+      invariantIssues.push({
+        path: ["scamIndicators"],
+        message: `${questionId}=${answerValue} requires ${indicator}`,
+      });
+    }
+  };
+
+  const paymentRecognitionMappings: Record<string, FraudEvidence["paymentRecognition"]> = {
+    YES: "RECOGNISED", NO: "NOT_RECOGNISED", UNSURE: "UNCERTAIN",
+  };
+  const beneficiaryMappings: Record<string, FraudEvidence["beneficiaryRelationship"]> = {
+    KNOWN_PERSON: "KNOWN", KNOWN_BUSINESS: "KNOWN", NEW_RECIPIENT: "NEW", UNSURE: "UNCERTAIN",
+  };
+  const purposeMappings: Record<string, readonly FraudEvidence["paymentPurpose"][]> = {
+    GOODS_SERVICES: ["GOODS_OR_SERVICES"],
+    FRIENDS_FAMILY: ["FRIENDS_OR_FAMILY"],
+    INVESTMENT: ["INVESTMENT"],
+    SAFE_ACCOUNT: ["SAFE_ACCOUNT"],
+    OTHER: ["OTHER", "GOODS_OR_SERVICES"],
+  };
+  const influenceMappings: Record<string, readonly FraudEvidence["thirdPartyInfluence"][]> = {
+    NO: ["NONE"], EXPECTED: ["EXPECTED"], UNEXPECTED: ["UNEXPECTED", "BANK_IMPERSONATION"],
+  };
+  const recognitionAnswer = answers.get("payment_recognition");
+  const beneficiaryAnswer = answers.get("beneficiary_relationship");
+  const purposeAnswer = answers.get("payment_purpose");
+  const influenceAnswer = answers.get("contact_influence");
+  if (typeof recognitionAnswer === "string" && recognitionAnswer in paymentRecognitionMappings) {
+    requireValue("payment_recognition", "paymentRecognition", [paymentRecognitionMappings[recognitionAnswer]]);
+  }
+  if (typeof beneficiaryAnswer === "string" && beneficiaryAnswer in beneficiaryMappings) {
+    requireValue("beneficiary_relationship", "beneficiaryRelationship", [beneficiaryMappings[beneficiaryAnswer]]);
+  }
+  if (typeof purposeAnswer === "string" && purposeAnswer in purposeMappings) {
+    requireValue("payment_purpose", "paymentPurpose", purposeMappings[purposeAnswer]);
+  }
+  if (typeof influenceAnswer === "string" && influenceAnswer in influenceMappings) {
+    requireValue("contact_influence", "thirdPartyInfluence", influenceMappings[influenceAnswer]);
+  }
+
+  requireIndicator("payment_purpose", "INVESTMENT", "INVESTMENT");
+  requireIndicator("payment_purpose", "SAFE_ACCOUNT", "SAFE_ACCOUNT");
+  requireIndicator("contact_influence", "UNEXPECTED", "UNEXPECTED_CONTACT");
+  requireIndicator("pressure_or_secrecy", "YES", "PRESSURE_OR_SECRECY");
+  requireIndicator("remote_access", "YES", "REMOTE_ACCESS");
+  if (evidence.paymentPurpose === "INVESTMENT" && !evidence.scamIndicators.includes("INVESTMENT")) {
+    invariantIssues.push({
+      path: ["scamIndicators"],
+      message: "paymentPurpose=INVESTMENT requires INVESTMENT",
+    });
+  }
+  const missingRequiredEvidence = evidence.missingEvidence.some(
+    (questionId) => context.requiredEvidenceKeys.includes(questionId),
+  );
+  if (missingRequiredEvidence && evidence.uncertainty !== "HIGH") {
+    invariantIssues.push({
+      path: ["uncertainty"],
+      message: "Missing required evidence requires HIGH uncertainty",
+    });
+  } else if (([...answers.values()].includes("UNSURE") || evidence.contradictions.length > 0)
+      && evidence.uncertainty !== "MEDIUM") {
+    invariantIssues.push({
+      path: ["uncertainty"],
+      message: "Supplied uncertainty or contradictions require MEDIUM uncertainty",
+    });
+  }
+  if (invariantIssues.length > 0) {
+    throw new z.ZodError(invariantIssues.map((issue) => ({ code: "custom" as const, ...issue })));
+  }
   for (const item of evidence.provenance) {
     for (const cited of item.sources) {
       const answer = answers.get(cited.questionId);

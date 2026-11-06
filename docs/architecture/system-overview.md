@@ -217,12 +217,14 @@ return the current state, and a bounded stale claim can be recovered without exc
 The adapter sends only a pseudonymous transaction reference, amount/currency,
 prior-beneficiary flag, deterministic signal names, required evidence keys and completed question/answer
 pairs. Every pair retains its question ID and `CUSTOMER` provenance, including the circumstances explanation.
-The SaaS tenant never calls localhost. Canonical agent `fraud_intelligence/1.1.0` has no tools,
+The SaaS tenant never calls localhost. Canonical agent `fraud_intelligence/1.1.2` has no tools,
 collaborators, memory or knowledge base and returns only `fraud-intelligence-evidence/1.1.0`. The contract
 separates purpose, third-party influence, customer-stated verification claims, scam indicators, uncertainty
 and exact answer excerpts. Local Zod validation rejects missing finding provenance and any excerpt not
 present in the cited persisted answer. An optional clarification can cause one second and final invocation;
 the database caps the total at two.
+The tenant's primary agent model is `bedrock-mantle/google.gemma-4-31b`; model selection does not alter these
+authority, contract or invocation boundaries.
 
 Policy `customer-evidence-reassessment/1.1.0` consumes only validated evidence. High-risk scam indicators
 take precedence and produce a simulated decline. One deliberately narrow new-beneficiary service-payment rule

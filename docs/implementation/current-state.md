@@ -1,6 +1,6 @@
 # Current implementation state
 
-Handoff as of 3 November 2026. Start milestone work here; follow links for detail. Planned statements are not
+Handoff as of 5 November 2026. Start milestone work here; follow links for detail. Planned statements are not
 claims about deployed behaviour.
 
 ## TechZone and agentic investigation foundation
@@ -364,7 +364,7 @@ Alembic `0014_evidence_reassessment` preserves historical Phase C rows and adds 
 `ADDITIONAL_VERIFICATION` and `REFER_TO_ANALYST` outcomes plus an immutable JSON policy trace.
 `fraud-intelligence-evidence/1.1.0` records purpose, third-party influence, explicitly customer-stated
 verification claims, scam indicators, uncertainty and exact answer excerpts. The backend rejects an excerpt
-that is not present in its cited persisted answer. Agent `fraud_intelligence/1.1.0` remains extraction-only;
+that is not present in its cited persisted answer. Agent `fraud_intelligence/1.1.2` remains extraction-only;
 `customer-evidence-reassessment/1.1.0` owns the simulated outcome.
 
 The narrow service-payment demonstration rule never treats self-report as proof of safety: it requires a
@@ -433,7 +433,115 @@ Observed verification on 3 November 2026:
   historical rows remain readable with null guidance; the one new live row has exactly one extraction and one
   reassessment after repeated read-only projection calls.
 
+## Fraud Intelligence evaluation Phase A baseline
+
+The 5 November 2026 tenant-model comparison used isolated evaluation agents and the production-equivalent
+REST chat-completions path without changing the deployed `fraud_intelligence` agent. A hidden callable
+`watsonx-orchestrate/frontier` alias resolved to Claude Sonnet 4.6 and did not outperform the Groq baseline.
+Gemma 4 31B led the measured campaign at 28/30 original and 16/18 held-out exact scenario accuracy with 6/6
+semantic repeat consistency, but no production model change is recommended without an independent rerun and
+operational entitlement/SLO confirmation. Detailed metrics and raw-response locations are in
+`watsonx-orchestrate/fraud-intelligence/evaluation/MODEL-BENCHMARK-2026-11-05.md`.
+
+Verified on 5 November 2026 without changing the agent, evidence contract, policy, guidance or payment
+boundaries. `watsonx-orchestrate/fraud-intelligence/evaluation/` now contains a reproducible 30-scenario suite
+covering investment, bank impersonation, family emergency, romance/purchase, legitimate, ambiguous,
+contradictory and adversarial cases. Every case declares structured expectations, required/forbidden
+indicators, uncertainty, provenance, deterministic policy and grounded-guidance assertions.
+
+Credential-free execution passed deterministic reassessment 30/30. Guidance passed 29/30 with the previously
+diagnosed influencer/promised-return/urgent-pressure case retained as a known failure: correct investment and
+pressure evidence selects copy that unsupportedly calls the situation an impersonation scam. No fix was made.
+
+A bounded live comparison used the standalone ADK path and Glaramara's REST chat-completions path for that
+same case. Both produced schema-valid v1.1 evidence in 5,829 ms / 5,922 ms, agreed on investment purpose,
+unexpected influence, urgency and pressure, and invented no bank impersonation. Both omitted the separately
+required `INVESTMENT` scam indicator and its provenance, so both extraction runs failed while demonstrating
+semantic transport parity. The other 29 extraction scenarios are explicitly not run.
+
+Native Orchestrate evaluation-framework 1.5.2 was installed and exercised against the real agent. Its exact
+payload smoke case produced zero agent steps and failed journey success because the framework treats the
+literal `END` inside the valid `FRIENDS_FAMILY` option as a conversation terminator. This is reported as an
+unsupported evaluator path, not an agent pass or extraction result. See
+[`evaluation/BASELINE.md`](../../watsonx-orchestrate/fraud-intelligence/evaluation/BASELINE.md).
+
+### Phase A.1 reliability follow-up
+
+Phase A.1 traced the investment omission end to end. Both transports received the bounded investment answer
+and returned investment purpose, proving that serialization and transport were intact; the model omitted a
+cross-field invariant that JSON Schema cannot encode. Only the development `fraud_intelligence` definition
+was updated to 1.1.1, making investment indicator/provenance consistency explicit and prohibiting unsupported
+bank impersonation. AskOrchestrate, the evidence schema, policy, guidance, payment authority and ledger were
+unchanged.
+
+Post-update, the mandatory influencer case passed direct ADK and Glaramara-compatible REST assertions and
+three additional REST runs. A resumable REST campaign executed all 30 scenarios: 44 actual calls yielded 42
+schema-valid structured responses and two retained no-evidence failures that succeeded on retry. Exact
+scenario grading was 17 pass / 13 fail. Six selected high-risk scenarios ran three times; none was byte-for-byte
+stable, five were semantically stable after normalizing ordering and claim wording, and one varied only in
+whether it recorded an adversarial-text contradiction. Deterministic reassessment remains 30/30; guidance
+remains 29/30 plus the declared investment impersonation-copy failure.
+
+Framework investigation found no termination configuration and confirmed the same raw `END` substring check
+in the published evaluation-framework 1.7.0 wheel, so a non-pinned upgrade would not repair native execution.
+The exact native dataset remains intact and REST remains the supported executable baseline path. Remaining
+failures include `EXPECTED` contact collapsing to `NONE`, missing third-party-beneficiary and contradiction
+indicators, bounded-value drift, and transient missing structured output. Phase B should not proceed as an
+unqualified extraction release until those limitations have an agreed acceptance threshold or correction.
+
+### Phase A.2 evidence hardening
+
+Phase A.2 froze and classified all 13 Phase A.1 failures before changing instructions. Selected agent 1.1.2
+preserves bounded mappings, treats narrative evidence additively and retains contradictory sources.
+Glaramara's existing evidence validator now rejects explicit bounded-field, bounded-indicator and uncertainty
+invariant violations instead of modifying model evidence. The schema, policy, guidance and payment boundaries
+remain unchanged.
+
+The selected original-suite run improved from 17/30 to 24/30 exact scenario passes and from 28/44 to 35/43
+invocation passes. One initial call produced no evidence and two responses had invalid source-less `NONE`
+provenance. Repeat semantic stability fell from 5/6 to 2/6 and unsupported indicators remained observable.
+An experimental 1.1.3 revision regressed to 17/30, was rejected, and the development tenant was restored to
+1.1.2.
+
+An 18-scenario unseen set was authored only after selecting 1.1.2, hashed before its first call and never used
+for further tuning. It passed 10/18 exact scenarios and 11/19 invocations; 18 calls returned structured output
+and 16/19 were strict schema/provenance valid. Phase A.2 made 104 total live REST calls across selected, rejected and
+unseen runs. Deterministic policy stayed fully passing and the known guidance defect remains declared. The
+generalisation result is insufficient for Phase B readiness. See
+[`PHASE-A2-REPORT.md`](../../watsonx-orchestrate/fraud-intelligence/evaluation/PHASE-A2-REPORT.md).
+
 ## Limitations and outstanding work
+
+### Gemma primary-model promotion
+
+On 6 November 2026 the existing `fraud_intelligence` agent changed only its `llm` from
+`groq/openai/gpt-oss-120b` to the independently benchmarked
+`bedrock-mantle/google.gemma-4-31b`. Pre/post tenant exports confirmed unchanged identity, endpoint,
+instructions, planner style and structured-output schema. The import retained the existing agent identity,
+and an importable Groq rollback definition was captured first.
+
+Six frozen cases then passed the Glaramara REST path 6/6 for extraction, simulated reassessment and grounded
+guidance with no API failure. Latency was 4,300–10,815 ms (mean 7,666 ms). The runner has no banking database,
+Kafka, verdict or ledger write path, so the acceptance created no payment or balance effects. Historical
+50-case benchmark evidence remains distinct from this focused post-promotion acceptance. See
+`watsonx-orchestrate/fraud-intelligence/evaluation/GEMMA-PROMOTION-2026-11-06.md`.
+
+- Native Orchestrate Stage A now has a hash-guarded converter for the frozen independent 50-case dataset and
+  three representative outputs validate against evaluation-framework 1.5.2's `TestCase` model. Native
+  execution remains gated by the raw `END` substring collision with `FRIENDS_FAMILY`; no full campaign was
+  run. CLI artifacts were not confirmed to populate SaaS Evaluate or Control Plane Quality, and the tenant
+  token was expired during the 6 November read-only refresh. See
+  `watsonx-orchestrate/fraud-intelligence/evaluation/NATIVE-ORCHESTRATE-FEASIBILITY.md`.
+- A subsequent complete-input scan found no safe frozen subset: although 13 scenarios select
+  `FRIENDS_FAMILY`, all 50 exact requests include it in the questionnaire options. The generated compatible
+  manifest records 0 included and 50 excluded. The required three-case proof was therefore not invoked and
+  no native metrics or UI records were produced.
+- An explicitly labelled modified-input follow-up removed that unused option only in generated copies and
+  excluded the 13 selected-answer cases. All 37 remaining cases executed with nonzero native LLM steps for
+  isolated Gemma, Groq and Frontier agents. Strict fraud-harness results were 32/37, 22/37 and 26/37;
+  temporary agents were removed. Browser permissions prevented visual SaaS Evaluate/Quality confirmation,
+  while the CLI reported disk-only persistence. See
+  `watsonx-orchestrate/fraud-intelligence/evaluation/NATIVE-MODIFIED-INPUT-CAMPAIGN-2026-11-06.md`.
 
 - Repository Python targets 3.11; Phase 0's existing `agents/.venv` was 3.14.3. Retain pinned 3.11 CI.
 - LightGBM and thresholds are synthetic/uncalibrated. There is no production feature store, synchronous
