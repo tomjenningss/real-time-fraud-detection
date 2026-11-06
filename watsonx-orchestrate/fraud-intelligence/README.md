@@ -1,9 +1,9 @@
 # Fraud Intelligence
 
-Canonical watsonx Orchestrate source for the single Phase C agent. Agent version 1.1.2 preserves bounded
+Canonical watsonx Orchestrate source for the single Phase C agent. Agent version 1.2.0 preserves bounded
 questionnaire mappings, additive contradiction evidence and supported indicator provenance. The agent has no tools, collaborators,
 knowledge bases or localhost dependencies. It receives one backend-created minimal JSON context and returns
-only `fraud-intelligence-evidence/1.1.0`; payment outcomes remain deterministic application policy.
+only `fraud-intelligence-evidence/1.2.0`; payment outcomes remain deterministic application policy.
 Every semantic finding cites an exact excerpt from a supplied answer, which the application validates before
 policy evaluation.
 

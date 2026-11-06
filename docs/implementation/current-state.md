@@ -329,6 +329,38 @@ Observed verification on 2 November 2026:
 - deterministic reassessment was `DECLINED` for `SCAM_INDICATOR_PRESSURE_OR_SECRECY`; the original verdict
   remained `CHALLENGED`, and both payment and reassessment ledger effects remained `NONE`.
 
+### Adaptive investment evidence refinement
+
+Questionnaire `glaramara-fraud-questionnaire/1.2.0` separates personal familiarity from persisted beneficiary
+history, asks neutrally who recommended, encouraged or instructed the payment, and always adds bounded origin
+plus short reason questions for an investment. The former investment gap was questionnaire routing: only a
+first-time beneficiary or velocity rule selected contact context, while investment purpose selected no
+follow-up. Valid low-uncertainty investment evidence then reached no approved guidance category and fell
+through to the generic safe template; neither behaviour originated in Gemma.
+
+Evidence and reassessment contracts are `fraud-intelligence-evidence/1.2.0` and
+`customer-evidence-reassessment/1.2.0`. The evidence enum now represents familiarity without treating it as
+payment history, while the request continues to carry database-derived `beneficiaryPreviouslyPaid`
+separately. The approved investment guidance recommends independent, proportionate checks without treating an
+investment, social-media relationship, prior payment or customer-initiated conversation as proof of fraud or
+legitimacy. Stored questionnaire `1.0.0`/`1.1.0` snapshots and policy handling of valid `1.1.0` evidence remain
+compatible. The frozen `1.1.0` model benchmark was not rewritten and remains contract-incompatible with the
+new enum.
+
+Observed live correction on 6 November 2026:
+
+- payment `952f2aa2-3bd9-42d2-8f57-399e28bc41c4` was immutably `CHALLENGED` by
+  `FP-CHALLENGE-VELOCITY`; Flink evidence recorded five transactions in the one/two-minute windows;
+- all eight questionnaire answers, including `investment_origin`, `investment_reason` and
+  `pressure_or_secrecy=NO`, persisted before extraction;
+- the first extraction received HTTP 200 from Gemma 4 but the deployed agent still emitted evidence `1.1.0`;
+  strict backend validation correctly rejected it while the original verdict and `ledger_effect=NONE` held;
+- after exporting the rollback definition, validating/importing agent `1.2.0`, live investment acceptance
+  passed for both pressure `NO` and `YES`; the latter included `PRESSURE_OR_SECRECY` and both returned grounded
+  evidence `1.2.0` from `bedrock-mantle/google.gemma-4-31b`;
+- retrying the saved assessment completed on invocation two; repeating the extraction endpoint retained two
+  invocations, eight answers, zero booked transactions and the original `CHALLENGED` verdict.
+
 ## Orchestrate boundary
 
 Repository source under `watsonx-orchestrate/fraud-intelligence/` manages the Phase C agent; source under
@@ -509,6 +541,48 @@ and 16/19 were strict schema/provenance valid. Phase A.2 made 104 total live RES
 unseen runs. Deterministic policy stayed fully passing and the known guidance defect remains declared. The
 generalisation result is insufficient for Phase B readiness. See
 [`PHASE-A2-REPORT.md`](../../watsonx-orchestrate/fraud-intelligence/evaluation/PHASE-A2-REPORT.md).
+
+## Fraud Lab availability-message correction
+
+On 6 November 2026 the Synthetic Fraud Lab retained its active 20,000-transaction dataset and dashboard
+metrics, but a discovery run failed strict proposal validation at `supportingEvidenceRefs`. The analyses API
+passed that domain error through the generic API fallback as HTTP 503 with "The fictional banking service is
+temporarily unavailable." The client correctly retained the last dashboard state, which made a scoped
+analysis failure look like a contradictory banking outage.
+
+The analyses route now maps only `FraudRuleDiscoveryInvalidProposalError` to HTTP 422
+`FRAUD_LAB_INVALID_PROPOSAL`, explicitly stating that the proposal was stopped safely and the banking service
+remains available. Proposal validation, the discovery agent contract, questionnaire/Gemma contracts, Flink
+rules and payment policy are unchanged. Observed verification after rebuilding only Glaramara:
+
+- `make status`: every required service ready, both Flink jobs running and reported consumer lag zero.
+- customer session, dashboard, activity, beneficiaries, health and Fraud Operations APIs returned HTTP 200;
+  the active dataset remained `2ce20995-4996-4c17-a9fa-3d2d3277fc24` with 20,000 transactions.
+- `make glaramara-smoke-test`: passed with deterministic `APPROVED`, both payment outbox events published,
+  unchanged balance and no booked banking transaction.
+- the persisted questionnaire 1.2.0 investment payment remained deterministically `CHALLENGED`, exposed all
+  eight saved answers and a completed reassessment with `ledgerEffect: NONE`.
+- focused Phase A/D contract tests passed 19/19, TypeScript type-check and the production Next.js build passed.
+
+The failed discovery run remains failed by design; correcting the rule-discovery agent's invalid proposal is
+separate from banking availability and was not attempted here.
+
+### Fraud Rule Discovery diagnostic evidence and reliability measurement
+
+On 6 November 2026, migration `0020_fraud_discovery_diagnostics` added an additive, analyst-only durable
+diagnostic record for every future failed Rule Discovery run. It captures the configured agent/model/contract
+provenance, invocation/structural/semantic stage, bounded credential-redacted provider completion snapshot,
+extracted proposal, Zod issue code/path/message/expected type, evidence-reference mismatch details, supporting
+evidence field state and latency. The record is available only through the existing analyst run-detail route;
+customer-facing invalid-proposal responses remain the concise HTTP 422 `FRAUD_LAB_INVALID_PROPOSAL`.
+
+The existing 20,000-row active dataset was then held fixed for 15 independent live Orchestrate calls using
+the configured GPT-OSS-120B Rule Discovery agent. All 15 completed structural validation, evidence grounding
+and deterministic held-out backtesting. There were no invocation, structural, semantic or backtest failures;
+first-attempt validity was 15/15 (100%), agent-latency p50 was 4,659 ms and p95 was 6,657 ms. The 15 immutable
+run snapshots each recorded 20,000 rows; no rule was approved, activated or deployed. This small sample does
+not justify implementing automatic retries. See `deployment/fraud_lab_reliability_evaluation.py` for the
+bounded repeatable measurement path.
 
 ## Limitations and outstanding work
 

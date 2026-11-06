@@ -17,7 +17,7 @@ import {
 } from "@/lib/banking-api";
 import type { Beneficiary } from "@/lib/demo-data";
 import { useBankingResource } from "@/lib/use-banking-resource";
-import { cn, formatMoney } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 type Step = "recipient" | "amount" | "review";
 
@@ -232,19 +232,6 @@ function PaymentJourney() {
                   className="w-3/4 min-w-20 max-w-[260px] border-0 bg-transparent text-center text-[34px] font-extrabold tracking-[-1.8px] text-[#1a3d2e] outline-none md:text-[40px]"
                 />
               </label>
-              <p className="text-[11px] text-[#839589]">Example amounts</p>
-              <div className="my-3 flex flex-wrap gap-2">
-                {["75", "10000", "25000"].map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setAmount(value)}
-                    className="rounded-full border border-[#e0e9dc] bg-[#f3f7f1] px-[11px] py-2 text-[11px] font-bold text-[#3e674b] hover:bg-[#e1eee0]"
-                  >
-                    {formatMoney(Number(value), false)}
-                  </button>
-                ))}
-              </div>
               <label htmlFor="reference" className="mb-2 mt-[18px] block text-[11px] font-bold text-[#596a5e]">
                 Payment reference
               </label>

@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import {
   featureCatalogue,
+  FraudRuleDiscoveryEvidenceReferenceError,
   PROPOSAL_SCHEMA_VERSION,
   REPORT_SCHEMA_VERSION,
   ruleFingerprint,
@@ -18,7 +19,11 @@ import {
   type HistoricalRow,
   SEMANTICS_NOTE,
 } from "@/lib/fraud-rule-discovery/evaluator";
-import { discoverRule } from "@/lib/fraud-rule-discovery/orchestrate-client";
+import {
+  discoverRule,
+  FraudRuleDiscoveryDiagnosticError,
+  type DiscoveryDiagnostic,
+} from "@/lib/fraud-rule-discovery/orchestrate-client";
 import { ApiError, isPostgresError } from "@/lib/server/api-errors";
 import { query, withTransaction } from "@/lib/server/db";
 
@@ -53,6 +58,41 @@ type DatasetRow = {
 };
 
 const FRAUD_LAB_ENVIRONMENT = "glaramara-local";
+
+function fallbackDiscoveryDiagnostic(): DiscoveryDiagnostic {
+  return {
+    agentId: process.env.FRAUD_RULE_DISCOVERY_AGENT_ID?.trim() || null,
+    agentVersion: "1.0.0",
+    provider: process.env.FRAUD_RULE_DISCOVERY_PROVIDER?.trim() || "disabled",
+    model: process.env.FRAUD_RULE_DISCOVERY_MODEL?.trim() || "unavailable",
+    contractVersion: PROPOSAL_SCHEMA_VERSION,
+    validationStage: "INVOCATION",
+    rawCompletion: null,
+    extractedProposal: null,
+    validationIssues: [],
+    evidenceReferenceFailures: null,
+    supportingEvidenceRefsState: "NOT_EXTRACTED",
+    latencyMs: 0,
+  };
+}
+
+async function persistDiscoveryDiagnostic(runId: string, diagnostic: DiscoveryDiagnostic): Promise<void> {
+  await query(`
+    INSERT INTO fraud_discovery_diagnostics
+      (diagnostic_id, run_id, agent_id, agent_version, provider, model, contract_version,
+       validation_stage, raw_completion, extracted_proposal, validation_issues,
+       evidence_reference_failures, supporting_evidence_refs_state, latency_ms)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+  `, [
+    randomUUID(), runId, diagnostic.agentId, diagnostic.agentVersion, diagnostic.provider,
+    diagnostic.model, diagnostic.contractVersion, diagnostic.validationStage,
+    diagnostic.rawCompletion === null ? null : JSON.stringify(diagnostic.rawCompletion),
+    diagnostic.extractedProposal === null ? null : JSON.stringify(diagnostic.extractedProposal),
+    JSON.stringify(diagnostic.validationIssues),
+    diagnostic.evidenceReferenceFailures === null ? null : JSON.stringify(diagnostic.evidenceReferenceFailures),
+    diagnostic.supportingEvidenceRefsState, diagnostic.latencyMs,
+  ]);
+}
 
 function mapDataset(row: DatasetRow) {
   return {
@@ -375,6 +415,11 @@ export async function getDiscoveryRun(runId: string) {
     discovery_report: unknown | null; duplicate_of_candidate_id: string | null; proposal_payload: unknown | null; candidate_status: string | null;
     metrics: unknown | null; example_references: unknown | null; evaluator_version: string | null; semantics_note: string | null;
     review_decision: string | null; review_reason: string | null; reviewed_at: Date | null;
+    diagnostic_agent_id: string | null; diagnostic_agent_version: string | null; diagnostic_provider: string | null;
+    diagnostic_model: string | null; diagnostic_contract_version: string | null; diagnostic_validation_stage: string | null;
+    raw_completion: unknown | null; extracted_proposal: unknown | null; validation_issues: unknown | null;
+    evidence_reference_failures: unknown | null; supporting_evidence_refs_state: string | null;
+    diagnostic_latency_ms: number | null; diagnostic_captured_at: Date | null;
   }>(`
     SELECT run.run_id::text, run.dataset_id::text, run.status, run.snapshot_manifest, run.snapshot_sha256, run.snapshot_row_count,
            run.provider, run.model, run.agent_id, run.latency_ms, run.error_type, run.started_at, run.finished_at,
@@ -382,12 +427,20 @@ export async function getDiscoveryRun(runId: string) {
            candidate.duplicate_of_candidate_id::text, candidate.proposal_payload,
            candidate_status.status AS candidate_status, backtest.metrics, backtest.example_references,
            backtest.evaluator_version, backtest.semantics_note,
-           review.decision AS review_decision, review.reason AS review_reason, review.reviewed_at
+           review.decision AS review_decision, review.reason AS review_reason, review.reviewed_at,
+           diagnostic.agent_id AS diagnostic_agent_id, diagnostic.agent_version AS diagnostic_agent_version,
+           diagnostic.provider AS diagnostic_provider, diagnostic.model AS diagnostic_model,
+           diagnostic.contract_version AS diagnostic_contract_version,
+           diagnostic.validation_stage AS diagnostic_validation_stage,
+           diagnostic.raw_completion, diagnostic.extracted_proposal, diagnostic.validation_issues,
+           diagnostic.evidence_reference_failures, diagnostic.supporting_evidence_refs_state,
+           diagnostic.latency_ms AS diagnostic_latency_ms, diagnostic.captured_at AS diagnostic_captured_at
     FROM fraud_discovery_runs run
     LEFT JOIN fraud_rule_candidates candidate ON candidate.run_id = run.run_id
     LEFT JOIN fraud_rule_candidate_status candidate_status ON candidate_status.candidate_id = candidate.candidate_id
     LEFT JOIN fraud_rule_backtests backtest ON backtest.candidate_id = candidate.candidate_id
     LEFT JOIN fraud_rule_reviews review ON review.candidate_id = candidate.candidate_id
+    LEFT JOIN fraud_discovery_diagnostics diagnostic ON diagnostic.run_id = run.run_id
     WHERE run.run_id = $1
   `, [runId]);
   const row = result.rows[0];
@@ -398,6 +451,21 @@ export async function getDiscoveryRun(runId: string) {
     startedAt: row.started_at.toISOString(),
     finishedAt: row.finished_at?.toISOString() ?? null, errorType: row.error_type,
     agent: row.provider ? { provider: row.provider, model: row.model, agentId: row.agent_id, latencyMs: row.latency_ms } : null,
+    diagnostics: row.diagnostic_validation_stage ? {
+      agent: {
+        agentId: row.diagnostic_agent_id, agentVersion: row.diagnostic_agent_version,
+        provider: row.diagnostic_provider, model: row.diagnostic_model,
+        contractVersion: row.diagnostic_contract_version,
+      },
+      validationStage: row.diagnostic_validation_stage,
+      validationIssues: row.validation_issues,
+      evidenceReferenceFailures: row.evidence_reference_failures,
+      supportingEvidenceRefsState: row.supporting_evidence_refs_state,
+      latencyMs: row.diagnostic_latency_ms,
+      capturedAt: row.diagnostic_captured_at?.toISOString() ?? null,
+      rawCompletion: row.raw_completion,
+      extractedProposal: row.extracted_proposal,
+    } : null,
     candidate: row.candidate_id ? {
       id: row.candidate_id, fingerprint: row.rule_fingerprint, duplicateOfCandidateId: row.duplicate_of_candidate_id,
       status: row.candidate_status, proposal: row.proposal_payload,
@@ -452,7 +520,30 @@ export async function startDiscoveryAnalysis(analystId: string, idempotencyKey: 
       WHERE run_id = $1
     `, [runId, JSON.stringify(report), reportSha256]);
     const discovery = await discoverRule(report);
-    validateEvidenceReferences(discovery.proposal, report);
+    try {
+      validateEvidenceReferences(discovery.proposal, report);
+    } catch (error) {
+      if (error instanceof FraudRuleDiscoveryEvidenceReferenceError) {
+        throw new FraudRuleDiscoveryDiagnosticError(error.name, error.message, {
+          agentId: discovery.agentId,
+          agentVersion: "1.0.0",
+          provider: discovery.provider,
+          model: discovery.model,
+          contractVersion: PROPOSAL_SCHEMA_VERSION,
+          validationStage: "SEMANTIC",
+          rawCompletion: discovery.rawCompletion,
+          extractedProposal: discovery.extractedProposal,
+          validationIssues: [],
+          evidenceReferenceFailures: {
+            invalidReferences: error.invalidReferences,
+            allowedReferenceCount: error.allowedReferenceCount,
+          },
+          supportingEvidenceRefsState: "PRESENT",
+          latencyMs: discovery.latencyMs,
+        });
+      }
+      throw error;
+    }
     const fingerprint = ruleFingerprint(discovery.proposal);
     const candidateId = randomUUID();
     await withTransaction(async (client) => {
@@ -493,6 +584,9 @@ export async function startDiscoveryAnalysis(analystId: string, idempotencyKey: 
       await client.query("UPDATE fraud_discovery_runs SET status = 'COMPLETED', finished_at = now() WHERE run_id = $1", [runId]);
     });
   } catch (error) {
+    const diagnostic = error instanceof FraudRuleDiscoveryDiagnosticError
+      ? error.diagnostic : fallbackDiscoveryDiagnostic();
+    await persistDiscoveryDiagnostic(runId, diagnostic);
     await query(`UPDATE fraud_discovery_runs SET status = 'FAILED', error_type = $2, finished_at = now() WHERE run_id = $1`, [
       runId,
       error instanceof z.ZodError ? "INVALID_AGENT_PROPOSAL" : error instanceof Error ? error.name : "UNKNOWN_ERROR",

@@ -149,6 +149,16 @@ manifest, sends only discovery-partition aggregates and bounded pseudonymous exa
 `fraud-rule-proposal/1.0.0` result, and only then reads the held-out evaluation partition. Approval records
 `APPROVED_FOR_IMPLEMENTATION`; it never activates or publishes a control.
 
+An agent proposal that fails this strict validation returns HTTP 422 `FRAUD_LAB_INVALID_PROPOSAL`. It is a
+scoped analysis failure, not a banking availability failure; the active dataset and existing dashboard remain
+available and unchanged.
+
+Failed discovery runs retain an analyst-only diagnostic record available from the run-detail API. It records
+the bounded, credential-redacted completion snapshot, extracted proposal, provider/model and contract
+provenance, structural Zod issues, semantic evidence-reference failures and latency. Customer-facing routes
+never expose that diagnostic payload. A completion is capped at 64 KiB; oversized completions retain only a
+digest and byte count.
+
 The Fraud Scenario Lab above the investigation workflow separates three actions:
 
 1. `Generate new dataset` enqueues exactly 8,000, 10,000 or 20,000 rows for the fixed-purpose Python worker.
@@ -178,6 +188,14 @@ complete live discovery and held-out backtest from the repository root:
 make fraud-lab-live-analysis
 ```
 
+For a bounded 15-attempt reliability measurement against the already active 20,000-row dataset (no dataset
+generation, deployment, approval or activation), run:
+
+```sh
+base_url=$(awk -F= '$1 == "GLARAMARA_PUBLIC_ORIGIN" { print substr($0, index($0, "=") + 1); exit }' .env)
+python3 deployment/fraud_lab_reliability_evaluation.py --base-url "$base_url" --attempts 15
+```
+
 The target fails closed if `.env` is not configured for Orchestrate or if the completed run does not record
 the live REST provider. It prints the immutable snapshot, proposal, duplicate reference, and computed metrics.
 It does not approve, deploy, or activate the candidate.
@@ -189,9 +207,14 @@ deterministic, credential-free demonstration. `orchestrate` invokes the existing
 Next.js backend. It reads only
 `WATSONX_ORCHESTRATE_API_KEY` and `WATSONX_ORCHESTRATE_URL` from the server environment, obtains a cached IAM
 token and calls the existing agent through its supported non-streaming chat-completions endpoint. Never use
-`NEXT_PUBLIC_` names for either credential. Live failures produce `REFER_TO_ANALYST` under policy v1.1 and never fall
+`NEXT_PUBLIC_` names for either credential. Live failures produce `REFER_TO_ANALYST` under policy v1.2 and never fall
 back to mock. The standalone Python adapter remains in the Orchestrate source directory for diagnostics, but
 Glaramara no longer spawns it.
+
+Questionnaire `1.2.0` separates relationship from database-derived prior-payment history and always collects
+an investment origin plus a short reason. Evidence `1.2.0` preserves those customer claims and transaction
+context separately. Existing questionnaire snapshots and valid evidence `1.1.0` remain readable; the frozen
+`1.1.0` Gemma benchmark is retained unchanged and must not be used as `1.2.0` ground truth.
 
 For a bounded live development journey, keep the Compose Glaramara service in `mock` mode and start a second
 localhost-only backend from the repository root after building the app:

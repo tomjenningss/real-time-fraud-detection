@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+import { FraudRuleDiscoveryDiagnosticError } from "@/lib/fraud-rule-discovery/orchestrate-client";
 import { ApiError, apiErrorResponse } from "@/lib/server/api-errors";
 import { startDiscoveryAnalysis } from "@/lib/server/fraud-operations-repository";
 import { requireSameOrigin } from "@/lib/server/origin";
@@ -19,6 +20,13 @@ export async function POST(request: NextRequest) {
     const run = await startDiscoveryAnalysis(analyst.analystId, idempotencyKey);
     return NextResponse.json({ run }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
+    if (error instanceof FraudRuleDiscoveryDiagnosticError && error.diagnostic.validationStage !== "INVOCATION") {
+      return apiErrorResponse(new ApiError(
+        422,
+        "FRAUD_LAB_INVALID_PROPOSAL",
+        "The fraud analysis returned an invalid proposal and was stopped safely. The fictional banking service remains available.",
+      ));
+    }
     return apiErrorResponse(error);
   }
 }

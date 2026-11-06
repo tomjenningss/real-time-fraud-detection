@@ -55,6 +55,18 @@ export const fraudRuleProposalSchema = z.object({
 export type FraudRuleProposal = z.infer<typeof fraudRuleProposalSchema>;
 export type RuleCondition = z.infer<typeof ruleConditionSchema>;
 
+export class FraudRuleDiscoveryEvidenceReferenceError extends Error {
+  readonly invalidReferences: string[];
+  readonly allowedReferenceCount: number;
+
+  constructor(invalidReferences: string[], allowedReferenceCount: number) {
+    super("proposal contains an evidence reference outside the discovery report");
+    this.name = "FraudRuleDiscoveryEvidenceReferenceError";
+    this.invalidReferences = invalidReferences;
+    this.allowedReferenceCount = allowedReferenceCount;
+  }
+}
+
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
   if (value && typeof value === "object") {
@@ -76,8 +88,7 @@ export function ruleFingerprint(proposal: FraudRuleProposal): string {
 
 export function validateEvidenceReferences(proposal: FraudRuleProposal, report: { cohorts: Array<{ evidenceRef: string }>; examples: Array<{ evidenceRef: string }> }): void {
   const allowed = new Set([...report.cohorts, ...report.examples].map((item) => item.evidenceRef));
-  if (proposal.supportingEvidenceRefs.some((reference) => !allowed.has(reference))) {
-    throw new Error("proposal contains an evidence reference outside the discovery report");
-  }
+  const invalidReferences = proposal.supportingEvidenceRefs.filter((reference) => !allowed.has(reference));
+  if (invalidReferences.length) throw new FraudRuleDiscoveryEvidenceReferenceError(invalidReferences, allowed.size);
 }
 

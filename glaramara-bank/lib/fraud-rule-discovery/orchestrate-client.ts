@@ -1,18 +1,97 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
+import { z } from "zod";
+
 import type { FraudRuleProposal } from "@/lib/fraud-rule-discovery/contracts";
 import { fraudRuleProposalSchema } from "@/lib/fraud-rule-discovery/contracts";
 import { IbmIamTokenProvider, withOneIamRetry } from "@/lib/fraud-intelligence/ibm-iam";
 
 const tokenProvider = new IbmIamTokenProvider();
+const MAX_DIAGNOSTIC_COMPLETION_BYTES = 64 * 1024;
 
-function integrationError(name: string, message: string): Error {
-  const error = new Error(message);
-  error.name = name;
-  return error;
+export type DiscoveryValidationIssue = {
+  code: string;
+  path: string[];
+  message: string;
+  expected: string | null;
+};
+
+export type DiscoveryDiagnostic = {
+  agentId: string | null;
+  agentVersion: string;
+  provider: string;
+  model: string;
+  contractVersion: string;
+  validationStage: "INVOCATION" | "STRUCTURAL" | "SEMANTIC";
+  rawCompletion: unknown | null;
+  extractedProposal: unknown | null;
+  validationIssues: DiscoveryValidationIssue[];
+  evidenceReferenceFailures: unknown | null;
+  supportingEvidenceRefsState: "MISSING" | "EMPTY" | "MALFORMED" | "PRESENT" | "NOT_EXTRACTED";
+  latencyMs: number;
+};
+
+export class FraudRuleDiscoveryDiagnosticError extends Error {
+  readonly diagnostic: DiscoveryDiagnostic;
+
+  constructor(name: string, message: string, diagnostic: DiscoveryDiagnostic) {
+    super(message);
+    this.name = name;
+    this.diagnostic = diagnostic;
+  }
 }
 
-function validateProposal(value: unknown): FraudRuleProposal {
+function integrationError(name: string, message: string, diagnostic?: DiscoveryDiagnostic): Error {
+  return diagnostic ? new FraudRuleDiscoveryDiagnosticError(name, message, diagnostic) : Object.assign(new Error(message), { name });
+}
+
+function redactCompletion(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactCompletion);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, item]) => [
+      key,
+      /(?:authorization|api[_-]?key|token|secret|password)/i.test(key) ? "[REDACTED]" : redactCompletion(item),
+    ]));
+  }
+  return value;
+}
+
+function completionSnapshot(value: unknown): unknown {
+  const redacted = redactCompletion(value);
+  const encoded = JSON.stringify(redacted);
+  const bytes = Buffer.byteLength(encoded, "utf8");
+  if (bytes <= MAX_DIAGNOSTIC_COMPLETION_BYTES) return { truncated: false, byteLength: bytes, payload: redacted };
+  return {
+    truncated: true,
+    byteLength: bytes,
+    sha256: createHash("sha256").update(encoded).digest("hex"),
+  };
+}
+
+function supportingEvidenceRefsState(value: unknown): DiscoveryDiagnostic["supportingEvidenceRefsState"] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "NOT_EXTRACTED";
+  const referenceValue = (value as Record<string, unknown>).supportingEvidenceRefs;
+  if (!("supportingEvidenceRefs" in value)) return "MISSING";
+  if (Array.isArray(referenceValue) && referenceValue.length === 0) return "EMPTY";
+  if (!Array.isArray(referenceValue) || referenceValue.some((item) => typeof item !== "string")) return "MALFORMED";
+  return "PRESENT";
+}
+
+function validationIssues(error: z.ZodError): DiscoveryValidationIssue[] {
+  return error.issues.map((issue) => {
+    const record = issue as unknown as Record<string, unknown>;
+    return {
+      code: issue.code,
+      path: issue.path.map(String),
+      message: issue.message,
+      expected: typeof record.expected === "string" ? record.expected : null,
+    };
+  });
+}
+
+function validateProposal(value: unknown, diagnostic: Omit<DiscoveryDiagnostic, "validationIssues" | "supportingEvidenceRefsState">): FraudRuleProposal {
   const parsed = fraudRuleProposalSchema.safeParse(value);
   if (parsed.success) return parsed.data;
   const paths = [...new Set(parsed.error.issues.map((issue) => issue.path.join(".") || "proposal"))]
@@ -20,6 +99,12 @@ function validateProposal(value: unknown): FraudRuleProposal {
   throw integrationError(
     "FraudRuleDiscoveryInvalidProposalError",
     `Fraud Rule Discovery proposal failed strict validation at: ${paths}`,
+    {
+      ...diagnostic,
+      validationStage: "STRUCTURAL",
+      validationIssues: validationIssues(parsed.error),
+      supportingEvidenceRefsState: supportingEvidenceRefsState(value),
+    },
   );
 }
 
@@ -81,7 +166,15 @@ function mockProposal(report: { cohorts: Array<{ evidenceRef: string }> }): Frau
   });
 }
 
-export async function discoverRule(report: unknown): Promise<{ proposal: FraudRuleProposal; provider: string; model: string; agentId: string; latencyMs: number }> {
+export async function discoverRule(report: unknown): Promise<{
+  proposal: FraudRuleProposal;
+  provider: string;
+  model: string;
+  agentId: string;
+  latencyMs: number;
+  rawCompletion: unknown;
+  extractedProposal: unknown | null;
+}> {
   const provider = process.env.FRAUD_RULE_DISCOVERY_PROVIDER?.trim() || "disabled";
   const started = performance.now();
   if (provider === "mock") {
@@ -91,34 +184,59 @@ export async function discoverRule(report: unknown): Promise<{ proposal: FraudRu
       model: "mock-fraud-rule-discovery/1.0.0",
       agentId: "mock-fraud-rule-discovery",
       latencyMs: Math.round(performance.now() - started),
+      rawCompletion: null,
+      extractedProposal: null,
     };
   }
   if (provider !== "orchestrate") throw new Error("Fraud Rule Discovery execution is disabled");
   const agentId = process.env.FRAUD_RULE_DISCOVERY_AGENT_ID?.trim();
   if (!agentId || !/^[0-9a-f-]{36}$/i.test(agentId)) throw new Error("FRAUD_RULE_DISCOVERY_AGENT_ID is required");
-  const response = await withOneIamRetry(tokenProvider, (accessToken) => fetch(
-    `${baseUrl()}/v1/orchestrate/${agentId}/chat/completions`,
-    {
-      method: "POST",
-      headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: [{ role: "user", content: JSON.stringify(report) }], stream: false }),
-      signal: AbortSignal.timeout(Number(process.env.FRAUD_RULE_DISCOVERY_TIMEOUT_MS ?? "60000")),
-    },
-  ));
-  if (!response.ok) throw integrationError(
-    "FraudRuleDiscoveryHttpError",
-    `Fraud Rule Discovery REST request failed with status ${response.status}`,
-  );
-  const found = findProposal(await response.json());
-  if (found === undefined) throw integrationError(
-    "FraudRuleDiscoveryProposalNotFoundError",
-    "Fraud Rule Discovery response contained no schema-versioned proposal",
-  );
-  return {
-    proposal: validateProposal(found),
-    provider: "watsonx-orchestrate-rest",
-    model: process.env.FRAUD_RULE_DISCOVERY_MODEL?.trim() || "groq/openai/gpt-oss-120b",
-    agentId,
+  const model = process.env.FRAUD_RULE_DISCOVERY_MODEL?.trim() || "groq/openai/gpt-oss-120b";
+  const diagnosticBase = (rawCompletion: unknown | null, extractedProposal: unknown | null): Omit<DiscoveryDiagnostic, "validationIssues" | "supportingEvidenceRefsState"> => ({
+    agentId, agentVersion: "1.0.0", provider: "watsonx-orchestrate-rest", model,
+    contractVersion: "fraud-rule-proposal/1.0.0", validationStage: "INVOCATION",
+    rawCompletion, extractedProposal, evidenceReferenceFailures: null,
     latencyMs: Math.max(0, Math.round(performance.now() - started)),
-  };
+  });
+  try {
+    const response = await withOneIamRetry(tokenProvider, (accessToken) => fetch(
+      `${baseUrl()}/v1/orchestrate/${agentId}/chat/completions`,
+      {
+        method: "POST",
+        headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [{ role: "user", content: JSON.stringify(report) }], stream: false }),
+        signal: AbortSignal.timeout(Number(process.env.FRAUD_RULE_DISCOVERY_TIMEOUT_MS ?? "60000")),
+      },
+    ));
+    if (!response.ok) throw integrationError(
+      "FraudRuleDiscoveryHttpError",
+      `Fraud Rule Discovery REST request failed with status ${response.status}`,
+      { ...diagnosticBase(null, null), validationIssues: [], supportingEvidenceRefsState: "NOT_EXTRACTED" },
+    );
+    const responseBody = await response.json();
+    const rawCompletion = completionSnapshot(responseBody);
+    const found = findProposal(responseBody);
+    if (found === undefined) throw integrationError(
+      "FraudRuleDiscoveryProposalNotFoundError",
+      "Fraud Rule Discovery response contained no schema-versioned proposal",
+      {
+        ...diagnosticBase(rawCompletion, null), validationStage: "STRUCTURAL",
+        validationIssues: [{ code: "proposal_not_found", path: [], message: "No schema-versioned proposal was found in the completion.", expected: "fraud-rule-proposal/1.0.0 object" }],
+        supportingEvidenceRefsState: "NOT_EXTRACTED",
+      },
+    );
+    return {
+      proposal: validateProposal(found, diagnosticBase(rawCompletion, completionSnapshot(found))),
+      provider: "watsonx-orchestrate-rest", model, agentId,
+      latencyMs: Math.max(0, Math.round(performance.now() - started)), rawCompletion,
+      extractedProposal: completionSnapshot(found),
+    };
+  } catch (error) {
+    if (error instanceof FraudRuleDiscoveryDiagnosticError) throw error;
+    throw integrationError(
+      "FraudRuleDiscoveryInvocationError",
+      "Fraud Rule Discovery invocation failed.",
+      { ...diagnosticBase(null, null), validationIssues: [], supportingEvidenceRefsState: "NOT_EXTRACTED" },
+    );
+  }
 }

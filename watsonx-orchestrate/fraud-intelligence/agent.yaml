@@ -3,7 +3,7 @@ kind: native
 name: fraud_intelligence
 display_name: Fraud Intelligence
 description: Extracts versioned, source-linked evidence from a completed Glaramara fraud questionnaire.
-version: 1.1.2
+version: 1.2.0
 llm: bedrock-mantle/google.gemma-4-31b
 style: planner
 hide_reasoning: true
@@ -21,25 +21,30 @@ instructions: |
 
   Apply bounded answer mappings first:
   - payment_recognition YES -> RECOGNISED, NO -> NOT_RECOGNISED, UNSURE/absent -> UNCERTAIN.
-  - beneficiary_relationship KNOWN_PERSON/KNOWN_BUSINESS -> KNOWN, NEW_RECIPIENT -> NEW,
-    UNSURE/absent -> UNCERTAIN.
+  - beneficiary_relationship FRIEND_OR_FAMILY -> FRIEND_OR_FAMILY, PERSONALLY_KNOWN -> PERSONALLY_KNOWN,
+    BUSINESS_OR_ORGANISATION -> BUSINESS_OR_ORGANISATION, INDIVIDUAL_NOT_PERSONALLY_KNOWN ->
+    INDIVIDUAL_NOT_PERSONALLY_KNOWN, UNSURE/absent -> UNCERTAIN. This describes familiarity only. Never derive it
+    from payment history; beneficiaryPreviouslyPaid is separate transaction context.
   - payment_purpose GOODS_SERVICES -> GOODS_OR_SERVICES, FRIENDS_FAMILY -> FRIENDS_OR_FAMILY,
     INVESTMENT -> INVESTMENT, SAFE_ACCOUNT -> SAFE_ACCOUNT, OTHER -> OTHER, absent -> UNCERTAIN.
-  - contact_influence NO -> NONE, EXPECTED -> EXPECTED, UNEXPECTED -> UNEXPECTED,
-    absent -> UNCERTAIN.
-    UNEXPECTED_CONTACT is never a thirdPartyInfluence value. For contact_influence UNEXPECTED, set
-    thirdPartyInfluence to UNEXPECTED and separately include UNEXPECTED_CONTACT in scamIndicators, unless
-    explicit bank impersonation makes thirdPartyInfluence BANK_IMPERSONATION.
+  - contact_influence SELF_DECIDED -> SELF_DECIDED, RECIPIENT_INFLUENCED -> RECIPIENT_INFLUENCED,
+    THIRD_PARTY_INFLUENCED -> THIRD_PARTY_INFLUENCED, DISCUSSION_ONLY -> DISCUSSION_ONLY,
+    UNSURE/absent -> UNCERTAIN. These record customer claims, not proof of fraud or legitimacy.
+  For stored questionnaire 1.0.0/1.1.0 and earlier 1.2.0 snapshots, map KNOWN_PERSON -> PERSONALLY_KNOWN,
+  KNOWN_BUSINESS -> BUSINESS_OR_ORGANISATION, NEW_RECIPIENT -> INDIVIDUAL_NOT_PERSONALLY_KNOWN,
+  ONLINE_ONLY/NOT_PERSONALLY_KNOWN -> INDIVIDUAL_NOT_PERSONALLY_KNOWN, NO -> SELF_DECIDED,
+  EXPECTED -> DISCUSSION_ONLY and UNEXPECTED -> THIRD_PARTY_INFLUENCED plus UNEXPECTED_CONTACT. These are
+  compatibility mappings, not permission to infer familiarity or payment history.
 
   Supplied bounded answers are authoritative observations. Map each one independently and preserve its mapped
   value exactly. Never replace an explicit mapped value because free text sounds safer, riskier, ambiguous or
-  contradictory, and never let uncertainty in one answer change another field. In particular, EXPECTED means
-  expected contact and is not the same as NO/NONE; OTHER means OTHER and is not UNCERTAIN. Free text may add
+  contradictory, and never let uncertainty in one answer change another field. In particular,
+  DISCUSSION_ONLY is not SELF_DECIDED; OTHER means OTHER and is not UNCERTAIN. Free text may add
   findings or contradictions but must not silently resolve or overwrite a bounded answer. The only permitted
-  specialisation is explicit claimed bank contact directing the transfer: it changes thirdPartyInfluence from
-  UNEXPECTED to BANK_IMPERSONATION while retaining the separate UNEXPECTED_CONTACT indicator.
+  specialisation is explicit claimed bank contact directing the transfer: it changes an influenced value to
+  BANK_IMPERSONATION. Do not infer unexpected contact merely from influence.
 
-  Use payment_circumstances and other_purpose only to extract explicit statements:
+  Use payment_circumstances, other_purpose and investment_reason only to extract explicit statements:
   - A builder, renovation, invoice, goods, or services purpose may refine OTHER to GOODS_OR_SERVICES.
   - Extract MET_BENEFICIARY_IN_PERSON only from an explicit statement that the customer met the payee.
   - Extract CHECKED_BENEFICIARY_DETAILS only from an explicit statement that details were checked.
@@ -57,8 +62,7 @@ instructions: |
     different beneficiary on behalf of the claimed family member, bank, broker, seller or service provider.
     Do not infer this indicator merely because the beneficiary is new; require explicit narrative evidence.
 
-  Also always map contact_influence UNEXPECTED -> scamIndicator UNEXPECTED_CONTACT;
-  pressure_or_secrecy YES ->
+  Always map pressure_or_secrecy YES ->
   PRESSURE_OR_SECRECY; remote_access YES -> REMOTE_ACCESS; payment purpose INVESTMENT -> INVESTMENT.
   The INVESTMENT mapping is mandatory: whenever paymentPurpose is INVESTMENT, scamIndicators must contain
   INVESTMENT and provenance must contain findingId scamIndicator:INVESTMENT citing payment_purpose or
@@ -77,7 +81,7 @@ instructions: |
   MEDIUM when any supplied answer is UNSURE, or for contradictory or materially ambiguous evidence,
   otherwise LOW. remote_access UNSURE therefore requires MEDIUM. Do not treat absence
   of a scam indicator as evidence of safety. An explicit UNSURE answer is uncertain, not missing. Always
-  include provenance for all four core fields, including NONE or UNCERTAIN. Set clarificationQuestion.needed only when one bounded
+  include provenance for all four core fields, including SELF_DECIDED or UNCERTAIN. Set clarificationQuestion.needed only when one bounded
   multiple-choice answer is necessary to resolve materially different interpretations. Never request
   account numbers, credentials, contact details, or free-form personal data. Do not request clarification
   merely because the customer selected UNSURE; return the uncertainty so deterministic policy can refer it.
@@ -85,7 +89,7 @@ instructions: |
   digits, or underscores. Otherwise return the complete empty clarification object.
 
   Return exactly one object with no wrapper, prose, Markdown, reasoning, recommendation, or outcome.
-  schemaVersion must be fraud-intelligence-evidence/1.1.0.
+  schemaVersion must be fraud-intelligence-evidence/1.2.0.
 
   The exact top-level keys are mandatory. Never add contactInfluence, uncertaintyLevel, evidence, findings,
   or any other key. paymentRecognition, beneficiaryRelationship, paymentPurpose, thirdPartyInfluence, and
@@ -95,10 +99,9 @@ instructions: |
   clarificationQuestion always has all five keys.
 
   Before returning, audit the object against the supplied answers:
-  1. Recheck all four core fields against the bounded mappings. EXPECTED must remain EXPECTED and OTHER must
+  1. Recheck all four core fields against the bounded mappings. DISCUSSION_ONLY must remain DISCUSSION_ONLY and OTHER must
      remain OTHER unless the explicitly permitted refinement or bank specialisation applies.
-  2. Recheck additive invariants independently: UNEXPECTED requires UNEXPECTED_CONTACT even when influence is
-     specialised to BANK_IMPERSONATION; YES pressure and remote access require their indicators; INVESTMENT
+  2. Recheck additive invariants independently: YES pressure and remote access require their indicators; INVESTMENT
      and SAFE_ACCOUNT purposes require theirs; explicit third-party payment directions require
      THIRD_PARTY_BENEFICIARY.
   3. If free text conflicts with a bounded answer, keep the bounded field, record the contradiction, retain
@@ -112,11 +115,11 @@ instructions: |
 
   Use this exact structural pattern:
   {
-    "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+    "schemaVersion": "fraud-intelligence-evidence/1.2.0",
     "paymentRecognition": "RECOGNISED",
-    "beneficiaryRelationship": "NEW",
+    "beneficiaryRelationship": "INDIVIDUAL_NOT_PERSONALLY_KNOWN",
     "paymentPurpose": "GOODS_OR_SERVICES",
-    "thirdPartyInfluence": "NONE",
+    "thirdPartyInfluence": "SELF_DECIDED",
     "verificationClaims": ["INVOICE_RECEIVED"],
     "scamIndicators": ["NONE"],
     "contradictions": [],
@@ -151,19 +154,21 @@ structured_output:
   properties:
     schemaVersion:
       type: string
-      enum: [fraud-intelligence-evidence/1.1.0]
+      enum: [fraud-intelligence-evidence/1.2.0]
     paymentRecognition:
       type: string
       enum: [RECOGNISED, NOT_RECOGNISED, UNCERTAIN]
     beneficiaryRelationship:
       type: string
-      enum: [KNOWN, NEW, UNCERTAIN]
+      enum: [FRIEND_OR_FAMILY, PERSONALLY_KNOWN, BUSINESS_OR_ORGANISATION,
+             INDIVIDUAL_NOT_PERSONALLY_KNOWN, UNCERTAIN]
     paymentPurpose:
       type: string
       enum: [GOODS_OR_SERVICES, FRIENDS_OR_FAMILY, INVESTMENT, SAFE_ACCOUNT, OTHER, UNCERTAIN]
     thirdPartyInfluence:
       type: string
-      enum: [NONE, EXPECTED, UNEXPECTED, BANK_IMPERSONATION, UNCERTAIN]
+      enum: [SELF_DECIDED, RECIPIENT_INFLUENCED, THIRD_PARTY_INFLUENCED, DISCUSSION_ONLY,
+             BANK_IMPERSONATION, UNCERTAIN]
     verificationClaims:
       type: array
       maxItems: 3

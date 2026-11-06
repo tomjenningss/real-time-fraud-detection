@@ -21,6 +21,7 @@ export type ExtractionResult = {
 type RunnerEnvelope = {
   ok: boolean;
   evidence?: unknown;
+  model?: string;
   latencyMs?: number;
   errorType?: string;
 };
@@ -69,7 +70,8 @@ function findSchemaEvidence(value: unknown): unknown | undefined {
   }
   if (value && typeof value === "object") {
     const record = value as Record<string, unknown>;
-    if (record.schemaVersion === "fraud-intelligence-evidence/1.1.0") return record;
+    if (typeof record.schemaVersion === "string"
+        && record.schemaVersion.startsWith("fraud-intelligence-evidence/")) return record;
     for (const item of Object.values(record)) {
       const evidence = findSchemaEvidence(item);
       if (evidence !== undefined) return evidence;
@@ -103,7 +105,11 @@ async function runRestAdapter(context: MinimalInvestigationContext): Promise<Run
   if (evidence === undefined) {
     throw new Error("Fraud Intelligence REST response contained no schema-versioned evidence");
   }
-  return { ok: true, evidence, latencyMs: Math.max(0, Math.round(performance.now() - started)) };
+  const model = payload && typeof payload === "object"
+    && typeof (payload as Record<string, unknown>).model === "string"
+    ? (payload as Record<string, unknown>).model as string
+    : undefined;
+  return { ok: true, evidence, model, latencyMs: Math.max(0, Math.round(performance.now() - started)) };
 }
 
 export async function extractFraudEvidence(context: MinimalInvestigationContext): Promise<ExtractionResult> {
@@ -113,7 +119,7 @@ export async function extractFraudEvidence(context: MinimalInvestigationContext)
     return {
       evidence: mockedEvidence(context),
       provider: "deterministic-fixture",
-      model: "mock-fraud-intelligence/1.1.0",
+      model: "mock-fraud-intelligence/1.2.0",
       latencyMs: Math.max(0, Math.round(performance.now() - started)),
     };
   }
@@ -125,7 +131,7 @@ export async function extractFraudEvidence(context: MinimalInvestigationContext)
   return {
     evidence: validateFraudEvidence(envelope.evidence, context),
     provider: "watsonx-orchestrate-rest",
-    model: process.env.FRAUD_INTELLIGENCE_MODEL?.trim() || "groq/openai/gpt-oss-120b",
+    model: envelope.model ?? (process.env.FRAUD_INTELLIGENCE_MODEL?.trim() || "unknown"),
     latencyMs: envelope.latencyMs ?? 0,
   };
 }

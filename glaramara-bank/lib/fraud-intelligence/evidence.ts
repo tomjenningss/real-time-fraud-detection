@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { buildMockEvidence } from "@/lib/fraud-intelligence/mock-evidence.mjs";
 
-export const EVIDENCE_SCHEMA_VERSION = "fraud-intelligence-evidence/1.1.0";
+export const EVIDENCE_SCHEMA_VERSION = "fraud-intelligence-evidence/1.2.0";
 
 const questionId = z.string().min(1).max(96);
 const source = z.object({
@@ -13,12 +13,16 @@ const source = z.object({
 export const fraudEvidenceSchema = z.object({
   schemaVersion: z.literal(EVIDENCE_SCHEMA_VERSION),
   paymentRecognition: z.enum(["RECOGNISED", "NOT_RECOGNISED", "UNCERTAIN"]),
-  beneficiaryRelationship: z.enum(["KNOWN", "NEW", "UNCERTAIN"]),
+  beneficiaryRelationship: z.enum([
+    "FRIEND_OR_FAMILY", "PERSONALLY_KNOWN", "BUSINESS_OR_ORGANISATION",
+    "INDIVIDUAL_NOT_PERSONALLY_KNOWN", "UNCERTAIN",
+  ]),
   paymentPurpose: z.enum([
     "GOODS_OR_SERVICES", "FRIENDS_OR_FAMILY", "INVESTMENT", "SAFE_ACCOUNT", "OTHER", "UNCERTAIN",
   ]),
   thirdPartyInfluence: z.enum([
-    "NONE", "EXPECTED", "UNEXPECTED", "BANK_IMPERSONATION", "UNCERTAIN",
+    "SELF_DECIDED", "RECIPIENT_INFLUENCED", "THIRD_PARTY_INFLUENCED",
+    "DISCUSSION_ONLY", "BANK_IMPERSONATION", "UNCERTAIN",
   ]),
   verificationClaims: z.array(z.enum([
     "MET_BENEFICIARY_IN_PERSON", "CHECKED_BENEFICIARY_DETAILS", "INVOICE_RECEIVED",
@@ -87,20 +91,20 @@ export const fraudEvidenceSchema = z.object({
     const fixed: Record<string, string[]> = {
       paymentRecognition: ["payment_recognition"],
       beneficiaryRelationship: ["beneficiary_relationship"],
-      paymentPurpose: ["payment_purpose", "payment_circumstances", "other_purpose"],
-      thirdPartyInfluence: ["contact_influence", "payment_circumstances"],
+      paymentPurpose: ["payment_purpose", "payment_circumstances", "other_purpose", "investment_reason"],
+      thirdPartyInfluence: ["contact_influence", "payment_circumstances", "investment_reason"],
       "scamIndicator:UNEXPECTED_CONTACT": ["contact_influence", "payment_circumstances"],
-      "scamIndicator:PRESSURE_OR_SECRECY": ["pressure_or_secrecy", "payment_circumstances"],
-      "scamIndicator:URGENCY": ["payment_circumstances", "pressure_or_secrecy"],
+      "scamIndicator:PRESSURE_OR_SECRECY": ["pressure_or_secrecy", "payment_circumstances", "investment_reason"],
+      "scamIndicator:URGENCY": ["payment_circumstances", "pressure_or_secrecy", "investment_reason"],
       "scamIndicator:SAFE_ACCOUNT": ["payment_purpose", "payment_circumstances"],
-      "scamIndicator:BANK_IMPERSONATION": ["payment_circumstances", "contact_influence"],
-      "scamIndicator:THIRD_PARTY_BENEFICIARY": ["payment_circumstances"],
-      "scamIndicator:INVESTMENT": ["payment_purpose", "payment_circumstances"],
-      "scamIndicator:REMOTE_ACCESS": ["remote_access", "payment_circumstances"],
+      "scamIndicator:BANK_IMPERSONATION": ["payment_circumstances", "investment_reason", "contact_influence"],
+      "scamIndicator:THIRD_PARTY_BENEFICIARY": ["payment_circumstances", "investment_reason"],
+      "scamIndicator:INVESTMENT": ["payment_purpose", "payment_circumstances", "investment_reason"],
+      "scamIndicator:REMOTE_ACCESS": ["remote_access", "payment_circumstances", "investment_reason"],
       "scamIndicator:NONE": ["contact_influence", "payment_circumstances"],
     };
     if (findingId.startsWith("verificationClaim:")) {
-      return new Set(["payment_circumstances", "other_purpose"]);
+      return new Set(["payment_circumstances", "other_purpose", "investment_reason"]);
     }
     return new Set(fixed[findingId] ?? []);
   };
@@ -183,7 +187,14 @@ export function validateFraudEvidence(
     YES: "RECOGNISED", NO: "NOT_RECOGNISED", UNSURE: "UNCERTAIN",
   };
   const beneficiaryMappings: Record<string, FraudEvidence["beneficiaryRelationship"]> = {
-    KNOWN_PERSON: "KNOWN", KNOWN_BUSINESS: "KNOWN", NEW_RECIPIENT: "NEW", UNSURE: "UNCERTAIN",
+    FRIEND_OR_FAMILY: "FRIEND_OR_FAMILY", PERSONALLY_KNOWN: "PERSONALLY_KNOWN",
+    BUSINESS_OR_ORGANISATION: "BUSINESS_OR_ORGANISATION",
+    INDIVIDUAL_NOT_PERSONALLY_KNOWN: "INDIVIDUAL_NOT_PERSONALLY_KNOWN", UNSURE: "UNCERTAIN",
+    // Compatibility with answers stored before the final 1.2.0 wording refinement.
+    ONLINE_ONLY: "INDIVIDUAL_NOT_PERSONALLY_KNOWN",
+    NOT_PERSONALLY_KNOWN: "INDIVIDUAL_NOT_PERSONALLY_KNOWN",
+    KNOWN_PERSON: "PERSONALLY_KNOWN", KNOWN_BUSINESS: "BUSINESS_OR_ORGANISATION",
+    NEW_RECIPIENT: "INDIVIDUAL_NOT_PERSONALLY_KNOWN",
   };
   const purposeMappings: Record<string, readonly FraudEvidence["paymentPurpose"][]> = {
     GOODS_SERVICES: ["GOODS_OR_SERVICES"],
@@ -193,7 +204,11 @@ export function validateFraudEvidence(
     OTHER: ["OTHER", "GOODS_OR_SERVICES"],
   };
   const influenceMappings: Record<string, readonly FraudEvidence["thirdPartyInfluence"][]> = {
-    NO: ["NONE"], EXPECTED: ["EXPECTED"], UNEXPECTED: ["UNEXPECTED", "BANK_IMPERSONATION"],
+    SELF_DECIDED: ["SELF_DECIDED"], RECIPIENT_INFLUENCED: ["RECIPIENT_INFLUENCED", "BANK_IMPERSONATION"],
+    THIRD_PARTY_INFLUENCED: ["THIRD_PARTY_INFLUENCED", "BANK_IMPERSONATION"],
+    DISCUSSION_ONLY: ["DISCUSSION_ONLY"], UNSURE: ["UNCERTAIN"],
+    NO: ["SELF_DECIDED"], EXPECTED: ["DISCUSSION_ONLY"],
+    UNEXPECTED: ["THIRD_PARTY_INFLUENCED", "BANK_IMPERSONATION"],
   };
   const recognitionAnswer = answers.get("payment_recognition");
   const beneficiaryAnswer = answers.get("beneficiary_relationship");

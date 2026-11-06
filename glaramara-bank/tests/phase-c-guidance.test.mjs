@@ -163,3 +163,33 @@ test("customer free text is inert quoted data and cannot replace approved guidan
   assert.doesNotMatch(JSON.stringify(guidance.rendered), /approved/i);
   assert.equal(guidance.templateReferences[0].templateId, "uncertain-or-incomplete-evidence");
 });
+
+test("legitimate and ambiguous investments receive proportionate investment guidance", () => {
+  for (const answers of [{
+    payment_recognition: "YES",
+    beneficiary_relationship: "BUSINESS_OR_ORGANISATION",
+    payment_purpose: "INVESTMENT",
+    contact_influence: "SELF_DECIDED",
+    investment_origin: "KNOWN_PROVIDER",
+    investment_reason: "I am adding money to an investment account I already use.",
+  }, {
+    payment_recognition: "YES",
+    beneficiary_relationship: "PERSONALLY_KNOWN",
+    payment_purpose: "INVESTMENT",
+    contact_influence: "RECIPIENT_INFLUENCED",
+    investment_origin: "RECOMMENDED",
+    investment_reason: "A friend recommended an investment and I want to take part.",
+  }]) {
+    const evidence = buildMockEvidence(context(answers));
+    const guidance = buildFraudPreventionGuidance({
+      evidence,
+      reassessment: reassessFraudEvidence(evidence),
+      customerExplanation: answers.investment_reason,
+      context: { amount: 5_000, beneficiaryPreviouslyPaid: true },
+    });
+    assert.equal(guidance.category, "INVESTMENT_INDEPENDENT_CHECKS");
+    assert.equal(guidance.personalised, true);
+    assert.match(guidance.rendered.context, /does not mean it is fraudulent or safe/i);
+    assert.doesNotMatch(guidance.rendered.context, /pressure|urgency|guaranteed returns/i);
+  }
+});

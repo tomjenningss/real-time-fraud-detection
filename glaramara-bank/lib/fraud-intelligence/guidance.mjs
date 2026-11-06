@@ -53,6 +53,16 @@ const templates = {
       "Do not attempt the payment again while anything remains uncertain.",
     ],
   },
+  INVESTMENT_INDEPENDENT_CHECKS: {
+    templateId: "investment-independent-checks",
+    heading: "Check the investment independently",
+    context: "You told us this payment is for an investment. That alone does not mean it is fraudulent or safe, and familiarity with the recipient or earlier payments does not verify the investment.",
+    steps: [
+      "Check the firm and investment using contact details and regulatory information you found independently.",
+      "Confirm exactly what this payment funds, including any fees and how withdrawals are meant to work.",
+      "Pause if anything you find independently differs from what you were told.",
+    ],
+  },
   UNCERTAIN_OR_INCOMPLETE: {
     templateId: "uncertain-or-incomplete-evidence",
     heading: "We need to check this payment further",
@@ -130,7 +140,8 @@ function renderTemplate(category, evidence, template) {
 }
 
 function selectCategory(evidence, reassessment, context) {
-  const valid = evidence?.schemaVersion === "fraud-intelligence-evidence/1.1.0"
+  const valid = ["fraud-intelligence-evidence/1.1.0", "fraud-intelligence-evidence/1.2.0"]
+    .includes(evidence?.schemaVersion)
     && Array.isArray(evidence.provenance);
   if (!valid || (evidence.contradictions?.length ?? 0) > 0) {
     return { category: "UNCERTAIN_OR_INCOMPLETE", findingIds: [] };
@@ -186,8 +197,16 @@ function selectCategory(evidence, reassessment, context) {
     };
   }
 
+  if (evidence.paymentPurpose === "INVESTMENT" && hasFinding(evidence, "paymentPurpose")) {
+    return {
+      category: "INVESTMENT_INDEPENDENT_CHECKS",
+      findingIds: supportedFindingIds(evidence, [
+        "paymentPurpose", "beneficiaryRelationship", "thirdPartyInfluence",
+      ]),
+    };
+  }
+
   if (context?.beneficiaryPreviouslyPaid === false && Number(context?.amount) >= 1_000
-      && evidence.beneficiaryRelationship === "NEW"
       && hasFinding(evidence, "beneficiaryRelationship")) {
     return {
       category: "HIGH_VALUE_FIRST_TIME_BENEFICIARY",

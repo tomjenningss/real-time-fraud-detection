@@ -16,7 +16,11 @@ test("Phase D exposes analyst-only dashboard, analysis, detail and review routes
     assert.equal(statSync(join(root, route)).isFile(), true);
     assert.match(read(route), /requireAnalystSession\(request\)/);
   }
-  assert.match(read("app/api/v1/fraud-operations/analyses/route.ts"), /requireSameOrigin\(request\)/);
+  const analysisRoute = read("app/api/v1/fraud-operations/analyses/route.ts");
+  assert.match(analysisRoute, /requireSameOrigin\(request\)/);
+  assert.match(analysisRoute, /FraudRuleDiscoveryDiagnosticError/);
+  assert.match(analysisRoute, /FRAUD_LAB_INVALID_PROPOSAL/);
+  assert.match(analysisRoute, /banking service remains available/);
   assert.match(read("app/api/v1/fraud-operations/candidates/[candidateId]/reviews/route.ts"), /requireSameOrigin\(request\)/);
 });
 
@@ -88,6 +92,25 @@ test("Fraud Rule Discovery REST credentials remain server-only", () => {
   assert.match(client, /FraudRuleDiscoveryInvalidProposalError/);
   assert.doesNotMatch(client, /NEXT_PUBLIC_/);
   assert.doesNotMatch(client, /node:child_process|\bspawn\s*\(/);
+});
+
+test("malformed discovery proposals retain bounded, redacted analyst diagnostics without bypassing validation", () => {
+  const client = read("lib/fraud-rule-discovery/orchestrate-client.ts");
+  const repository = read("lib/server/fraud-operations-repository.ts");
+  const migration = read("../agents/migrations/versions/0020_fraud_discovery_diagnostics.py");
+  assert.match(client, /FraudRuleDiscoveryDiagnosticError/);
+  assert.match(client, /validationIssues\(parsed\.error\)/);
+  assert.match(client, /supportingEvidenceRefsState\(value\)/);
+  assert.match(client, /MAX_DIAGNOSTIC_COMPLETION_BYTES/);
+  assert.match(client, /\[REDACTED\]/);
+  assert.doesNotMatch(client, /console\.(log|error)/);
+  assert.match(repository, /persistDiscoveryDiagnostic/);
+  assert.match(repository, /validationStage: "SEMANTIC"/);
+  assert.match(repository, /FraudRuleDiscoveryEvidenceReferenceError/);
+  assert.match(migration, /raw_completion jsonb/);
+  assert.match(migration, /validation_issues jsonb NOT NULL/);
+  assert.match(migration, /supporting_evidence_refs_state/);
+  assert.match(migration, /validation_stage IN \('INVOCATION', 'STRUCTURAL', 'SEMANTIC'\)/);
 });
 
 test("Fraud Operations distinguishes current data from historical snapshots", () => {

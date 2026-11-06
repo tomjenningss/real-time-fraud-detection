@@ -200,9 +200,11 @@ an event, invokes a provider or changes a decision.
 
 Only a genuine immutable `CHALLENGED` decision can start
 `GET|POST /api/v1/payments/{paymentId}/investigation`. Versioned definitions select three core questions,
-with `contact_influence` and the bounded `payment_circumstances` explanation selected for a new beneficiary.
-Questionnaire `1.1.0` caps that explanation at 500 characters and warns against secrets or full identifiers;
-stored `1.0.0` investigations remain readable. Answers can add bounded `other_purpose`,
+with contact influence and the bounded `payment_circumstances` explanation selected from persisted beneficiary
+history and deterministic signals. Questionnaire `1.2.0` distinguishes friend/family, other personal,
+organisation and individual-not-personally-known recipients; an investment always adds origin and short reason questions regardless
+of familiarity, prior payments or who initiated contact. Stored `1.0.0` and `1.1.0` investigations remain
+readable. Answers can add bounded `other_purpose`,
 `pressure_or_secrecy` and `remote_access` follow-ups. Each answer requires same-origin,
 signed-session ownership and an idempotency key; selected questions and their definitions are snapshotted for
 recovery. The responsive UI restores the next unanswered question after refresh.

@@ -1,4 +1,4 @@
-export const REASSESSMENT_POLICY_VERSION = "customer-evidence-reassessment/1.1.0";
+export const REASSESSMENT_POLICY_VERSION = "customer-evidence-reassessment/1.2.0";
 
 const BUILDER_CLAIMS = [
   "MET_BENEFICIARY_IN_PERSON",
@@ -30,10 +30,11 @@ function result(evidence, ruleId, outcome, reasonCodes, summary, conditions) {
 }
 
 export function reassessFraudEvidence(evidence) {
-  if (!evidence || evidence.schemaVersion !== "fraud-intelligence-evidence/1.1.0") {
+  if (!evidence || !["fraud-intelligence-evidence/1.1.0", "fraud-intelligence-evidence/1.2.0"]
+    .includes(evidence.schemaVersion)) {
     return result(evidence, "CER-REFER-INVALID-EVIDENCE", "REFER_TO_ANALYST",
-      ["INVALID_EVIDENCE_SCHEMA"], "Validated v1.1 evidence was unavailable.", [{
-        condition: "schemaVersion must be fraud-intelligence-evidence/1.1.0",
+      ["INVALID_EVIDENCE_SCHEMA"], "Validated v1.2 evidence was unavailable.", [{
+        condition: "schemaVersion must be a supported fraud-intelligence-evidence version",
         actual: evidence?.schemaVersion ?? "missing",
         findingIds: [],
       }]);
@@ -96,9 +97,11 @@ export function reassessFraudEvidence(evidence) {
   );
   const noScamIndicators = evidence.scamIndicators.length === 1
     && evidence.scamIndicators[0] === "NONE";
-  const acceptableInfluence = ["NONE", "EXPECTED"].includes(evidence.thirdPartyInfluence);
+  const acceptableInfluence = ["SELF_DECIDED", "DISCUSSION_ONLY", "NONE", "EXPECTED"]
+    .includes(evidence.thirdPartyInfluence);
   if (evidence.paymentRecognition === "RECOGNISED"
-      && evidence.beneficiaryRelationship === "NEW"
+      && ["INDIVIDUAL_NOT_PERSONALLY_KNOWN", "NOT_PERSONALLY_KNOWN", "NEW"]
+        .includes(evidence.beneficiaryRelationship)
       && evidence.paymentPurpose === "GOODS_OR_SERVICES"
       && hasAllBuilderClaims && acceptableInfluence && noScamIndicators) {
     return result(

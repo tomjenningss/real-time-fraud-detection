@@ -38,7 +38,7 @@ const builderEvidence = {
 };
 
 test("narrow service-payment evidence requires independent additional verification", () => {
-  assert.equal(REASSESSMENT_POLICY_VERSION, "customer-evidence-reassessment/1.1.0");
+  assert.equal(REASSESSMENT_POLICY_VERSION, "customer-evidence-reassessment/1.2.0");
   const result = reassessFraudEvidence(builderEvidence);
   assert.equal(result.outcome, "ADDITIONAL_VERIFICATION");
   assert.deepEqual(result.reasonCodes, [

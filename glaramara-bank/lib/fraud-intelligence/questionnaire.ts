@@ -1,8 +1,9 @@
 import { z } from "zod";
 
-export const QUESTIONNAIRE_VERSION = "glaramara-fraud-questionnaire/1.1.0";
+export const QUESTIONNAIRE_VERSION = "glaramara-fraud-questionnaire/1.2.0";
 export const questionnaireVersionSchema = z.enum([
   "glaramara-fraud-questionnaire/1.0.0",
+  "glaramara-fraud-questionnaire/1.1.0",
   QUESTIONNAIRE_VERSION,
 ]);
 
@@ -41,13 +42,14 @@ const DEFINITIONS: Record<string, QuestionDefinition> = {
   beneficiary_relationship: {
     id: "beneficiary_relationship",
     version: QUESTIONNAIRE_VERSION,
-    prompt: "How do you know the person or business you’re paying?",
+    prompt: "Who are you making this payment to?",
     kind: "SINGLE_CHOICE",
     options: [
-      { value: "KNOWN_PERSON", label: "Someone I know" },
-      { value: "KNOWN_BUSINESS", label: "A business I know" },
-      { value: "NEW_RECIPIENT", label: "I haven’t paid them before" },
-      { value: "UNSURE", label: "I’m not sure who they are" },
+      { value: "FRIEND_OR_FAMILY", label: "A friend or family member" },
+      { value: "PERSONALLY_KNOWN", label: "Someone else I know personally" },
+      { value: "BUSINESS_OR_ORGANISATION", label: "A business or organisation" },
+      { value: "INDIVIDUAL_NOT_PERSONALLY_KNOWN", label: "An individual I don’t know personally" },
+      { value: "UNSURE", label: "I’m not sure" },
     ],
     required: true,
   },
@@ -68,12 +70,15 @@ const DEFINITIONS: Record<string, QuestionDefinition> = {
   contact_influence: {
     id: "contact_influence",
     version: QUESTIONNAIRE_VERSION,
-    prompt: "Did anyone contact you or guide you through making this payment?",
+    prompt: "Did anyone recommend, encourage or instruct you to make this payment?",
+    helpText: "This could be the recipient or someone else, whether you contacted them or they contacted you.",
     kind: "SINGLE_CHOICE",
     options: [
-      { value: "NO", label: "No" },
-      { value: "EXPECTED", label: "Yes, someone I expected" },
-      { value: "UNEXPECTED", label: "Yes, an unexpected caller or message" },
+      { value: "SELF_DECIDED", label: "No, I decided to make it myself" },
+      { value: "RECIPIENT_INFLUENCED", label: "Yes, the recipient" },
+      { value: "THIRD_PARTY_INFLUENCED", label: "Yes, someone else" },
+      { value: "DISCUSSION_ONLY", label: "We discussed it, but I made the decision" },
+      { value: "UNSURE", label: "I’m not sure" },
     ],
     required: true,
   },
@@ -82,6 +87,29 @@ const DEFINITIONS: Record<string, QuestionDefinition> = {
     version: QUESTIONNAIRE_VERSION,
     prompt: "Briefly explain what happened and why this payment feels urgent.",
     helpText: "You can mention who contacted you, an unfamiliar number, someone abroad, and how the recipient was chosen. Don’t include full phone or account numbers, passwords or security codes.",
+    kind: "SHORT_TEXT",
+    required: true,
+  },
+  investment_origin: {
+    id: "investment_origin",
+    version: QUESTIONNAIRE_VERSION,
+    prompt: "How did you first hear about this investment?",
+    kind: "SINGLE_CHOICE",
+    options: [
+      { value: "OWN_RESEARCH", label: "I found it through my own research" },
+      { value: "KNOWN_PROVIDER", label: "From a financial provider or adviser I already knew" },
+      { value: "RECIPIENT_APPROACHED", label: "The recipient contacted me about it" },
+      { value: "RECOMMENDED", label: "Someone else recommended it" },
+      { value: "OTHER", label: "Another way" },
+      { value: "UNSURE", label: "I’m not sure" },
+    ],
+    required: true,
+  },
+  investment_reason: {
+    id: "investment_reason",
+    version: QUESTIONNAIRE_VERSION,
+    prompt: "Can you tell us a little more about why you’re making this payment?",
+    helpText: "For example, what the payment is intended to fund. Don’t include account numbers, passwords or security codes.",
     kind: "SHORT_TEXT",
     required: true,
   },
@@ -136,7 +164,10 @@ export function initialQuestionIds(context: { triggeredRuleIds: string[]; benefi
 export function conditionalQuestionIds(answers: Record<string, string>) {
   const selected: string[] = [];
   if (answers.payment_purpose === "OTHER") selected.push("other_purpose");
-  if (answers.contact_influence === "UNEXPECTED") {
+  if (answers.payment_purpose === "INVESTMENT") {
+    selected.push("investment_origin", "investment_reason");
+  }
+  if (["RECIPIENT_INFLUENCED", "THIRD_PARTY_INFLUENCED"].includes(answers.contact_influence)) {
     selected.push("pressure_or_secrecy", "remote_access");
   }
   return selected;

@@ -1,4 +1,4 @@
-export const REASSESSMENT_POLICY_VERSION: "customer-evidence-reassessment/1.1.0";
+export const REASSESSMENT_POLICY_VERSION: "customer-evidence-reassessment/1.2.0";
 export type ReassessmentOutcome = "ADDITIONAL_VERIFICATION" | "DECLINED" | "REFER_TO_ANALYST";
 export type PolicyTrace = Array<{
   ruleId: string;
