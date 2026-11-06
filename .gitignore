@@ -62,6 +62,20 @@ audit_records/
 /phoenix-tracing*.png
 fraud-decisioning/.env
 
+# Fraud Intelligence evaluation runtime and reproducible campaign artifacts.
+# Keep canonical fixtures, frozen manifests, native-cases/ and source scripts tracked.
+/watsonx-orchestrate/fraud-intelligence/evaluation/results/
+/watsonx-orchestrate/fraud-intelligence/evaluation/model-benchmark-independent-50/raw/
+/watsonx-orchestrate/fraud-intelligence/evaluation/model-benchmark-independent-50/temporary-agents/
+/watsonx-orchestrate/fraud-intelligence/evaluation/model-benchmark-independent-50/comparison-summary.json
+/watsonx-orchestrate/fraud-intelligence/evaluation/model-benchmark-independent-50/gemma-strict-summary.json
+/watsonx-orchestrate/fraud-intelligence/evaluation/model-benchmark-independent-50/groq-strict-summary.json
+/watsonx-orchestrate/fraud-intelligence/evaluation/model-benchmark-independent-50/local-validation.json
+/watsonx-orchestrate/fraud-intelligence/evaluation/native-compatible-independent-50/
+/watsonx-orchestrate/fraud-intelligence/evaluation/native-independent-50/
+/watsonx-orchestrate/fraud-intelligence/evaluation/native-modified-input-20261106/
+/watsonx-orchestrate/fraud-intelligence/evaluation/temporary-native-agents-20261106/
+
 # Terraform, for later AWS deployment
 .terraform/
 *.tfstate

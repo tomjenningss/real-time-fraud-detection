@@ -1,0 +1,116 @@
+{
+  "schemaVersion": "fraud-intelligence-request/1.0.0",
+  "questionnaireVersion": "glaramara-fraud-questionnaire/1.1.0",
+  "transactionRef": "evaluation-app-supplier-factoring-verified",
+  "payment": {
+    "amount": 9775,
+    "currency": "GBP",
+    "beneficiaryPreviouslyPaid": true
+  },
+  "deterministicSignals": [],
+  "requiredEvidenceKeys": [
+    "payment_recognition",
+    "beneficiary_relationship",
+    "payment_purpose"
+  ],
+  "questions": [
+    {
+      "id": "payment_recognition",
+      "prompt": "Did you make this payment yourself?",
+      "options": [
+        "YES",
+        "NO",
+        "UNSURE"
+      ]
+    },
+    {
+      "id": "beneficiary_relationship",
+      "prompt": "How do you know the person or business you’re paying?",
+      "options": [
+        "KNOWN_PERSON",
+        "KNOWN_BUSINESS",
+        "NEW_RECIPIENT",
+        "UNSURE"
+      ]
+    },
+    {
+      "id": "payment_purpose",
+      "prompt": "What is this payment for?",
+      "options": [
+        "FRIENDS_FAMILY",
+        "GOODS_SERVICES",
+        "INVESTMENT",
+        "SAFE_ACCOUNT",
+        "OTHER"
+      ]
+    },
+    {
+      "id": "contact_influence",
+      "prompt": "Did anyone contact you or guide you through making this payment?",
+      "options": [
+        "NO",
+        "EXPECTED",
+        "UNEXPECTED"
+      ]
+    },
+    {
+      "id": "payment_circumstances",
+      "prompt": "Briefly explain what happened and why this payment feels urgent."
+    },
+    {
+      "id": "pressure_or_secrecy",
+      "prompt": "Did they ask you to act quickly, keep it secret, or ignore a bank warning?",
+      "options": [
+        "YES",
+        "NO",
+        "UNSURE"
+      ]
+    },
+    {
+      "id": "remote_access",
+      "prompt": "Did anyone ask you to install an app or share access to your phone or computer?",
+      "options": [
+        "YES",
+        "NO",
+        "UNSURE"
+      ]
+    }
+  ],
+  "answers": [
+    {
+      "questionId": "payment_recognition",
+      "value": "YES",
+      "provenance": "CUSTOMER"
+    },
+    {
+      "questionId": "beneficiary_relationship",
+      "value": "KNOWN_BUSINESS",
+      "provenance": "CUSTOMER"
+    },
+    {
+      "questionId": "payment_purpose",
+      "value": "GOODS_SERVICES",
+      "provenance": "CUSTOMER"
+    },
+    {
+      "questionId": "contact_influence",
+      "value": "EXPECTED",
+      "provenance": "CUSTOMER"
+    },
+    {
+      "questionId": "payment_circumstances",
+      "value": "Our regular supplier asked us to pay its factoring company. I called our usual contact on the saved number and checked the new beneficiary details; the invoice is attached.",
+      "provenance": "CUSTOMER"
+    },
+    {
+      "questionId": "pressure_or_secrecy",
+      "value": "NO",
+      "provenance": "CUSTOMER"
+    },
+    {
+      "questionId": "remote_access",
+      "value": "NO",
+      "provenance": "CUSTOMER"
+    }
+  ]
+}

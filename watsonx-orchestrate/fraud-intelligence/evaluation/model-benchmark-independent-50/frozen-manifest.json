@@ -1,0 +1,16 @@
+{
+  "frozenAt": "2026-11-05T00:00:00.000Z",
+  "generatedWithoutModelResponses": true,
+  "scenarioCount": 50,
+  "categoryCounts": {
+    "investment": 10,
+    "family-emergency": 10,
+    "app-fraud": 10,
+    "legitimate": 10,
+    "ambiguous": 10
+  },
+  "hashes": {
+    "scenarios.json": "88e583b22d90a2a04b38dc8078d6ed33d2ace73c0d8c8f94d259bc2b66057b01",
+    "ground-truth.json": "a26629dddafd17eb42a35685999c0b31a7ca60aeae3a936333faeae8dbe7a41d"
+  }
+}

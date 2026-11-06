@@ -1,0 +1,5467 @@
+{
+  "schemaVersion": "fraud-intelligence-independent-ground-truth/1.0.0",
+  "frozenBeforeModelExecution": true,
+  "scenarios": [
+    {
+      "id": "investment-crypto-liquidity-release",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "INVESTMENT",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "THIRD_PARTY_BENEFICIARY",
+          "INVESTMENT"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:PRESSURE_OR_SECRECY",
+            "claim": "Frozen expected finding scamIndicator:PRESSURE_OR_SECRECY",
+            "sources": [
+              {
+                "questionId": "pressure_or_secrecy",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "claim": "Frozen expected finding scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "A chap from the crypto platform says my dashboard profit is £38,000, but I need to send a £2,400 liquidity payment to his colleague's wallet before I can withdraw it."
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:INVESTMENT",
+            "claim": "Frozen expected finding scamIndicator:INVESTMENT",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "acceptableGuidance": {
+        "category": "UNEXPECTED_CONTACT_AND_PRESSURE",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "investment-broker-tax-before-withdrawal",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "INVESTMENT",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "PRESSURE_OR_SECRECY",
+          "URGENCY",
+          "THIRD_PARTY_BENEFICIARY",
+          "INVESTMENT"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:PRESSURE_OR_SECRECY",
+            "claim": "Frozen expected finding scamIndicator:PRESSURE_OR_SECRECY",
+            "sources": [
+              {
+                "questionId": "pressure_or_secrecy",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:URGENCY",
+            "claim": "Frozen expected finding scamIndicator:URGENCY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "The broker I found through an advert shows my account has doubled. She says HMRC tax must be paid immediately into a different company account before any withdrawal."
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "claim": "Frozen expected finding scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "The broker I found through an advert shows my account has doubled. She says HMRC tax must be paid immediately into a different company account before any withdrawal."
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:INVESTMENT",
+            "claim": "Frozen expected finding scamIndicator:INVESTMENT",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "acceptableGuidance": {
+        "category": "UNEXPECTED_CONTACT_AND_PRESSURE",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "investment-whatsapp-copy-trading",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "INVESTMENT",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY",
+          "INVESTMENT"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:PRESSURE_OR_SECRECY",
+            "claim": "Frozen expected finding scamIndicator:PRESSURE_OR_SECRECY",
+            "sources": [
+              {
+                "questionId": "pressure_or_secrecy",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:URGENCY",
+            "claim": "Frozen expected finding scamIndicator:URGENCY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "I was added to a WhatsApp copy-trading group. The admin wants today's transfer now because the displayed return drops after the market closes."
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:INVESTMENT",
+            "claim": "Frozen expected finding scamIndicator:INVESTMENT",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "acceptableGuidance": {
+        "category": "UNEXPECTED_CONTACT_AND_PRESSURE",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "investment-crypto-screen-help",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "INVESTMENT",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT",
+          "INVESTMENT",
+          "REMOTE_ACCESS"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:INVESTMENT",
+            "claim": "Frozen expected finding scamIndicator:INVESTMENT",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:REMOTE_ACCESS",
+            "claim": "Frozen expected finding scamIndicator:REMOTE_ACCESS",
+            "sources": [
+              {
+                "questionId": "remote_access",
+                "excerpt": "YES"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-REMOTE-ACCESS"
+      },
+      "acceptableGuidance": {
+        "category": "UNEXPECTED_CONTACT_AND_PRESSURE",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "investment-fake-broker-insurance",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "INVESTMENT",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "THIRD_PARTY_BENEFICIARY",
+          "INVESTMENT"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "claim": "Frozen expected finding scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "My online broker says the returns are ready, but their insurer needs £1,750 paid to a partner business before releasing them."
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:INVESTMENT",
+            "claim": "Frozen expected finding scamIndicator:INVESTMENT",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "acceptableGuidance": {
+        "category": "HIGH_VALUE_FIRST_TIME_BENEFICIARY",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "investment-property-bond-deadline",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "INVESTMENT",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "PRESSURE_OR_SECRECY",
+          "URGENCY",
+          "INVESTMENT"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:PRESSURE_OR_SECRECY",
+            "claim": "Frozen expected finding scamIndicator:PRESSURE_OR_SECRECY",
+            "sources": [
+              {
+                "questionId": "pressure_or_secrecy",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:URGENCY",
+            "claim": "Frozen expected finding scamIndicator:URGENCY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "I joined a webinar about a property bond. The presenter says the 11% allocation closes urgently tonight and sent bank details after the session."
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:INVESTMENT",
+            "claim": "Frozen expected finding scamIndicator:INVESTMENT",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "acceptableGuidance": {
+        "category": "UNEXPECTED_CONTACT_AND_PRESSURE",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "investment-known-adviser-new-fund",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "INVESTMENT",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "INVESTMENT"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "KNOWN_PERSON"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:INVESTMENT",
+            "claim": "Frozen expected finding scamIndicator:INVESTMENT",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "investment-crypto-recovery-fee",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "INVESTMENT",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY",
+          "THIRD_PARTY_BENEFICIARY",
+          "INVESTMENT"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:PRESSURE_OR_SECRECY",
+            "claim": "Frozen expected finding scamIndicator:PRESSURE_OR_SECRECY",
+            "sources": [
+              {
+                "questionId": "pressure_or_secrecy",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:URGENCY",
+            "claim": "Frozen expected finding scamIndicator:URGENCY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "A recovery agent rang saying they found my lost bitcoin. They want an urgent tracing fee sent to their solicitor's account before the coins disappear."
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "claim": "Frozen expected finding scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "A recovery agent rang saying they found my lost bitcoin. They want an urgent tracing fee sent to their solicitor's account before the coins disappear."
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:INVESTMENT",
+            "claim": "Frozen expected finding scamIndicator:INVESTMENT",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "acceptableGuidance": {
+        "category": "UNEXPECTED_CONTACT_AND_PRESSURE",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "investment-app-manipulated-return",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "INVESTMENT",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "PRESSURE_OR_SECRECY",
+          "URGENCY",
+          "INVESTMENT"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:PRESSURE_OR_SECRECY",
+            "claim": "Frozen expected finding scamIndicator:PRESSURE_OR_SECRECY",
+            "sources": [
+              {
+                "questionId": "pressure_or_secrecy",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:URGENCY",
+            "claim": "Frozen expected finding scamIndicator:URGENCY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "The investment app shows a 64% return in three weeks. Support says I must top up another £5,000 today to unlock the withdrawal button."
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:INVESTMENT",
+            "claim": "Frozen expected finding scamIndicator:INVESTMENT",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "acceptableGuidance": {
+        "category": "UNEXPECTED_CONTACT_AND_PRESSURE",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "investment-pension-cold-call",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "INVESTMENT",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY",
+          "INVESTMENT"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:PRESSURE_OR_SECRECY",
+            "claim": "Frozen expected finding scamIndicator:PRESSURE_OR_SECRECY",
+            "sources": [
+              {
+                "questionId": "pressure_or_secrecy",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:URGENCY",
+            "claim": "Frozen expected finding scamIndicator:URGENCY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "A pension specialist cold-called and said I will lose the tax-free opportunity unless I transfer to the overseas scheme right away."
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:INVESTMENT",
+            "claim": "Frozen expected finding scamIndicator:INVESTMENT",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "acceptableGuidance": {
+        "category": "UNEXPECTED_CONTACT_AND_PRESSURE",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "family-ai-voice-grandson-bail",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "FRIENDS_OR_FAMILY",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY",
+          "THIRD_PARTY_BENEFICIARY"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "FRIENDS_FAMILY"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:PRESSURE_OR_SECRECY",
+            "claim": "Frozen expected finding scamIndicator:PRESSURE_OR_SECRECY",
+            "sources": [
+              {
+                "questionId": "pressure_or_secrecy",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:URGENCY",
+            "claim": "Frozen expected finding scamIndicator:URGENCY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "The caller sounded exactly like my grandson, though the number was withheld. He said he was in custody and needed bail money sent to a friend's account urgently. I suspect the voice may have been generated but I cannot prove that."
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "claim": "Frozen expected finding scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "The caller sounded exactly like my grandson, though the number was withheld. He said he was in custody and needed bail money sent to a friend's account urgently. I suspect the voice may have been generated but I cannot prove that."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "acceptableGuidance": {
+        "category": "FAMILY_OR_TRUSTED_PERSON_IMPERSONATION",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "family-daughter-hospital-new-number",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "FRIENDS_OR_FAMILY",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "FRIENDS_FAMILY"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:PRESSURE_OR_SECRECY",
+            "claim": "Frozen expected finding scamIndicator:PRESSURE_OR_SECRECY",
+            "sources": [
+              {
+                "questionId": "pressure_or_secrecy",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:URGENCY",
+            "claim": "Frozen expected finding scamIndicator:URGENCY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "A text from a number I don't know says it is my daughter at A&E with a broken phone and asks for the treatment deposit now."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "acceptableGuidance": {
+        "category": "FAMILY_OR_TRUSTED_PERSON_IMPERSONATION",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "family-brother-voice-usual-number",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "FRIENDS_OR_FAMILY",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "NONE"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "KNOWN_PERSON"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "FRIENDS_FAMILY"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "family-nephew-landlord-account",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "FRIENDS_OR_FAMILY",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY",
+          "THIRD_PARTY_BENEFICIARY"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "FRIENDS_FAMILY"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:PRESSURE_OR_SECRECY",
+            "claim": "Frozen expected finding scamIndicator:PRESSURE_OR_SECRECY",
+            "sources": [
+              {
+                "questionId": "pressure_or_secrecy",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:URGENCY",
+            "claim": "Frozen expected finding scamIndicator:URGENCY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "A message claiming to be my nephew says his phone is damaged and the rent must go immediately to his landlord's account or he will be evicted."
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "claim": "Frozen expected finding scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "A message claiming to be my nephew says his phone is damaged and the rent must go immediately to his landlord's account or he will be evicted."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "acceptableGuidance": {
+        "category": "FAMILY_OR_TRUSTED_PERSON_IMPERSONATION",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "family-mum-stranded-airport",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "FRIENDS_OR_FAMILY",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY",
+          "THIRD_PARTY_BENEFICIARY"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "FRIENDS_FAMILY"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:PRESSURE_OR_SECRECY",
+            "claim": "Frozen expected finding scamIndicator:PRESSURE_OR_SECRECY",
+            "sources": [
+              {
+                "questionId": "pressure_or_secrecy",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:URGENCY",
+            "claim": "Frozen expected finding scamIndicator:URGENCY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "Mum supposedly emailed from an address I have never seen saying her purse was stolen abroad and I should pay a travel agent straight away."
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "claim": "Frozen expected finding scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "Mum supposedly emailed from an address I have never seen saying her purse was stolen abroad and I should pay a travel agent straight away."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "acceptableGuidance": {
+        "category": "FAMILY_OR_TRUSTED_PERSON_IMPERSONATION",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "family-son-voice-uncertain",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "UNCERTAIN",
+        "paymentPurpose": "FRIENDS_OR_FAMILY",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT"
+        ],
+        "contradictions": [],
+        "uncertainty": "MEDIUM",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "UNSURE"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "FRIENDS_FAMILY"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-UNRELIABLE-EVIDENCE"
+      },
+      "acceptableGuidance": {
+        "category": "FAMILY_OR_TRUSTED_PERSON_IMPERSONATION",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "family-cousin-planned-medical-help",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "FRIENDS_OR_FAMILY",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [
+          "MET_BENEFICIARY_IN_PERSON"
+        ],
+        "scamIndicators": [
+          "NONE"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "KNOWN_PERSON"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "FRIENDS_FAMILY"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:MET_BENEFICIARY_IN_PERSON",
+            "claim": "Frozen expected finding verificationClaim:MET_BENEFICIARY_IN_PERSON",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "I spoke to my cousin face to face on Sunday and agreed to help with her dental bill. These are the same details I paid before."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "family-police-officer-relative",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "FRIENDS_OR_FAMILY",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "THIRD_PARTY_BENEFICIARY"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "FRIENDS_FAMILY"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:PRESSURE_OR_SECRECY",
+            "claim": "Frozen expected finding scamIndicator:PRESSURE_OR_SECRECY",
+            "sources": [
+              {
+                "questionId": "pressure_or_secrecy",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "claim": "Frozen expected finding scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "A man saying he is a police officer called about my sister's accident and told me not to ring her while I send the recovery charge to the garage."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "acceptableGuidance": {
+        "category": "FAMILY_OR_TRUSTED_PERSON_IMPERSONATION",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "family-friend-emergency-email",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "FRIENDS_OR_FAMILY",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "FRIENDS_FAMILY"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:PRESSURE_OR_SECRECY",
+            "claim": "Frozen expected finding scamIndicator:PRESSURE_OR_SECRECY",
+            "sources": [
+              {
+                "questionId": "pressure_or_secrecy",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:URGENCY",
+            "claim": "Frozen expected finding scamIndicator:URGENCY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "An email from my friend's address says she is stuck in Madrid and needs money urgently, but the writing does not sound like her."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "acceptableGuidance": {
+        "category": "FAMILY_OR_TRUSTED_PERSON_IMPERSONATION",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "family-dad-care-home-verified",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [
+          "CHECKED_BENEFICIARY_DETAILS",
+          "INVOICE_RECEIVED"
+        ],
+        "scamIndicators": [
+          "NONE"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "KNOWN_BUSINESS"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:CHECKED_BENEFICIARY_DETAILS",
+            "claim": "Frozen expected finding verificationClaim:CHECKED_BENEFICIARY_DETAILS",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "Dad's care home phoned about the annual fee. I rang the published number back and checked the beneficiary details against last year's invoice."
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:INVOICE_RECEIVED",
+            "claim": "Frozen expected finding verificationClaim:INVOICE_RECEIVED",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "Dad's care home phoned about the annual fee. I rang the published number back and checked the beneficiary details against last year's invoice."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "app-safe-account-sort-code",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "SAFE_ACCOUNT",
+        "thirdPartyInfluence": "BANK_IMPERSONATION",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "SAFE_ACCOUNT",
+          "BANK_IMPERSONATION"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "SAFE_ACCOUNT"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "The bank's fraud team called and said a branch employee is involved. They told me to move everything to a safe account and keep the investigation secret."
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:PRESSURE_OR_SECRECY",
+            "claim": "Frozen expected finding scamIndicator:PRESSURE_OR_SECRECY",
+            "sources": [
+              {
+                "questionId": "pressure_or_secrecy",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:SAFE_ACCOUNT",
+            "claim": "Frozen expected finding scamIndicator:SAFE_ACCOUNT",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "SAFE_ACCOUNT"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:BANK_IMPERSONATION",
+            "claim": "Frozen expected finding scamIndicator:BANK_IMPERSONATION",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "The bank's fraud team called and said a branch employee is involved. They told me to move everything to a safe account and keep the investigation secret."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-SAFE-ACCOUNT"
+      },
+      "acceptableGuidance": {
+        "category": "BANK_IMPERSONATION_SAFE_ACCOUNT",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "app-police-secure-wallet",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "SAFE_ACCOUNT",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY",
+          "SAFE_ACCOUNT"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "SAFE_ACCOUNT"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:PRESSURE_OR_SECRECY",
+            "claim": "Frozen expected finding scamIndicator:PRESSURE_OR_SECRECY",
+            "sources": [
+              {
+                "questionId": "pressure_or_secrecy",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:URGENCY",
+            "claim": "Frozen expected finding scamIndicator:URGENCY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "Someone claiming to be police said my current account is compromised and I must transfer it into a secure holding wallet immediately."
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:SAFE_ACCOUNT",
+            "claim": "Frozen expected finding scamIndicator:SAFE_ACCOUNT",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "SAFE_ACCOUNT"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-SAFE-ACCOUNT"
+      },
+      "acceptableGuidance": {
+        "category": "BANK_IMPERSONATION_SAFE_ACCOUNT",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "app-builder-invoice-redirection",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [
+          "INVOICE_RECEIVED"
+        ],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "KNOWN_BUSINESS"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:INVOICE_RECEIVED",
+            "claim": "Frozen expected finding verificationClaim:INVOICE_RECEIVED",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "An email in the builder's existing thread says their bank has changed and asks me to send the final invoice to a new account today."
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:PRESSURE_OR_SECRECY",
+            "claim": "Frozen expected finding scamIndicator:PRESSURE_OR_SECRECY",
+            "sources": [
+              {
+                "questionId": "pressure_or_secrecy",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:URGENCY",
+            "claim": "Frozen expected finding scamIndicator:URGENCY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "An email in the builder's existing thread says their bank has changed and asks me to send the final invoice to a new account today."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "acceptableGuidance": {
+        "category": "UNEXPECTED_CONTACT_AND_PRESSURE",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "app-solicitor-client-account-change",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "KNOWN_BUSINESS"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:PRESSURE_OR_SECRECY",
+            "claim": "Frozen expected finding scamIndicator:PRESSURE_OR_SECRECY",
+            "sources": [
+              {
+                "questionId": "pressure_or_secrecy",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:URGENCY",
+            "claim": "Frozen expected finding scamIndicator:URGENCY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "My conveyancer's email says their client account changed yesterday and completion funds must go to the replacement details before noon."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "acceptableGuidance": {
+        "category": "UNEXPECTED_CONTACT_AND_PRESSURE",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "app-marketplace-concert-tickets",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:PRESSURE_OR_SECRECY",
+            "claim": "Frozen expected finding scamIndicator:PRESSURE_OR_SECRECY",
+            "sources": [
+              {
+                "questionId": "pressure_or_secrecy",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:URGENCY",
+            "claim": "Frozen expected finding scamIndicator:URGENCY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "A seller on social media has two concert tickets. They will only hold them for ten minutes if I pay by bank transfer now."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "acceptableGuidance": {
+        "category": "UNEXPECTED_CONTACT_AND_PRESSURE",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "app-car-deposit-third-party",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "THIRD_PARTY_BENEFICIARY"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "claim": "Frozen expected finding scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "The private car seller says the deposit has to go to his business partner because his own account is frozen."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "acceptableGuidance": {
+        "category": "HIGH_VALUE_FIRST_TIME_BENEFICIARY",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "app-holiday-let-pressure",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:PRESSURE_OR_SECRECY",
+            "claim": "Frozen expected finding scamIndicator:PRESSURE_OR_SECRECY",
+            "sources": [
+              {
+                "questionId": "pressure_or_secrecy",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:URGENCY",
+            "claim": "Frozen expected finding scamIndicator:URGENCY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "The holiday-let owner contacted me outside the booking site and says I must transfer the deposit tonight for the discount."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "acceptableGuidance": {
+        "category": "UNEXPECTED_CONTACT_AND_PRESSURE",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "app-supplier-factoring-verified",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [
+          "CHECKED_BENEFICIARY_DETAILS",
+          "INVOICE_RECEIVED"
+        ],
+        "scamIndicators": [
+          "THIRD_PARTY_BENEFICIARY"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "KNOWN_BUSINESS"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:CHECKED_BENEFICIARY_DETAILS",
+            "claim": "Frozen expected finding verificationClaim:CHECKED_BENEFICIARY_DETAILS",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "Our regular supplier asked us to pay its factoring company. I called our usual contact on the saved number and checked the new beneficiary details; the invoice is attached."
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:INVOICE_RECEIVED",
+            "claim": "Frozen expected finding verificationClaim:INVOICE_RECEIVED",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "Our regular supplier asked us to pay its factoring company. I called our usual contact on the saved number and checked the new beneficiary details; the invoice is attached."
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "claim": "Frozen expected finding scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "Our regular supplier asked us to pay its factoring company. I called our usual contact on the saved number and checked the new beneficiary details; the invoice is attached."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "app-bank-remote-safe-account",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "SAFE_ACCOUNT",
+        "thirdPartyInfluence": "BANK_IMPERSONATION",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT",
+          "SAFE_ACCOUNT",
+          "BANK_IMPERSONATION",
+          "REMOTE_ACCESS"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "SAFE_ACCOUNT"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "A caller claiming to be from my bank told me to install a support app, then move the balance to their protected account."
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:SAFE_ACCOUNT",
+            "claim": "Frozen expected finding scamIndicator:SAFE_ACCOUNT",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "SAFE_ACCOUNT"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:BANK_IMPERSONATION",
+            "claim": "Frozen expected finding scamIndicator:BANK_IMPERSONATION",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "A caller claiming to be from my bank told me to install a support app, then move the balance to their protected account."
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:REMOTE_ACCESS",
+            "claim": "Frozen expected finding scamIndicator:REMOTE_ACCESS",
+            "sources": [
+              {
+                "questionId": "remote_access",
+                "excerpt": "YES"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-SAFE-ACCOUNT"
+      },
+      "acceptableGuidance": {
+        "category": "BANK_IMPERSONATION_SAFE_ACCOUNT",
+        "requiredText": [
+          "No money was sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "app-puppy-courier-account",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "THIRD_PARTY_BENEFICIARY"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "claim": "Frozen expected finding scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "The breeder wants the puppy delivery charge paid to a courier's bank account before I can visit."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "acceptableGuidance": {
+        "category": "HIGH_VALUE_FIRST_TIME_BENEFICIARY",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "legitimate-builder-stage-payment",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [
+          "MET_BENEFICIARY_IN_PERSON",
+          "CHECKED_BENEFICIARY_DETAILS",
+          "INVOICE_RECEIVED"
+        ],
+        "scamIndicators": [
+          "NONE"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "KNOWN_BUSINESS"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:MET_BENEFICIARY_IN_PERSON",
+            "claim": "Frozen expected finding verificationClaim:MET_BENEFICIARY_IN_PERSON",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "This is the second stage payment for our loft. I met the builder on site, checked the same account as the signed quote and have the invoice."
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:CHECKED_BENEFICIARY_DETAILS",
+            "claim": "Frozen expected finding verificationClaim:CHECKED_BENEFICIARY_DETAILS",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "This is the second stage payment for our loft. I met the builder on site, checked the same account as the signed quote and have the invoice."
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:INVOICE_RECEIVED",
+            "claim": "Frozen expected finding verificationClaim:INVOICE_RECEIVED",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "This is the second stage payment for our loft. I met the builder on site, checked the same account as the signed quote and have the invoice."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "legitimate-family-house-deposit-gift",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "FRIENDS_OR_FAMILY",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "NONE"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "KNOWN_PERSON"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "FRIENDS_FAMILY"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "legitimate-wedding-photographer",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [
+          "MET_BENEFICIARY_IN_PERSON",
+          "CHECKED_BENEFICIARY_DETAILS",
+          "INVOICE_RECEIVED"
+        ],
+        "scamIndicators": [
+          "NONE"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:MET_BENEFICIARY_IN_PERSON",
+            "claim": "Frozen expected finding verificationClaim:MET_BENEFICIARY_IN_PERSON",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "We met the photographer at the venue, checked the details on the signed contract and received the deposit invoice."
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:CHECKED_BENEFICIARY_DETAILS",
+            "claim": "Frozen expected finding verificationClaim:CHECKED_BENEFICIARY_DETAILS",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "We met the photographer at the venue, checked the details on the signed contract and received the deposit invoice."
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:INVOICE_RECEIVED",
+            "claim": "Frozen expected finding verificationClaim:INVOICE_RECEIVED",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "We met the photographer at the venue, checked the details on the signed contract and received the deposit invoice."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "ADDITIONAL_VERIFICATION",
+        "ruleId": "CER-ADDITIONAL-VERIFY-NARROW-SERVICE-PAYMENT"
+      },
+      "acceptableGuidance": {
+        "category": "SERVICE_PAYMENT_ADDITIONAL_VERIFICATION",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "legitimate-car-showroom-balance",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "NONE",
+        "verificationClaims": [
+          "MET_BENEFICIARY_IN_PERSON",
+          "CHECKED_BENEFICIARY_DETAILS",
+          "INVOICE_RECEIVED"
+        ],
+        "scamIndicators": [
+          "NONE"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "NO"
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:MET_BENEFICIARY_IN_PERSON",
+            "claim": "Frozen expected finding verificationClaim:MET_BENEFICIARY_IN_PERSON",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "I am at the dealership collecting the car. I met the sales manager, checked the account on their printed invoice and am paying the agreed balance."
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:CHECKED_BENEFICIARY_DETAILS",
+            "claim": "Frozen expected finding verificationClaim:CHECKED_BENEFICIARY_DETAILS",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "I am at the dealership collecting the car. I met the sales manager, checked the account on their printed invoice and am paying the agreed balance."
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:INVOICE_RECEIVED",
+            "claim": "Frozen expected finding verificationClaim:INVOICE_RECEIVED",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "I am at the dealership collecting the car. I met the sales manager, checked the account on their printed invoice and am paying the agreed balance."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "ADDITIONAL_VERIFICATION",
+        "ruleId": "CER-ADDITIONAL-VERIFY-NARROW-SERVICE-PAYMENT"
+      },
+      "acceptableGuidance": {
+        "category": "SERVICE_PAYMENT_ADDITIONAL_VERIFICATION",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "legitimate-school-fees",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [
+          "INVOICE_RECEIVED"
+        ],
+        "scamIndicators": [
+          "NONE"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "KNOWN_BUSINESS"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:INVOICE_RECEIVED",
+            "claim": "Frozen expected finding verificationClaim:INVOICE_RECEIVED",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "This is the termly school fee to the same beneficiary we have used for three years. The invoice arrived through the parent portal."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "legitimate-sibling-loan-repayment",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "FRIENDS_OR_FAMILY",
+        "thirdPartyInfluence": "NONE",
+        "verificationClaims": [
+          "MET_BENEFICIARY_IN_PERSON"
+        ],
+        "scamIndicators": [
+          "NONE"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "KNOWN_PERSON"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "FRIENDS_FAMILY"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "NO"
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:MET_BENEFICIARY_IN_PERSON",
+            "claim": "Frozen expected finding verificationClaim:MET_BENEFICIARY_IN_PERSON",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "I am repaying my sister the £3,000 she lent me for the boiler. We agreed the date in person yesterday."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "legitimate-roofing-final-invoice",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [
+          "CHECKED_BENEFICIARY_DETAILS",
+          "INVOICE_RECEIVED"
+        ],
+        "scamIndicators": [
+          "NONE"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "KNOWN_BUSINESS"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:CHECKED_BENEFICIARY_DETAILS",
+            "claim": "Frozen expected finding verificationClaim:CHECKED_BENEFICIARY_DETAILS",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "The roofer finished today. I checked the beneficiary against the deposit I already paid and have the final invoice."
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:INVOICE_RECEIVED",
+            "claim": "Frozen expected finding verificationClaim:INVOICE_RECEIVED",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "The roofer finished today. I checked the beneficiary against the deposit I already paid and have the final invoice."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "legitimate-auction-house-purchase",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [
+          "MET_BENEFICIARY_IN_PERSON",
+          "CHECKED_BENEFICIARY_DETAILS",
+          "INVOICE_RECEIVED"
+        ],
+        "scamIndicators": [
+          "NONE"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:MET_BENEFICIARY_IN_PERSON",
+            "claim": "Frozen expected finding verificationClaim:MET_BENEFICIARY_IN_PERSON",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "I won the lot in person at the auction house. Their cashier gave me the invoice and I checked the payment details at the desk."
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:CHECKED_BENEFICIARY_DETAILS",
+            "claim": "Frozen expected finding verificationClaim:CHECKED_BENEFICIARY_DETAILS",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "I won the lot in person at the auction house. Their cashier gave me the invoice and I checked the payment details at the desk."
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:INVOICE_RECEIVED",
+            "claim": "Frozen expected finding verificationClaim:INVOICE_RECEIVED",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "I won the lot in person at the auction house. Their cashier gave me the invoice and I checked the payment details at the desk."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "ADDITIONAL_VERIFICATION",
+        "ruleId": "CER-ADDITIONAL-VERIFY-NARROW-SERVICE-PAYMENT"
+      },
+      "acceptableGuidance": {
+        "category": "SERVICE_PAYMENT_ADDITIONAL_VERIFICATION",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "legitimate-private-tutor",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "NONE"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "KNOWN_PERSON"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "legitimate-high-value-kitchen",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "NONE",
+        "verificationClaims": [
+          "MET_BENEFICIARY_IN_PERSON",
+          "CHECKED_BENEFICIARY_DETAILS",
+          "INVOICE_RECEIVED"
+        ],
+        "scamIndicators": [
+          "NONE"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "NO"
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:MET_BENEFICIARY_IN_PERSON",
+            "claim": "Frozen expected finding verificationClaim:MET_BENEFICIARY_IN_PERSON",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "I visited the kitchen showroom twice, met the designer, checked the company details and received the £12,000 order invoice."
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:CHECKED_BENEFICIARY_DETAILS",
+            "claim": "Frozen expected finding verificationClaim:CHECKED_BENEFICIARY_DETAILS",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "I visited the kitchen showroom twice, met the designer, checked the company details and received the £12,000 order invoice."
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:INVOICE_RECEIVED",
+            "claim": "Frozen expected finding verificationClaim:INVOICE_RECEIVED",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "I visited the kitchen showroom twice, met the designer, checked the company details and received the £12,000 order invoice."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "ADDITIONAL_VERIFICATION",
+        "ruleId": "CER-ADDITIONAL-VERIFY-NARROW-SERVICE-PAYMENT"
+      },
+      "acceptableGuidance": {
+        "category": "SERVICE_PAYMENT_ADDITIONAL_VERIFICATION",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": false
+    },
+    {
+      "id": "ambiguous-contact-none-versus-caller",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "NONE",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "NONE"
+        ],
+        "contradictions": [
+          {
+            "summary": "The bounded answer conflicts with the customer's narrative.",
+            "sourceQuestionIds": [
+              "payment_circumstances"
+            ]
+          }
+        ],
+        "uncertainty": "MEDIUM",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "NO"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-UNRELIABLE-EVIDENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": true
+    },
+    {
+      "id": "ambiguous-purpose-family-versus-investment",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "FRIENDS_OR_FAMILY",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "NONE"
+        ],
+        "contradictions": [
+          {
+            "summary": "The bounded answer conflicts with the customer's narrative.",
+            "sourceQuestionIds": [
+              "payment_circumstances"
+            ]
+          }
+        ],
+        "uncertainty": "MEDIUM",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "KNOWN_PERSON"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "FRIENDS_FAMILY"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-UNRELIABLE-EVIDENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": true
+    },
+    {
+      "id": "ambiguous-recognition-changing",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "UNCERTAIN",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "OTHER",
+        "thirdPartyInfluence": "NONE",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "NONE"
+        ],
+        "contradictions": [
+          {
+            "summary": "The bounded answer conflicts with the customer's narrative.",
+            "sourceQuestionIds": [
+              "payment_circumstances"
+            ]
+          }
+        ],
+        "uncertainty": "MEDIUM",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "UNSURE"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "KNOWN_BUSINESS"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "OTHER"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "NO"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-UNRELIABLE-EVIDENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": true
+    },
+    {
+      "id": "ambiguous-beneficiary-trading-name",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "UNCERTAIN",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [
+          "INVOICE_RECEIVED"
+        ],
+        "scamIndicators": [
+          "NONE"
+        ],
+        "contradictions": [],
+        "uncertainty": "MEDIUM",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "UNSURE"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:INVOICE_RECEIVED",
+            "claim": "Frozen expected finding verificationClaim:INVOICE_RECEIVED",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "The invoice uses a trading name I recognise, but the payee name is different and I do not know whether they are the same firm."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-UNRELIABLE-EVIDENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": true
+    },
+    {
+      "id": "ambiguous-remote-access-unsure",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "INVESTMENT",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "INVESTMENT"
+        ],
+        "contradictions": [],
+        "uncertainty": "MEDIUM",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:INVESTMENT",
+            "claim": "Frozen expected finding scamIndicator:INVESTMENT",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "INVESTMENT"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-UNRELIABLE-EVIDENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": true
+    },
+    {
+      "id": "ambiguous-pressure-denied-urgent",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "URGENCY"
+        ],
+        "contradictions": [
+          {
+            "summary": "The bounded answer conflicts with the customer's narrative.",
+            "sourceQuestionIds": [
+              "payment_circumstances"
+            ]
+          }
+        ],
+        "uncertainty": "MEDIUM",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:URGENCY",
+            "claim": "Frozen expected finding scamIndicator:URGENCY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "They did not pressure me, but said the quote expires immediately and payment has to be made now."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-UNRELIABLE-EVIDENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": true
+    },
+    {
+      "id": "ambiguous-expected-contact-cold-call",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "OTHER",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "NONE"
+        ],
+        "contradictions": [
+          {
+            "summary": "The bounded answer conflicts with the customer's narrative.",
+            "sourceQuestionIds": [
+              "payment_circumstances"
+            ]
+          }
+        ],
+        "uncertainty": "MEDIUM",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "OTHER"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-UNRELIABLE-EVIDENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": true
+    },
+    {
+      "id": "ambiguous-safe-word-not-instruction",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "OTHER",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "UNEXPECTED_CONTACT"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "NEW_RECIPIENT"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "OTHER"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:UNEXPECTED_CONTACT",
+            "claim": "Frozen expected finding scamIndicator:UNEXPECTED_CONTACT",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "UNEXPECTED"
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNEXPECTED_CONTACT_AND_PRESSURE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": true
+    },
+    {
+      "id": "ambiguous-invoice-edited-details",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [
+          "INVOICE_RECEIVED"
+        ],
+        "scamIndicators": [
+          "NONE"
+        ],
+        "contradictions": [],
+        "uncertainty": "LOW",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "KNOWN_BUSINESS"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "GOODS_SERVICES"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "verificationClaim:INVOICE_RECEIVED",
+            "claim": "Frozen expected finding verificationClaim:INVOICE_RECEIVED",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "I have an invoice from the usual plumber, but the account details look edited and I have not checked them with him."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": true
+    },
+    {
+      "id": "ambiguous-family-voice-known-number",
+      "exactMatchSuitable": true,
+      "canonicalEvidence": {
+        "schemaVersion": "fraud-intelligence-evidence/1.1.0",
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "FRIENDS_OR_FAMILY",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [],
+        "scamIndicators": [
+          "THIRD_PARTY_BENEFICIARY"
+        ],
+        "contradictions": [],
+        "uncertainty": "MEDIUM",
+        "missingEvidence": [],
+        "provenance": [
+          {
+            "findingId": "paymentRecognition",
+            "claim": "Frozen expected finding paymentRecognition",
+            "sources": [
+              {
+                "questionId": "payment_recognition",
+                "excerpt": "YES"
+              }
+            ]
+          },
+          {
+            "findingId": "beneficiaryRelationship",
+            "claim": "Frozen expected finding beneficiaryRelationship",
+            "sources": [
+              {
+                "questionId": "beneficiary_relationship",
+                "excerpt": "KNOWN_PERSON"
+              }
+            ]
+          },
+          {
+            "findingId": "paymentPurpose",
+            "claim": "Frozen expected finding paymentPurpose",
+            "sources": [
+              {
+                "questionId": "payment_purpose",
+                "excerpt": "FRIENDS_FAMILY"
+              }
+            ]
+          },
+          {
+            "findingId": "thirdPartyInfluence",
+            "claim": "Frozen expected finding thirdPartyInfluence",
+            "sources": [
+              {
+                "questionId": "contact_influence",
+                "excerpt": "EXPECTED"
+              }
+            ]
+          },
+          {
+            "findingId": "scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "claim": "Frozen expected finding scamIndicator:THIRD_PARTY_BENEFICIARY",
+            "sources": [
+              {
+                "questionId": "payment_circumstances",
+                "excerpt": "The call displayed my daughter's usual number and sounded like her, but it cut off when I asked our family question. She wanted money sent to a flatmate."
+              }
+            ]
+          }
+        ],
+        "clarificationQuestion": {
+          "needed": false,
+          "id": "",
+          "prompt": "",
+          "options": [],
+          "reason": ""
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-UNRELIABLE-EVIDENCE"
+      },
+      "acceptableGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "No money has been sent",
+          "simulated payment"
+        ],
+        "forbiddenText": [
+          "confirmed fraud",
+          "verified AI voice",
+          "definitely genuine"
+        ]
+      },
+      "cautionRequired": true
+    }
+  ]
+}

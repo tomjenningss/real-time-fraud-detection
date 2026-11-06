@@ -1,0 +1,5 @@
+test_paths:
+  - watsonx-orchestrate/fraud-intelligence/evaluation/native-cases
+output_dir: /tmp/glaramara-native-evaluation
+enable_verbose_logging: true
+max_user_turns: 1

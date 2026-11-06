@@ -1,0 +1,118 @@
+{
+  "schemaVersion": "fraud-intelligence-request/1.0.0",
+  "questionnaireVersion": "glaramara-fraud-questionnaire/1.1.0",
+  "transactionRef": "evaluation-app-police-secure-wallet",
+  "payment": {
+    "amount": 7825,
+    "currency": "GBP",
+    "beneficiaryPreviouslyPaid": false
+  },
+  "deterministicSignals": [
+    "NEW_BENEFICIARY_HIGH_VALUE"
+  ],
+  "requiredEvidenceKeys": [
+    "payment_recognition",
+    "beneficiary_relationship",
+    "payment_purpose"
+  ],
+  "questions": [
+    {
+      "id": "payment_recognition",
+      "prompt": "Did you make this payment yourself?",
+      "options": [
+        "YES",
+        "NO",
+        "UNSURE"
+      ]
+    },
+    {
+      "id": "beneficiary_relationship",
+      "prompt": "How do you know the person or business you’re paying?",
+      "options": [
+        "KNOWN_PERSON",
+        "KNOWN_BUSINESS",
+        "NEW_RECIPIENT",
+        "UNSURE"
+      ]
+    },
+    {
+      "id": "payment_purpose",
+      "prompt": "What is this payment for?",
+      "options": [
+        "FRIENDS_FAMILY",
+        "GOODS_SERVICES",
+        "INVESTMENT",
+        "SAFE_ACCOUNT",
+        "OTHER"
+      ]
+    },
+    {
+      "id": "contact_influence",
+      "prompt": "Did anyone contact you or guide you through making this payment?",
+      "options": [
+        "NO",
+        "EXPECTED",
+        "UNEXPECTED"
+      ]
+    },
+    {
+      "id": "payment_circumstances",
+      "prompt": "Briefly explain what happened and why this payment feels urgent."
+    },
+    {
+      "id": "pressure_or_secrecy",
+      "prompt": "Did they ask you to act quickly, keep it secret, or ignore a bank warning?",
+      "options": [
+        "YES",
+        "NO",
+        "UNSURE"
+      ]
+    },
+    {
+      "id": "remote_access",
+      "prompt": "Did anyone ask you to install an app or share access to your phone or computer?",
+      "options": [
+        "YES",
+        "NO",
+        "UNSURE"
+      ]
+    }
+  ],
+  "answers": [
+    {
+      "questionId": "payment_recognition",
+      "value": "YES",
+      "provenance": "CUSTOMER"
+    },
+    {
+      "questionId": "beneficiary_relationship",
+      "value": "NEW_RECIPIENT",
+      "provenance": "CUSTOMER"
+    },
+    {
+      "questionId": "payment_purpose",
+      "value": "SAFE_ACCOUNT",
+      "provenance": "CUSTOMER"
+    },
+    {
+      "questionId": "contact_influence",
+      "value": "UNEXPECTED",
+      "provenance": "CUSTOMER"
+    },
+    {
+      "questionId": "payment_circumstances",
+      "value": "Someone claiming to be police said my current account is compromised and I must transfer it into a secure holding wallet immediately.",
+      "provenance": "CUSTOMER"
+    },
+    {
+      "questionId": "pressure_or_secrecy",
+      "value": "YES",
+      "provenance": "CUSTOMER"
+    },
+    {
+      "questionId": "remote_access",
+      "value": "NO",
+      "provenance": "CUSTOMER"
+    }
+  ]
+}

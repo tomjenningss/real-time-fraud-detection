@@ -1,0 +1,1062 @@
+{
+  "suiteVersion": "glaramara-fraud-intelligence-unseen/1.0.0",
+  "description": "Phase A.2 frozen unseen generalisation set; authored after agent 1.1.2 was selected.",
+  "scenarios": [
+    {
+      "id": "unseen-legitimate-council-tax",
+      "category": "legitimate-payment",
+      "answers": {
+        "payment_recognition": "YES",
+        "beneficiary_relationship": "KNOWN_BUSINESS",
+        "payment_purpose": "GOODS_SERVICES",
+        "contact_influence": "EXPECTED",
+        "payment_circumstances": "The council sent the usual annual tax notice and I am using the saved payee.",
+        "pressure_or_secrecy": "NO",
+        "remote_access": "NO"
+      },
+      "payment": {
+        "amount": 850,
+        "beneficiaryPreviouslyPaid": true,
+        "deterministicSignals": []
+      },
+      "expectedEvidence": {
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [],
+        "requiredIndicators": [
+          "NONE"
+        ],
+        "forbiddenIndicators": [
+          "BANK_IMPERSONATION",
+          "SAFE_ACCOUNT",
+          "INVESTMENT",
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY",
+          "REMOTE_ACCESS"
+        ],
+        "uncertainty": "LOW",
+        "requiredProvenance": [
+          "paymentRecognition",
+          "beneficiaryRelationship",
+          "paymentPurpose",
+          "thirdPartyInfluence"
+        ]
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "expectedGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "does not mean the payment is safe",
+          "No money has been sent"
+        ],
+        "forbiddenText": [
+          "impersonation scam",
+          "genuine bank"
+        ]
+      }
+    },
+    {
+      "id": "unseen-legitimate-friend-repayment",
+      "category": "legitimate-payment",
+      "answers": {
+        "payment_recognition": "YES",
+        "beneficiary_relationship": "KNOWN_PERSON",
+        "payment_purpose": "FRIENDS_FAMILY",
+        "contact_influence": "NO",
+        "payment_circumstances": "I am repaying my flatmate for groceries we bought together yesterday.",
+        "pressure_or_secrecy": "NO",
+        "remote_access": "NO"
+      },
+      "payment": {
+        "amount": 45,
+        "beneficiaryPreviouslyPaid": true,
+        "deterministicSignals": []
+      },
+      "expectedEvidence": {
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "FRIENDS_OR_FAMILY",
+        "thirdPartyInfluence": "NONE",
+        "verificationClaims": [],
+        "requiredIndicators": [
+          "NONE"
+        ],
+        "forbiddenIndicators": [
+          "BANK_IMPERSONATION",
+          "SAFE_ACCOUNT",
+          "INVESTMENT",
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY",
+          "REMOTE_ACCESS"
+        ],
+        "uncertainty": "LOW",
+        "requiredProvenance": [
+          "paymentRecognition",
+          "beneficiaryRelationship",
+          "paymentPurpose",
+          "thirdPartyInfluence"
+        ]
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "expectedGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "does not mean the payment is safe",
+          "No money has been sent"
+        ],
+        "forbiddenText": [
+          "impersonation scam",
+          "genuine bank"
+        ]
+      }
+    },
+    {
+      "id": "unseen-legitimate-dentist-invoice",
+      "category": "romance-purchase-scam",
+      "answers": {
+        "payment_recognition": "YES",
+        "beneficiary_relationship": "NEW_RECIPIENT",
+        "payment_purpose": "GOODS_SERVICES",
+        "contact_influence": "EXPECTED",
+        "payment_circumstances": "My new dentist emailed the invoice after today's appointment.",
+        "pressure_or_secrecy": "NO",
+        "remote_access": "NO"
+      },
+      "expectedEvidence": {
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [
+          "INVOICE_RECEIVED"
+        ],
+        "requiredIndicators": [
+          "NONE"
+        ],
+        "forbiddenIndicators": [
+          "BANK_IMPERSONATION",
+          "SAFE_ACCOUNT",
+          "INVESTMENT",
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "REMOTE_ACCESS"
+        ],
+        "uncertainty": "LOW",
+        "requiredProvenance": [
+          "paymentRecognition",
+          "beneficiaryRelationship",
+          "paymentPurpose",
+          "thirdPartyInfluence",
+          "verificationClaim:INVOICE_RECEIVED"
+        ]
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "expectedGuidance": {
+        "category": "HIGH_VALUE_FIRST_TIME_BENEFICIARY",
+        "requiredText": [
+          "new beneficiary",
+          "No money has been sent"
+        ],
+        "forbiddenText": [
+          "impersonation scam",
+          "genuine bank"
+        ]
+      }
+    },
+    {
+      "id": "unseen-legitimate-electrician-verified",
+      "category": "romance-purchase-scam",
+      "answers": {
+        "payment_recognition": "YES",
+        "beneficiary_relationship": "NEW_RECIPIENT",
+        "payment_purpose": "GOODS_SERVICES",
+        "contact_influence": "NO",
+        "payment_circumstances": "I met the electrician at my home, checked their bank details and received an invoice.",
+        "pressure_or_secrecy": "NO",
+        "remote_access": "NO"
+      },
+      "expectedEvidence": {
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "NONE",
+        "verificationClaims": [
+          "MET_BENEFICIARY_IN_PERSON",
+          "CHECKED_BENEFICIARY_DETAILS",
+          "INVOICE_RECEIVED"
+        ],
+        "requiredIndicators": [
+          "NONE"
+        ],
+        "forbiddenIndicators": [
+          "BANK_IMPERSONATION",
+          "SAFE_ACCOUNT",
+          "INVESTMENT",
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "REMOTE_ACCESS"
+        ],
+        "uncertainty": "LOW",
+        "requiredProvenance": [
+          "paymentRecognition",
+          "beneficiaryRelationship",
+          "paymentPurpose",
+          "thirdPartyInfluence",
+          "verificationClaim:MET_BENEFICIARY_IN_PERSON",
+          "verificationClaim:CHECKED_BENEFICIARY_DETAILS",
+          "verificationClaim:INVOICE_RECEIVED"
+        ]
+      },
+      "expectedPolicy": {
+        "outcome": "ADDITIONAL_VERIFICATION",
+        "ruleId": "CER-ADDITIONAL-VERIFY-NARROW-SERVICE-PAYMENT"
+      },
+      "expectedGuidance": {
+        "category": "SERVICE_PAYMENT_ADDITIONAL_VERIFICATION",
+        "requiredText": [
+          "not been independently verified",
+          "No money has been sent"
+        ],
+        "forbiddenText": [
+          "impersonation scam",
+          "genuine bank"
+        ]
+      }
+    },
+    {
+      "id": "unseen-investment-seminar-deadline",
+      "category": "investment-scam",
+      "answers": {
+        "payment_recognition": "YES",
+        "beneficiary_relationship": "NEW_RECIPIENT",
+        "payment_purpose": "INVESTMENT",
+        "contact_influence": "UNEXPECTED",
+        "payment_circumstances": "A webinar host guaranteed ten percent returns and said the investment window closes tonight.",
+        "pressure_or_secrecy": "YES",
+        "remote_access": "NO"
+      },
+      "expectedEvidence": {
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "INVESTMENT",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "requiredIndicators": [
+          "INVESTMENT",
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY"
+        ],
+        "forbiddenIndicators": [
+          "BANK_IMPERSONATION",
+          "SAFE_ACCOUNT",
+          "REMOTE_ACCESS",
+          "THIRD_PARTY_BENEFICIARY",
+          "NONE"
+        ],
+        "uncertainty": "LOW",
+        "requiredProvenance": [
+          "paymentRecognition",
+          "beneficiaryRelationship",
+          "paymentPurpose",
+          "thirdPartyInfluence",
+          "scamIndicator:INVESTMENT",
+          "scamIndicator:UNEXPECTED_CONTACT",
+          "scamIndicator:PRESSURE_OR_SECRECY",
+          "scamIndicator:URGENCY"
+        ]
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "expectedGuidance": {
+        "category": "UNEXPECTED_CONTACT_AND_PRESSURE",
+        "requiredText": [
+          "No money was sent",
+          "act quickly"
+        ],
+        "forbiddenText": [
+          "impersonation scam",
+          "bank contact",
+          "safe account"
+        ]
+      },
+      "knownFailingGuidanceRegression": true
+    },
+    {
+      "id": "unseen-investment-custodian-partner-account",
+      "category": "investment-scam",
+      "answers": {
+        "payment_recognition": "YES",
+        "beneficiary_relationship": "NEW_RECIPIENT",
+        "payment_purpose": "INVESTMENT",
+        "contact_influence": "UNEXPECTED",
+        "payment_circumstances": "A portfolio manager messaged me and directed the investment payment to their partner's account.",
+        "pressure_or_secrecy": "NO",
+        "remote_access": "NO"
+      },
+      "expectedEvidence": {
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "INVESTMENT",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "requiredIndicators": [
+          "INVESTMENT",
+          "UNEXPECTED_CONTACT",
+          "THIRD_PARTY_BENEFICIARY"
+        ],
+        "forbiddenIndicators": [
+          "BANK_IMPERSONATION",
+          "SAFE_ACCOUNT",
+          "PRESSURE_OR_SECRECY",
+          "REMOTE_ACCESS",
+          "NONE"
+        ],
+        "uncertainty": "LOW",
+        "requiredProvenance": [
+          "paymentRecognition",
+          "beneficiaryRelationship",
+          "paymentPurpose",
+          "thirdPartyInfluence",
+          "scamIndicator:INVESTMENT",
+          "scamIndicator:UNEXPECTED_CONTACT",
+          "scamIndicator:THIRD_PARTY_BENEFICIARY"
+        ]
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-UNEXPECTED-THIRD-PARTY"
+      },
+      "expectedGuidance": {
+        "category": "UNEXPECTED_CONTACT_AND_PRESSURE",
+        "requiredText": [
+          "unexpected contact",
+          "No money was sent"
+        ],
+        "forbiddenText": [
+          "bank contact",
+          "safe account"
+        ]
+      }
+    },
+    {
+      "id": "unseen-investment-crypto-screen-share",
+      "category": "investment-scam",
+      "answers": {
+        "payment_recognition": "YES",
+        "beneficiary_relationship": "NEW_RECIPIENT",
+        "payment_purpose": "INVESTMENT",
+        "contact_influence": "UNEXPECTED",
+        "payment_circumstances": "A crypto mentor contacted me, said the price will jump today and asked to control my screen.",
+        "pressure_or_secrecy": "NO",
+        "remote_access": "YES"
+      },
+      "expectedEvidence": {
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "INVESTMENT",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "requiredIndicators": [
+          "INVESTMENT",
+          "UNEXPECTED_CONTACT",
+          "URGENCY",
+          "REMOTE_ACCESS"
+        ],
+        "forbiddenIndicators": [
+          "BANK_IMPERSONATION",
+          "SAFE_ACCOUNT",
+          "PRESSURE_OR_SECRECY",
+          "NONE"
+        ],
+        "uncertainty": "LOW",
+        "requiredProvenance": [
+          "paymentRecognition",
+          "beneficiaryRelationship",
+          "paymentPurpose",
+          "thirdPartyInfluence",
+          "scamIndicator:INVESTMENT",
+          "scamIndicator:UNEXPECTED_CONTACT",
+          "scamIndicator:URGENCY",
+          "scamIndicator:REMOTE_ACCESS"
+        ]
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-REMOTE-ACCESS"
+      },
+      "expectedGuidance": {
+        "category": "UNEXPECTED_CONTACT_AND_PRESSURE",
+        "requiredText": [
+          "unexpected contact",
+          "No money was sent"
+        ],
+        "forbiddenText": [
+          "bank contact",
+          "safe account"
+        ]
+      }
+    },
+    {
+      "id": "unseen-bank-police-safe-wallet",
+      "category": "bank-impersonation",
+      "answers": {
+        "payment_recognition": "YES",
+        "beneficiary_relationship": "NEW_RECIPIENT",
+        "payment_purpose": "SAFE_ACCOUNT",
+        "contact_influence": "UNEXPECTED",
+        "payment_circumstances": "A caller claiming to work with my bank and the police ordered me to move everything to a safe wallet now.",
+        "pressure_or_secrecy": "YES",
+        "remote_access": "NO"
+      },
+      "expectedEvidence": {
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "SAFE_ACCOUNT",
+        "thirdPartyInfluence": "BANK_IMPERSONATION",
+        "verificationClaims": [],
+        "requiredIndicators": [
+          "SAFE_ACCOUNT",
+          "BANK_IMPERSONATION",
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY"
+        ],
+        "forbiddenIndicators": [
+          "INVESTMENT",
+          "REMOTE_ACCESS",
+          "NONE"
+        ],
+        "uncertainty": "LOW",
+        "requiredProvenance": [
+          "paymentRecognition",
+          "beneficiaryRelationship",
+          "paymentPurpose",
+          "thirdPartyInfluence",
+          "scamIndicator:SAFE_ACCOUNT",
+          "scamIndicator:BANK_IMPERSONATION",
+          "scamIndicator:UNEXPECTED_CONTACT",
+          "scamIndicator:PRESSURE_OR_SECRECY",
+          "scamIndicator:URGENCY"
+        ]
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-SAFE-ACCOUNT"
+      },
+      "expectedGuidance": {
+        "category": "BANK_IMPERSONATION_SAFE_ACCOUNT",
+        "requiredText": [
+          "genuine bank",
+          "No money was sent"
+        ],
+        "forbiddenText": [
+          "investment adviser"
+        ]
+      }
+    },
+    {
+      "id": "unseen-bank-fraud-holding-company",
+      "category": "bank-impersonation",
+      "answers": {
+        "payment_recognition": "YES",
+        "beneficiary_relationship": "NEW_RECIPIENT",
+        "payment_purpose": "OTHER",
+        "contact_influence": "UNEXPECTED",
+        "payment_circumstances": "Someone claiming to be bank fraud support directed me to pay an unrelated holding company.",
+        "pressure_or_secrecy": "NO",
+        "remote_access": "NO"
+      },
+      "expectedEvidence": {
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "OTHER",
+        "thirdPartyInfluence": "BANK_IMPERSONATION",
+        "verificationClaims": [],
+        "requiredIndicators": [
+          "BANK_IMPERSONATION",
+          "UNEXPECTED_CONTACT",
+          "THIRD_PARTY_BENEFICIARY"
+        ],
+        "forbiddenIndicators": [
+          "INVESTMENT",
+          "SAFE_ACCOUNT",
+          "REMOTE_ACCESS",
+          "NONE"
+        ],
+        "uncertainty": "LOW",
+        "requiredProvenance": [
+          "paymentRecognition",
+          "beneficiaryRelationship",
+          "paymentPurpose",
+          "thirdPartyInfluence",
+          "scamIndicator:BANK_IMPERSONATION",
+          "scamIndicator:UNEXPECTED_CONTACT",
+          "scamIndicator:THIRD_PARTY_BENEFICIARY"
+        ]
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-BANK-IMPERSONATION"
+      },
+      "expectedGuidance": {
+        "category": "BANK_IMPERSONATION_SAFE_ACCOUNT",
+        "requiredText": [
+          "trusted number",
+          "No money was sent"
+        ],
+        "forbiddenText": [
+          "family member"
+        ]
+      }
+    },
+    {
+      "id": "unseen-family-nephew-new-phone",
+      "category": "family-emergency",
+      "answers": {
+        "payment_recognition": "YES",
+        "beneficiary_relationship": "NEW_RECIPIENT",
+        "payment_purpose": "FRIENDS_FAMILY",
+        "contact_influence": "UNEXPECTED",
+        "payment_circumstances": "A new number says it is my nephew, his phone was stolen and he needs taxi money immediately.",
+        "pressure_or_secrecy": "YES",
+        "remote_access": "NO"
+      },
+      "expectedEvidence": {
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "FRIENDS_OR_FAMILY",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "requiredIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY"
+        ],
+        "forbiddenIndicators": [
+          "BANK_IMPERSONATION",
+          "SAFE_ACCOUNT",
+          "INVESTMENT",
+          "REMOTE_ACCESS",
+          "NONE"
+        ],
+        "uncertainty": "LOW",
+        "requiredProvenance": [
+          "paymentRecognition",
+          "beneficiaryRelationship",
+          "paymentPurpose",
+          "thirdPartyInfluence",
+          "scamIndicator:UNEXPECTED_CONTACT",
+          "scamIndicator:PRESSURE_OR_SECRECY",
+          "scamIndicator:URGENCY"
+        ]
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "expectedGuidance": {
+        "category": "FAMILY_OR_TRUSTED_PERSON_IMPERSONATION",
+        "requiredText": [
+          "independently confirmed",
+          "No money was sent"
+        ],
+        "forbiddenText": [
+          "bank contact"
+        ]
+      }
+    },
+    {
+      "id": "unseen-family-planned-wedding-gift",
+      "category": "family-emergency",
+      "answers": {
+        "payment_recognition": "YES",
+        "beneficiary_relationship": "KNOWN_PERSON",
+        "payment_purpose": "FRIENDS_FAMILY",
+        "contact_influence": "EXPECTED",
+        "payment_circumstances": "My cousin sent the wedding contribution details we agreed in person last weekend.",
+        "pressure_or_secrecy": "NO",
+        "remote_access": "NO"
+      },
+      "payment": {
+        "amount": 400,
+        "beneficiaryPreviouslyPaid": true,
+        "deterministicSignals": []
+      },
+      "expectedEvidence": {
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "FRIENDS_OR_FAMILY",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [],
+        "requiredIndicators": [
+          "NONE"
+        ],
+        "forbiddenIndicators": [
+          "BANK_IMPERSONATION",
+          "SAFE_ACCOUNT",
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY",
+          "INVESTMENT",
+          "REMOTE_ACCESS"
+        ],
+        "uncertainty": "LOW",
+        "requiredProvenance": [
+          "paymentRecognition",
+          "beneficiaryRelationship",
+          "paymentPurpose",
+          "thirdPartyInfluence"
+        ]
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "expectedGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "does not mean the payment is safe",
+          "No money has been sent"
+        ],
+        "forbiddenText": [
+          "impersonation scam",
+          "voice"
+        ]
+      }
+    },
+    {
+      "id": "unseen-romance-pay-sister-hospital",
+      "category": "romance-purchase-scam",
+      "answers": {
+        "payment_recognition": "YES",
+        "beneficiary_relationship": "NEW_RECIPIENT",
+        "payment_purpose": "FRIENDS_FAMILY",
+        "contact_influence": "UNEXPECTED",
+        "payment_circumstances": "A dating-app partner urgently asked me to send hospital money to their sister's account.",
+        "pressure_or_secrecy": "YES",
+        "remote_access": "NO"
+      },
+      "expectedEvidence": {
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "FRIENDS_OR_FAMILY",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "requiredIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY",
+          "THIRD_PARTY_BENEFICIARY"
+        ],
+        "forbiddenIndicators": [
+          "BANK_IMPERSONATION",
+          "SAFE_ACCOUNT",
+          "INVESTMENT",
+          "REMOTE_ACCESS",
+          "NONE"
+        ],
+        "uncertainty": "LOW",
+        "requiredProvenance": [
+          "paymentRecognition",
+          "beneficiaryRelationship",
+          "paymentPurpose",
+          "thirdPartyInfluence",
+          "scamIndicator:UNEXPECTED_CONTACT",
+          "scamIndicator:PRESSURE_OR_SECRECY",
+          "scamIndicator:URGENCY",
+          "scamIndicator:THIRD_PARTY_BENEFICIARY"
+        ]
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "expectedGuidance": {
+        "category": "FAMILY_OR_TRUSTED_PERSON_IMPERSONATION",
+        "requiredText": [
+          "number you already have saved",
+          "No money was sent"
+        ],
+        "forbiddenText": [
+          "genuine bank"
+        ]
+      },
+      "unsupportedConcepts": [
+        "ROMANCE_SCAM"
+      ]
+    },
+    {
+      "id": "unseen-purchase-puppy-deposit",
+      "category": "romance-purchase-scam",
+      "answers": {
+        "payment_recognition": "YES",
+        "beneficiary_relationship": "NEW_RECIPIENT",
+        "payment_purpose": "GOODS_SERVICES",
+        "contact_influence": "UNEXPECTED",
+        "payment_circumstances": "An online breeder says I must transfer the puppy deposit right now or lose the reservation.",
+        "pressure_or_secrecy": "YES",
+        "remote_access": "NO"
+      },
+      "unsupportedConcepts": [
+        "PURCHASE_SCAM"
+      ],
+      "expectedEvidence": {
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "requiredIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY"
+        ],
+        "forbiddenIndicators": [
+          "BANK_IMPERSONATION",
+          "SAFE_ACCOUNT",
+          "INVESTMENT",
+          "REMOTE_ACCESS",
+          "NONE"
+        ],
+        "uncertainty": "LOW",
+        "requiredProvenance": [
+          "paymentRecognition",
+          "beneficiaryRelationship",
+          "paymentPurpose",
+          "thirdPartyInfluence",
+          "scamIndicator:UNEXPECTED_CONTACT",
+          "scamIndicator:PRESSURE_OR_SECRECY",
+          "scamIndicator:URGENCY"
+        ]
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "expectedGuidance": {
+        "category": "UNEXPECTED_CONTACT_AND_PRESSURE",
+        "requiredText": [
+          "pressure to act quickly",
+          "No money was sent"
+        ],
+        "forbiddenText": [
+          "bank contact",
+          "safe account"
+        ]
+      }
+    },
+    {
+      "id": "unseen-ambiguous-event-venue",
+      "category": "ambiguous-response",
+      "answers": {
+        "payment_recognition": "YES",
+        "beneficiary_relationship": "UNSURE",
+        "payment_purpose": "GOODS_SERVICES",
+        "contact_influence": "NO",
+        "payment_circumstances": "This may be the event venue, but I cannot tell who owns the account.",
+        "pressure_or_secrecy": "NO",
+        "remote_access": "NO"
+      },
+      "expectedEvidence": {
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "UNCERTAIN",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "NONE",
+        "verificationClaims": [],
+        "requiredIndicators": [
+          "NONE"
+        ],
+        "forbiddenIndicators": [
+          "BANK_IMPERSONATION",
+          "SAFE_ACCOUNT",
+          "INVESTMENT",
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "REMOTE_ACCESS"
+        ],
+        "uncertainty": "MEDIUM",
+        "requiredProvenance": [
+          "paymentRecognition",
+          "beneficiaryRelationship",
+          "paymentPurpose",
+          "thirdPartyInfluence"
+        ]
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-UNRELIABLE-EVIDENCE"
+      },
+      "expectedGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "could not safely personalise",
+          "No money has been sent"
+        ],
+        "forbiddenText": [
+          "impersonation scam",
+          "genuine bank"
+        ]
+      }
+    },
+    {
+      "id": "unseen-contradiction-expected-versus-cold-call",
+      "category": "contradiction",
+      "answers": {
+        "payment_recognition": "YES",
+        "beneficiary_relationship": "NEW_RECIPIENT",
+        "payment_purpose": "OTHER",
+        "contact_influence": "EXPECTED",
+        "payment_circumstances": "An unknown caller unexpectedly told me to complete this transfer immediately.",
+        "pressure_or_secrecy": "NO",
+        "remote_access": "NO"
+      },
+      "expectedEvidence": {
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "OTHER",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [],
+        "requiredIndicators": [
+          "UNEXPECTED_CONTACT",
+          "URGENCY"
+        ],
+        "forbiddenIndicators": [
+          "BANK_IMPERSONATION",
+          "SAFE_ACCOUNT",
+          "INVESTMENT",
+          "PRESSURE_OR_SECRECY",
+          "REMOTE_ACCESS",
+          "NONE"
+        ],
+        "uncertainty": "MEDIUM",
+        "minimumContradictions": 1,
+        "contradictions": [
+          {
+            "summary": "The bounded expected-contact answer conflicts with the stated unknown caller.",
+            "sourceQuestionIds": [
+              "contact_influence",
+              "payment_circumstances"
+            ]
+          }
+        ],
+        "requiredProvenance": [
+          "paymentRecognition",
+          "beneficiaryRelationship",
+          "paymentPurpose",
+          "thirdPartyInfluence",
+          "scamIndicator:UNEXPECTED_CONTACT",
+          "scamIndicator:URGENCY"
+        ],
+        "provenanceSources": {
+          "scamIndicator:UNEXPECTED_CONTACT": "payment_circumstances"
+        }
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-UNRELIABLE-EVIDENCE"
+      },
+      "expectedGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "could not safely personalise",
+          "No money has been sent"
+        ],
+        "forbiddenText": [
+          "impersonation scam",
+          "genuine bank"
+        ]
+      }
+    },
+    {
+      "id": "unseen-government-tax-refund-fee",
+      "category": "impersonation",
+      "answers": {
+        "payment_recognition": "YES",
+        "beneficiary_relationship": "NEW_RECIPIENT",
+        "payment_purpose": "OTHER",
+        "contact_influence": "UNEXPECTED",
+        "payment_circumstances": "A caller claiming to be the tax office said I must pay a release fee immediately and keep it confidential.",
+        "pressure_or_secrecy": "YES",
+        "remote_access": "NO"
+      },
+      "unsupportedConcepts": [
+        "GOVERNMENT_IMPERSONATION"
+      ],
+      "expectedEvidence": {
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "OTHER",
+        "thirdPartyInfluence": "UNEXPECTED",
+        "verificationClaims": [],
+        "requiredIndicators": [
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "URGENCY"
+        ],
+        "forbiddenIndicators": [
+          "BANK_IMPERSONATION",
+          "SAFE_ACCOUNT",
+          "INVESTMENT",
+          "REMOTE_ACCESS",
+          "NONE"
+        ],
+        "uncertainty": "LOW",
+        "requiredProvenance": [
+          "paymentRecognition",
+          "beneficiaryRelationship",
+          "paymentPurpose",
+          "thirdPartyInfluence",
+          "scamIndicator:UNEXPECTED_CONTACT",
+          "scamIndicator:PRESSURE_OR_SECRECY",
+          "scamIndicator:URGENCY"
+        ]
+      },
+      "expectedPolicy": {
+        "outcome": "DECLINED",
+        "ruleId": "CER-DECLINE-PRESSURE-SECRECY"
+      },
+      "expectedGuidance": {
+        "category": "UNEXPECTED_CONTACT_AND_PRESSURE",
+        "requiredText": [
+          "pressure to act quickly",
+          "No money was sent"
+        ],
+        "forbiddenText": [
+          "bank contact",
+          "safe account"
+        ]
+      }
+    },
+    {
+      "id": "unseen-supplier-factoring-account",
+      "category": "romance-purchase-scam",
+      "answers": {
+        "payment_recognition": "YES",
+        "beneficiary_relationship": "NEW_RECIPIENT",
+        "payment_purpose": "GOODS_SERVICES",
+        "contact_influence": "EXPECTED",
+        "payment_circumstances": "The supplier sent an invoice and told me to pay a separate factoring company's account.",
+        "pressure_or_secrecy": "NO",
+        "remote_access": "NO"
+      },
+      "expectedEvidence": {
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "NEW",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "EXPECTED",
+        "verificationClaims": [
+          "INVOICE_RECEIVED"
+        ],
+        "requiredIndicators": [
+          "THIRD_PARTY_BENEFICIARY"
+        ],
+        "forbiddenIndicators": [
+          "BANK_IMPERSONATION",
+          "SAFE_ACCOUNT",
+          "INVESTMENT",
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "REMOTE_ACCESS"
+        ],
+        "uncertainty": "LOW",
+        "requiredProvenance": [
+          "paymentRecognition",
+          "beneficiaryRelationship",
+          "paymentPurpose",
+          "thirdPartyInfluence",
+          "verificationClaim:INVOICE_RECEIVED",
+          "scamIndicator:THIRD_PARTY_BENEFICIARY"
+        ]
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "expectedGuidance": {
+        "category": "HIGH_VALUE_FIRST_TIME_BENEFICIARY",
+        "requiredText": [
+          "new beneficiary",
+          "No money has been sent"
+        ],
+        "forbiddenText": [
+          "impersonation scam",
+          "genuine bank"
+        ]
+      }
+    },
+    {
+      "id": "unseen-legitimate-bank-reference",
+      "category": "bank-impersonation",
+      "answers": {
+        "payment_recognition": "YES",
+        "beneficiary_relationship": "KNOWN_BUSINESS",
+        "payment_purpose": "GOODS_SERVICES",
+        "contact_influence": "NO",
+        "payment_circumstances": "The invoice reference contains the word bank because I am renewing banking software myself.",
+        "pressure_or_secrecy": "NO",
+        "remote_access": "NO"
+      },
+      "payment": {
+        "amount": 30,
+        "beneficiaryPreviouslyPaid": true,
+        "deterministicSignals": []
+      },
+      "expectedEvidence": {
+        "paymentRecognition": "RECOGNISED",
+        "beneficiaryRelationship": "KNOWN",
+        "paymentPurpose": "GOODS_OR_SERVICES",
+        "thirdPartyInfluence": "NONE",
+        "verificationClaims": [],
+        "requiredIndicators": [
+          "NONE"
+        ],
+        "forbiddenIndicators": [
+          "BANK_IMPERSONATION",
+          "SAFE_ACCOUNT",
+          "UNEXPECTED_CONTACT",
+          "PRESSURE_OR_SECRECY",
+          "REMOTE_ACCESS",
+          "INVESTMENT"
+        ],
+        "uncertainty": "LOW",
+        "requiredProvenance": [
+          "paymentRecognition",
+          "beneficiaryRelationship",
+          "paymentPurpose",
+          "thirdPartyInfluence"
+        ]
+      },
+      "expectedPolicy": {
+        "outcome": "REFER_TO_ANALYST",
+        "ruleId": "CER-REFER-NO-SAFE-INFERENCE"
+      },
+      "expectedGuidance": {
+        "category": "UNCERTAIN_OR_INCOMPLETE",
+        "requiredText": [
+          "does not mean the payment is safe",
+          "No money has been sent"
+        ],
+        "forbiddenText": [
+          "genuine bank",
+          "impersonation scam"
+        ]
+      }
+    }
+  ]
+}
