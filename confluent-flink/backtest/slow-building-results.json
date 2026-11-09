@@ -1,0 +1,144 @@
+{
+  "additional_fraud_examples": [
+    {
+      "baseline": false,
+      "candidate": true,
+      "cumulative_amount_30d": 4500,
+      "current_to_first_ratio": 8.0,
+      "fraud": true,
+      "payment_number": 4,
+      "payments_30d": 4,
+      "relationship_age_days": 21.0,
+      "scenario": "investment-scam-four-step",
+      "successive_growth_count": 3,
+      "transaction_id": "investment-scam-four-step-4"
+    },
+    {
+      "baseline": false,
+      "candidate": true,
+      "cumulative_amount_30d": 5850,
+      "current_to_first_ratio": 15.0,
+      "fraud": true,
+      "payment_number": 5,
+      "payments_30d": 5,
+      "relationship_age_days": 28.0,
+      "scenario": "investment-scam-demo-shape",
+      "successive_growth_count": 4,
+      "transaction_id": "investment-scam-demo-shape-5"
+    },
+    {
+      "baseline": false,
+      "candidate": true,
+      "cumulative_amount_30d": 6300,
+      "current_to_first_ratio": 12.8,
+      "fraud": true,
+      "payment_number": 5,
+      "payments_30d": 5,
+      "relationship_age_days": 28.0,
+      "scenario": "investment-scam-variable",
+      "successive_growth_count": 3,
+      "transaction_id": "investment-scam-variable-5"
+    },
+    {
+      "baseline": false,
+      "candidate": true,
+      "cumulative_amount_30d": 5950,
+      "current_to_first_ratio": 11.2,
+      "fraud": true,
+      "payment_number": 6,
+      "payments_30d": 5,
+      "relationship_age_days": 28.0,
+      "scenario": "investment-scam-six-step",
+      "successive_growth_count": 4,
+      "transaction_id": "investment-scam-six-step-6"
+    }
+  ],
+  "dataset": {
+    "fraud_transactions": 32,
+    "legitimate_transactions": 23,
+    "scenarios": 12,
+    "transactions": 55
+  },
+  "earliest_trigger_payment": {
+    "investment-scam-demo-shape": 5,
+    "investment-scam-four-step": 4,
+    "investment-scam-six-step": 6,
+    "investment-scam-variable": 5,
+    "legitimate-family-support": 5,
+    "legitimate-unusual-escalation": 5
+  },
+  "event_time_semantics": {
+    "deduplication": "transaction_id",
+    "operational_limit": "Batch evaluation does not measure Flink watermark or Kafka latency.",
+    "ordering": "event_time then transaction_id",
+    "window": "inclusive trailing 30 days"
+  },
+  "false_positive_examples": [
+    {
+      "baseline": false,
+      "candidate": true,
+      "cumulative_amount_30d": 6200,
+      "current_to_first_ratio": 16.0,
+      "fraud": false,
+      "payment_number": 5,
+      "payments_30d": 5,
+      "relationship_age_days": 28.0,
+      "scenario": "legitimate-family-support",
+      "successive_growth_count": 4,
+      "transaction_id": "legitimate-family-support-5"
+    },
+    {
+      "baseline": false,
+      "candidate": true,
+      "cumulative_amount_30d": 7750,
+      "current_to_first_ratio": 16.0,
+      "fraud": false,
+      "payment_number": 5,
+      "payments_30d": 5,
+      "relationship_age_days": 28.0,
+      "scenario": "legitimate-unusual-escalation",
+      "successive_growth_count": 4,
+      "transaction_id": "legitimate-unusual-escalation-5"
+    }
+  ],
+  "local_processing": {
+    "elapsed_ms": 0.1812,
+    "microseconds_per_transaction": 3.2939,
+    "not_end_to_end_latency": true
+  },
+  "metrics": {
+    "additional_fraud_detected": 4,
+    "additional_legitimate_challenged": 2,
+    "baseline": {
+      "false_negatives": 29,
+      "false_positives": 0,
+      "precision": 1.0,
+      "recall": 0.0938,
+      "true_negatives": 23,
+      "true_positives": 3
+    },
+    "candidate_only": {
+      "false_negatives": 28,
+      "false_positives": 2,
+      "precision": 0.6667,
+      "recall": 0.125,
+      "true_negatives": 21,
+      "true_positives": 4
+    },
+    "combined": {
+      "false_negatives": 25,
+      "false_positives": 2,
+      "precision": 0.7778,
+      "recall": 0.2188,
+      "true_negatives": 21,
+      "true_positives": 7
+    }
+  },
+  "thresholds": {
+    "minimum_cumulative_amount": 4000,
+    "minimum_current_to_first_ratio": 4,
+    "minimum_payments": 4,
+    "minimum_relationship_age_days": 21,
+    "minimum_successive_growth_count": 3
+  }
+}

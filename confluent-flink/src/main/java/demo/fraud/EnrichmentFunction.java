@@ -25,13 +25,25 @@ public class EnrichmentFunction extends KeyedProcessFunction<String, Transaction
     private static final long DEDUP_RETENTION = TEN_MINUTES + 2_000L;
     private static final ObjectMapper JSON = new ObjectMapper();
     private final double newBeneficiaryHighValueThreshold;
+    private final SlowBuildingRiskConfig slowBuildingConfig;
+    private final String assessmentStream;
 
     private transient ListState<Transaction> pending;
     private transient ListState<Transaction> history;
     private transient MapState<String, Long> seenIds;
 
     public EnrichmentFunction(double newBeneficiaryHighValueThreshold) {
+        this(newBeneficiaryHighValueThreshold, SlowBuildingRiskConfig.defaults(), "live");
+    }
+
+    public EnrichmentFunction(
+            double newBeneficiaryHighValueThreshold,
+            SlowBuildingRiskConfig slowBuildingConfig,
+            String assessmentStream
+    ) {
         this.newBeneficiaryHighValueThreshold = newBeneficiaryHighValueThreshold;
+        this.slowBuildingConfig = slowBuildingConfig;
+        this.assessmentStream = assessmentStream;
     }
 
     @Override
@@ -73,7 +85,8 @@ public class EnrichmentFunction extends KeyedProcessFunction<String, Transaction
         for (Transaction tx : due) {
             prior.removeIf(old -> old.eventTimeMillis < tx.eventTimeMillis - TEN_MINUTES);
             prior.add(tx);
-            out.collect(assessmentJson(tx, prior, newBeneficiaryHighValueThreshold));
+            out.collect(assessmentJson(
+                    tx, prior, newBeneficiaryHighValueThreshold, slowBuildingConfig, assessmentStream));
         }
         pending.update(remaining);
 
@@ -92,6 +105,17 @@ public class EnrichmentFunction extends KeyedProcessFunction<String, Transaction
     static String assessmentJson(
             Transaction current, List<Transaction> events, double newBeneficiaryHighValueThreshold
     ) throws Exception {
+        return assessmentJson(
+                current, events, newBeneficiaryHighValueThreshold, SlowBuildingRiskConfig.defaults(), "live");
+    }
+
+    static String assessmentJson(
+            Transaction current,
+            List<Transaction> events,
+            double newBeneficiaryHighValueThreshold,
+            SlowBuildingRiskConfig slowBuildingConfig,
+            String assessmentStream
+    ) throws Exception {
         int count1m = 0, count2m = 0, count10m = 0;
         double total2m = 0;
         java.util.Set<String> merchants2m = new java.util.HashSet<>();
@@ -109,9 +133,12 @@ public class EnrichmentFunction extends KeyedProcessFunction<String, Transaction
         boolean newBeneficiaryHighValue = current.beneficiaryPaymentCount != null
                 && current.beneficiaryPaymentCount == 0
                 && current.amount >= newBeneficiaryHighValueThreshold;
+        SlowBuildingFeatures slow = current.slowBuildingFeatures;
+        boolean slowBuildingRisk = slow != null && slow.signal;
 
         ObjectNode root = JSON.createObjectNode();
         root.put("assessment_type", "transaction");
+        root.put("assessment_stream", assessmentStream);
         root.put("transaction_id", current.transactionId);
         root.put("user_id", current.userId);
         root.put("amount", Math.round(current.amount * 100.0) / 100.0);
@@ -124,6 +151,27 @@ public class EnrichmentFunction extends KeyedProcessFunction<String, Transaction
         root.put("total_amount_2m", Math.round(total2m * 100.0) / 100.0);
         if (current.beneficiaryPaymentCount == null) root.putNull("beneficiary_payment_count");
         else root.put("beneficiary_payment_count", current.beneficiaryPaymentCount);
+        if (slow != null) {
+            ObjectNode evidence = root.putObject("slow_building_beneficiary_evidence");
+            evidence.put("beneficiary_id", slow.beneficiaryId);
+            evidence.put("window_days", 30);
+            evidence.put("payments_30d", slow.payments30d);
+            evidence.put("cumulative_amount_30d", slow.cumulativeAmount30d);
+            evidence.put("successive_growth_count", slow.successiveGrowthCount);
+            evidence.put("successive_pair_count", slow.successivePairCount);
+            evidence.put("current_to_first_amount_ratio", slow.currentToFirstAmountRatio);
+            evidence.put("observed_relationship_age_days", slow.relationshipAgeDays);
+            evidence.put("window_start", Instant.ofEpochMilli(slow.windowStartMillis).toString());
+            evidence.put("window_end", Instant.ofEpochMilli(slow.windowEndMillis).toString());
+            ObjectNode thresholds = evidence.putObject("thresholds");
+            thresholds.put("minimum_payments", slowBuildingConfig.minimumPayments);
+            thresholds.put("minimum_cumulative_amount", slowBuildingConfig.minimumCumulativeAmount);
+            thresholds.put("minimum_successive_growth_count", slowBuildingConfig.minimumSuccessiveGrowthCount);
+            thresholds.put("minimum_current_to_first_amount_ratio", slowBuildingConfig.minimumCurrentToFirstRatio);
+            thresholds.put("minimum_observed_relationship_age_days", slowBuildingConfig.minimumRelationshipAgeDays);
+        } else {
+            root.putNull("slow_building_beneficiary_evidence");
+        }
         ArrayNode signals = root.putArray("signals");
         ArrayNode signalIds = root.putArray("signal_ids");
         if (velocity) { signals.add("HIGH_VELOCITY"); signalIds.add("txn:" + current.transactionId + ":HIGH_VELOCITY"); }
@@ -132,13 +180,17 @@ public class EnrichmentFunction extends KeyedProcessFunction<String, Transaction
             signals.add("NEW_BENEFICIARY_HIGH_VALUE");
             signalIds.add("txn:" + current.transactionId + ":NEW_BENEFICIARY_HIGH_VALUE");
         }
-        root.put("risk_level", velocity || hopping || newBeneficiaryHighValue ? "HIGH" : "LOW");
+        if (slowBuildingRisk) {
+            signals.add("SLOW_BUILDING_BENEFICIARY_RISK");
+            signalIds.add("txn:" + current.transactionId + ":SLOW_BUILDING_BENEFICIARY_RISK");
+        }
+        root.put("risk_level", velocity || hopping || newBeneficiaryHighValue || slowBuildingRisk ? "HIGH" : "LOW");
         root.put("assessment_timestamp", Instant.now().toString());
         root.put("evidence_source", "flink");
         return JSON.writeValueAsString(root);
     }
 
-    private static String lateJson(Transaction tx, long watermark) throws Exception {
+    static String lateJson(Transaction tx, long watermark) throws Exception {
         ObjectNode root = JSON.createObjectNode();
         root.put("transaction_id", tx.transactionId);
         root.put("user_id", tx.userId);

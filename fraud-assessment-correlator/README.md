@@ -12,6 +12,12 @@ The service consumes `fraud.decisions.demo`, `fraud.risk.baseline.demo`,
 version `1.0.0` contracts by `transaction_id`. It publishes every meaningful revision, keyed by
 `transaction_id`, to `fraud.assessments.correlated.demo`.
 
+The deterministic event decoder also recognises the producer's optional
+`baseline_payment_verdict` and `baseline_policy_version` audit fields. A present baseline verdict
+must use an existing verdict value. These comparison-only fields do not replace the authoritative
+`payment_verdict` or change correlation output. Legacy events without them remain valid, while all
+other unknown fields are still rejected by the strict decoder.
+
 An assessment can start with any component. `PARTIAL` means one of the deterministic or ML branches
 has not arrived. `PENDING_INVESTIGATION` is used only when the deterministic event explicitly says an
 investigation is required and no completion is present. `COMPLETE` means both deterministic and ML
@@ -151,6 +157,10 @@ four revisions; ordinary transactions should have two. A missing completion leav
   duplicate.
 - Malformed records are recorded in `fraud_assessment_rejected_events`, published to
   `fraud.assessments.dlq`, and then committed so subsequent valid records are not blocked.
+- Do not blindly replay a DLQ after a compatibility fix. The source offset has already been committed,
+  and other branches may already be durably correlated. Retain the rejected row and DLQ message as
+  evidence; validate with new uniquely identified traffic. Any historical repair must be an explicit,
+  position-aware procedure that first checks source-event and assessment identities.
 - A source-position uniqueness error usually means an integration fixture used a live topic/offset.
   Integration tests use `integration.*` source topics and must clean up their rows before closing the
   database pool.

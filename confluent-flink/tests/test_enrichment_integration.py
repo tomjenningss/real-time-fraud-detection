@@ -112,5 +112,103 @@ class EnrichmentKafkaTests(unittest.TestCase):
         self.assertEqual([r["transactions_2m"] for r in self.case("out-of-order")], [1, 2, 3])
 
 
+@unittest.skipUnless(os.environ.get("RUN_SLOW_BUILDING_INTEGRATION") == "1",
+                     "set RUN_SLOW_BUILDING_INTEGRATION=1 against the isolated replay job")
+class SlowBuildingReplayKafkaTests(unittest.TestCase):
+    RAW_TOPIC = "payments.raw.slow-building-replay"
+    ENRICHED_TOPIC = "payments.enriched.slow-building-replay"
+
+    @classmethod
+    def setUpClass(cls):
+        first = cls.publish_run("replay-a")
+        second = cls.publish_run("replay-b")
+        cls.runs = {"replay-a": first, "replay-b": second}
+
+    @classmethod
+    def consume(cls):
+        consumed = subprocess.run([
+            "podman", "compose", "exec", "-T", "kafka", "kafka-console-consumer",
+            "--bootstrap-server", "kafka:29092", "--topic", cls.ENRICHED_TOPIC,
+            "--partition", "0", "--from-beginning", "--timeout-ms", "3000",
+        ], text=True, capture_output=True)
+        rows = []
+        for line in consumed.stdout.splitlines():
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+        return rows
+
+    @classmethod
+    def publish_run(cls, label):
+        existing = cls.consume()
+        latest = max(
+            (datetime.fromisoformat(row["transaction_timestamp"].replace("Z", "+00:00"))
+             for row in existing),
+            default=datetime.now(timezone.utc) - timedelta(days=28, seconds=5),
+        )
+        start = max(
+            datetime.now(timezone.utc) - timedelta(days=28),
+            latest + timedelta(seconds=3, milliseconds=5),
+        ).replace(tzinfo=None)
+        run_id = "slow-itest-" + uuid.uuid4().hex[:10] + "-" + label
+        amounts = (200, 400, 750, 1_500, 3_000)
+        events = []
+        for index, amount in enumerate(amounts):
+            events.append({
+                "transaction_id": f"{run_id}-{index + 1}",
+                "user_id": run_id,
+                "merchant_id": "beneficiary:slow-itest",
+                "beneficiary_id": "slow-itest-beneficiary",
+                "beneficiary_payment_count": index,
+                "amount": amount,
+                "device_id": "slow-itest-device",
+                "payment_channel": "OTHER",
+                "event_time": (start + timedelta(days=7 * index)).strftime(
+                    "%Y-%m-%d %H:%M:%S.%f")[:-3],
+            })
+        watermark = {
+            "transaction_id": f"{run_id}-watermark", "user_id": "__watermark__",
+            "merchant_id": "__none__", "amount": 0, "device_id": "__none__",
+            "payment_channel": "OTHER",
+            "event_time": (start + timedelta(days=28, seconds=3)).strftime(
+                "%Y-%m-%d %H:%M:%S.%f")[:-3],
+        }
+        payload = "\n".join(json.dumps(row, separators=(",", ":")) for row in events + [watermark]) + "\n"
+        subprocess.run([
+            "podman", "compose", "exec", "-T", "kafka", "kafka-console-producer",
+            "--bootstrap-server", "kafka:29092", "--topic", cls.RAW_TOPIC,
+        ], input=payload, text=True, check=True)
+        deadline = time.time() + 30
+        rows = []
+        while time.time() < deadline:
+            rows = sorted(
+                (row for row in cls.consume() if row.get("transaction_id", "").startswith(run_id + "-")),
+                key=lambda row: row["transaction_timestamp"],
+            )
+            if len(rows) == 5:
+                break
+        if len(rows) != 5:
+            raise AssertionError(f"expected five assessments for {run_id}, got {len(rows)}")
+        return rows
+
+    def test_fifth_payment_emits_exact_slow_building_evidence(self):
+        rows = self.runs["replay-a"]
+        self.assertTrue(all("SLOW_BUILDING_BENEFICIARY_RISK" not in row["signals"] for row in rows[:4]))
+        self.assertIn("SLOW_BUILDING_BENEFICIARY_RISK", rows[4]["signals"])
+        evidence = rows[4]["slow_building_beneficiary_evidence"]
+        self.assertEqual(evidence["payments_30d"], 5)
+        self.assertEqual(evidence["cumulative_amount_30d"], 5_850)
+        self.assertEqual(evidence["successive_growth_count"], 4)
+        self.assertEqual(evidence["current_to_first_amount_ratio"], 15)
+        self.assertEqual(evidence["observed_relationship_age_days"], 28)
+
+    def test_repeated_replay_uses_fresh_state(self):
+        rows = self.runs["replay-b"]
+        self.assertEqual([row["slow_building_beneficiary_evidence"]["payments_30d"] for row in rows],
+                         [1, 2, 3, 4, 5])
+        self.assertEqual(rows[-1]["signals"], ["SLOW_BUILDING_BENEFICIARY_RISK"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -147,12 +147,19 @@ const DEFINITIONS: Record<string, QuestionDefinition> = {
   },
 };
 
-export function initialQuestionIds(context: { triggeredRuleIds: string[]; beneficiaryPaymentCount: number }) {
+export function initialQuestionIds(context: {
+  triggeredRuleIds: string[];
+  beneficiaryPaymentCount: number;
+  deterministicSignals?: string[];
+}) {
   const selected = ["payment_recognition", "beneficiary_relationship", "payment_purpose"];
   const velocityTriggered = context.triggeredRuleIds.some(
     (ruleId) => ruleId === "FP-CHALLENGE-VELOCITY" || ruleId === "HIGH_VELOCITY",
   );
-  if (context.beneficiaryPaymentCount === 0 || velocityTriggered) {
+  const slowBuildingTriggered = context.deterministicSignals?.includes(
+    "SLOW_BUILDING_BENEFICIARY_RISK",
+  ) ?? false;
+  if (context.beneficiaryPaymentCount === 0 || velocityTriggered || slowBuildingTriggered) {
     selected.push("contact_influence");
   }
   if (context.beneficiaryPaymentCount === 0) {

@@ -14,9 +14,11 @@ class TransactionJsonSchemaTest {
 
     @Test
     void readsServerDerivedBeneficiaryPaymentCount() throws Exception {
-        Transaction transaction = schema.deserialize(payload(",\"beneficiary_payment_count\":0"));
+        Transaction transaction = schema.deserialize(payload(
+                ",\"beneficiary_payment_count\":0,\"beneficiary_id\":\"beneficiary-1\""));
 
         assertEquals(0, transaction.beneficiaryPaymentCount);
+        assertEquals("beneficiary-1", transaction.beneficiaryId);
     }
 
     @Test
@@ -24,6 +26,7 @@ class TransactionJsonSchemaTest {
         Transaction transaction = schema.deserialize(payload(""));
 
         assertNull(transaction.beneficiaryPaymentCount);
+        assertNull(transaction.beneficiaryId);
     }
 
     @Test

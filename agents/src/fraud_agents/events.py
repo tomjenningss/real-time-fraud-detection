@@ -31,7 +31,12 @@ def stable_uuid(kind: str, identity: str) -> UUID:
 
 
 def evidence_sha256(evidence: FlinkEvidence) -> str:
-    body = json.dumps(evidence.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
+    canonical = evidence.model_dump(mode="json")
+    # Flink can physically redeliver an at-least-once assessment after recovery.
+    # The wall-clock processing timestamp is provenance, not behavioural evidence,
+    # and must not turn an otherwise identical redelivery into an identity conflict.
+    canonical.pop("assessment_timestamp", None)
+    body = json.dumps(canonical, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(body.encode()).hexdigest()
 
 
@@ -51,6 +56,8 @@ class PaymentDecisionEvent(StrictModel):
     payment_verdict: Verdict
     decision_source: Literal["deterministic_fast_path"] = "deterministic_fast_path"
     policy_version: str
+    baseline_policy_version: str | None = None
+    baseline_payment_verdict: Verdict | None = None
     triggered_rule_ids: list[str]
     investigation_required: bool
     investigation_reason: str | None
@@ -131,6 +138,8 @@ def build_decision(
         correlation_id=correlation_id,
         payment_verdict=result.payment_verdict,
         policy_version=result.policy_version,
+        baseline_policy_version=result.baseline_policy_version,
+        baseline_payment_verdict=result.baseline_payment_verdict,
         triggered_rule_ids=list(result.triggered_rule_ids),
         investigation_required=result.investigation_required,
         investigation_reason=result.investigation_reason,

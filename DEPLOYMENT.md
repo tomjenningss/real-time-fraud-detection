@@ -110,6 +110,7 @@ Edit the ignored `.env` before first startup to change ports or resource sizes:
 | `WATSONX_ORCHESTRATE_API_KEY` | empty | server-only live credential; required for `orchestrate` |
 | `WATSONX_ORCHESTRATE_URL` | empty | server-only IBM service-instance URL |
 | `KAFKA_HEAP_OPTS` | `-Xms256m -Xmx512m` | development broker heap |
+| `KAFKA_MEMORY_LIMIT` | `1024m` | broker limit with native/page-cache headroom above the 512 MiB heap |
 | `JOBMANAGER_MEMORY` | `768m` | Flink JobManager process memory |
 | `TASKMANAGER_MEMORY` | `1280m` | Flink TaskManager process memory |
 
@@ -198,6 +199,21 @@ SQL probe publish a later window-closing marker without making a payment submitt
 to the Java evidence job. The marker payload retains that future event time, but its outbox row becomes
 available after three seconds of processing time; migration `0009_release_banking_watermarks` repairs pending
 rows created before those clocks were separated.
+
+## End-to-end load tests
+
+`deployment/glaramara_load_test.py` submits only through the signed-session Glaramara payment API, then uses
+the immutable PostgreSQL decision as completion. It supports the allowlisted 100/1,000/2,000/10,000/50,000
+sizes and 10/50/100/250 tx/s targets, seeded traffic profiles, bounded concurrency, idempotent retry, graceful
+stop, drain timeout, runtime sampling and JSON/Markdown reports. It accepts only an explicitly supplied
+loopback target and isolated-local environment. The 50,000 case requires a separate `--approve-stress` flag;
+the optional real Orchestrate questionnaire path is disabled unless its own bounded count and cost approval
+flags are supplied.
+
+Run `make status` before each experiment and execute one profile at a time. Do not advance when accepted
+payments are pending, lag has not drained, Flink jobs or containers restarted, or resource health is poor.
+Detailed safety constraints, measured/unavailable metrics and examples are in
+[`docs/implementation/glaramara-load-testing.md`](docs/implementation/glaramara-load-testing.md).
 
 ## Destructive reset
 

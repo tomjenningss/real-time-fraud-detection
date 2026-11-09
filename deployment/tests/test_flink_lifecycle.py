@@ -32,10 +32,10 @@ class FlinkLifecycleTests(unittest.TestCase):
             "  case \" $* \" in\n"
             "    *' /flink-scripts/flink_jobs.py plan '*)\n"
             "      case \"$FAKE_PLAN\" in\n"
-            "        both) printf 'java\\nsql\\n' ;;\n"
+            "        both) printf 'java\\nslow_building_replay\\nsql\\n' ;;\n"
             "        provider-crlf)\n"
             "          printf '>>>> Executing external compose provider podman-compose. <<<<\\r\\n\\r\\n'\n"
-            "          printf 'java\\r\\nsql\\r\\n'\n"
+            "          printf 'java\\r\\nslow_building_replay\\r\\nsql\\r\\n'\n"
             "          ;;\n"
             "        none) : ;;\n"
             "      esac\n"
@@ -69,6 +69,7 @@ class FlinkLifecycleTests(unittest.TestCase):
         self.assertIn("/opt/flink/bin/sql-client.sh sql-client embedded", commands)
         self.assertNotIn("execution.savepoint.path", commands)
         self.assertEqual(status["java"], "fresh")
+        self.assertEqual(status["slow_building_replay"], "fresh")
         self.assertEqual(status["sql"], "fresh")
 
     def test_provider_notice_and_tty_crlf_do_not_hide_planned_jobs(self) -> None:
@@ -77,6 +78,7 @@ class FlinkLifecycleTests(unittest.TestCase):
         self.assertIn("/opt/flink/bin/flink run -d /opt/flink/usrlib/transaction-enrichment.jar", commands)
         self.assertIn("/opt/flink/bin/sql-client.sh sql-client embedded", commands)
         self.assertEqual(status["java"], "fresh")
+        self.assertEqual(status["slow_building_replay"], "fresh")
         self.assertEqual(status["sql"], "fresh")
 
     def test_restart_restores_both_jobs_from_recorded_savepoints(self) -> None:
@@ -87,6 +89,7 @@ class FlinkLifecycleTests(unittest.TestCase):
         self.assertIn(f"run -d -s {java_path}", commands)
         self.assertIn(f"-Dexecution.savepoint.path={sql_path}", commands)
         self.assertEqual(status["java"], f"restored:{java_path}")
+        self.assertEqual(status["slow_building_replay"], "fresh")
         self.assertEqual(status["sql"], f"restored:{sql_path}")
         self.assertFalse((runtime / "flink-savepoints.env").exists())
         self.assertTrue((runtime / "flink-savepoints.applied.env").exists())
@@ -97,6 +100,7 @@ class FlinkLifecycleTests(unittest.TestCase):
         self.assertNotIn("/opt/flink/bin/flink run", commands)
         self.assertNotIn("/opt/flink/bin/sql-client.sh", commands)
         self.assertEqual(status["java"], "already-running")
+        self.assertEqual(status["slow_building_replay"], "already-running")
         self.assertEqual(status["sql"], "already-running")
 
 

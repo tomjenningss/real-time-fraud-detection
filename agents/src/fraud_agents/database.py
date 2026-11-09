@@ -18,6 +18,7 @@ from .events import (
     InvestigationRequestEvent,
     KafkaPosition,
     PaymentDecisionEvent,
+    evidence_sha256,
 )
 from .schemas import (
     AuditRecord,
@@ -43,8 +44,16 @@ class OutboxMessage:
 
 
 class FraudStore:
-    def __init__(self, database_url: str):
+    def __init__(
+        self,
+        database_url: str,
+        *,
+        decision_topic: str = "fraud.decisions.demo",
+        investigation_topic: str = "fraud.investigations.requested",
+    ):
         self.database_url = database_url
+        self.decision_topic = decision_topic
+        self.investigation_topic = investigation_topic
 
     @contextmanager
     def connection(self) -> Iterator[psycopg.Connection]:
@@ -64,12 +73,20 @@ class FraudStore:
         logical_id = decision.decision_id
         with self.connection() as connection, connection.transaction():
             existing = connection.execute(
-                "SELECT evidence_sha256 FROM payment_decisions WHERE transaction_id=%s FOR UPDATE",
+                """SELECT evidence_sha256, enrichment_evidence
+                   FROM payment_decisions WHERE transaction_id=%s FOR UPDATE""",
                 (decision.transaction_id,),
             ).fetchone()
             if existing:
                 if existing["evidence_sha256"] != decision.evidence_sha256:
-                    raise IdentityConflict("transaction_id was reused with different evidence")
+                    prior_payload = existing["enrichment_evidence"]
+                    prior = (
+                        FlinkEvidence.model_validate(prior_payload)
+                        if prior_payload is not None
+                        else None
+                    )
+                    if prior is None or evidence_sha256(prior) != decision.evidence_sha256:
+                        raise IdentityConflict("transaction_id was reused with different evidence")
                 self._record_inbox(connection, "decision-router", logical_id, position, payload_sha256)
                 return False
             self._record_inbox(connection, "decision-router", logical_id, position, payload_sha256)
@@ -101,7 +118,7 @@ class FraudStore:
                 decision.event_id,
                 "payment_decision",
                 decision.decision_id,
-                "fraud.decisions.demo",
+                self.decision_topic,
                 decision.transaction_id,
                 decision.model_dump(mode="json"),
             )
@@ -126,7 +143,7 @@ class FraudStore:
                     request.event_id,
                     "investigation",
                     request.investigation_id,
-                    "fraud.investigations.requested",
+                    self.investigation_topic,
                     request.transaction_id,
                     request.model_dump(mode="json"),
                 )

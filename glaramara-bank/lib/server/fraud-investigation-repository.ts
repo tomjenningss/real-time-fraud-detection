@@ -39,6 +39,22 @@ const AGENT_NAME = "fraud_intelligence";
 const AGENT_VERSION = "1.2.1";
 const REQUIRED_EVIDENCE_KEYS = ["payment_recognition", "beneficiary_relationship", "payment_purpose"];
 
+const slowBuildingEvidenceSchema = z.object({
+  payments_30d: z.number().int().positive(),
+  cumulative_amount_30d: z.number().positive(),
+  successive_growth_count: z.number().int().nonnegative(),
+  current_to_first_amount_ratio: z.number().positive(),
+  observed_relationship_age_days: z.number().nonnegative(),
+});
+
+type SlowBuildingEvidence = {
+  payments30d: number;
+  cumulativeAmount30d: number;
+  successiveGrowthCount: number;
+  currentToFirstAmountRatio: number;
+  observedRelationshipAgeDays: number;
+};
+
 type InvestigationStatus =
   | "IN_PROGRESS"
   | "READY_FOR_EXTRACTION"
@@ -59,6 +75,8 @@ type InvestigationRow = {
     currency: "GBP";
     beneficiaryPaymentCount: number;
     triggeredRuleIds: string[];
+    deterministicSignals?: string[];
+    slowBuildingEvidence?: SlowBuildingEvidence;
   };
   required_evidence_keys: string[];
   selected_question_ids: string[];
@@ -210,13 +228,20 @@ export async function startFraudInvestigation(customerId: string, paymentId: str
       currency: "GBP";
       decision_id: string;
       payment_verdict: string;
-      decision_payload: { triggered_rule_ids?: string[] };
+      decision_payload: { triggered_rule_ids?: string[]; investigation_reason?: string };
       investigation_id: string;
+      investigation_request_payload: {
+        evidence?: {
+          signals?: string[];
+          slow_building_beneficiary_evidence?: unknown;
+        };
+      };
       beneficiary_payment_count: string;
     }>(`
       SELECT attempt.transaction_id, attempt.amount, attempt.currency,
              decision.decision_id, decision.payment_verdict, decision.decision_payload,
              fraud_investigation.investigation_id,
+             fraud_investigation.request_payload AS investigation_request_payload,
              (SELECT count(*)::text FROM banking_transactions booked
               WHERE booked.customer_id = attempt.customer_id
                 AND booked.beneficiary_id = attempt.beneficiary_id) AS beneficiary_payment_count
@@ -232,8 +257,26 @@ export async function startFraudInvestigation(customerId: string, paymentId: str
       throw new ApiError(409, "PAYMENT_NOT_CHALLENGED", "Only challenged payments can start this check.");
     }
     const triggeredRuleIds = payment.decision_payload.triggered_rule_ids ?? [];
+    const deterministicSignals = payment.investigation_request_payload.evidence?.signals
+      ?? (payment.decision_payload.investigation_reason
+        ? [payment.decision_payload.investigation_reason]
+        : []);
+    const parsedSlowBuildingEvidence = slowBuildingEvidenceSchema.safeParse(
+      payment.investigation_request_payload.evidence?.slow_building_beneficiary_evidence,
+    );
+    const slowBuildingEvidence = parsedSlowBuildingEvidence.success ? {
+      payments30d: parsedSlowBuildingEvidence.data.payments_30d,
+      cumulativeAmount30d: parsedSlowBuildingEvidence.data.cumulative_amount_30d,
+      successiveGrowthCount: parsedSlowBuildingEvidence.data.successive_growth_count,
+      currentToFirstAmountRatio: parsedSlowBuildingEvidence.data.current_to_first_amount_ratio,
+      observedRelationshipAgeDays: parsedSlowBuildingEvidence.data.observed_relationship_age_days,
+    } : undefined;
     const beneficiaryPaymentCount = Number(payment.beneficiary_payment_count);
-    const selectedQuestionIds = initialQuestionIds({ triggeredRuleIds, beneficiaryPaymentCount });
+    const selectedQuestionIds = initialQuestionIds({
+      triggeredRuleIds,
+      beneficiaryPaymentCount,
+      deterministicSignals,
+    });
     const investigationId = randomUUID();
     await client.query(`
       INSERT INTO customer_fraud_investigations
@@ -254,6 +297,8 @@ export async function startFraudInvestigation(customerId: string, paymentId: str
         currency: payment.currency,
         beneficiaryPaymentCount,
         triggeredRuleIds,
+        deterministicSignals,
+        ...(slowBuildingEvidence ? { slowBuildingEvidence } : {}),
       },
       JSON.stringify(REQUIRED_EVIDENCE_KEYS),
       JSON.stringify(selectedQuestionIds),
@@ -376,7 +421,8 @@ function minimalContext(row: InvestigationRow, answers: AnswerRow[]): MinimalInv
       currency: row.risk_context_snapshot.currency,
       beneficiaryPreviouslyPaid: row.risk_context_snapshot.beneficiaryPaymentCount > 0,
     },
-    deterministicSignals: row.risk_context_snapshot.triggeredRuleIds,
+    deterministicSignals: row.risk_context_snapshot.deterministicSignals
+      ?? row.risk_context_snapshot.triggeredRuleIds,
     requiredEvidenceKeys: row.required_evidence_keys,
     questions,
     answers: answers.map((answer) => ({
@@ -514,7 +560,11 @@ export async function executeFraudIntelligence(customerId: string, paymentId: st
         evidence: result.evidence,
         reassessment: policy,
         customerExplanation,
-        context: claimed.context.payment,
+        context: {
+          ...claimed.context.payment,
+          deterministicSignals: claimed.context.deterministicSignals,
+          slowBuildingEvidence: claimed.row.risk_context_snapshot.slowBuildingEvidence,
+        },
       });
       const extraction = await client.query<{ extraction_id: string }>(`
         SELECT extraction_id FROM fraud_intelligence_extractions
@@ -559,7 +609,11 @@ export async function executeFraudIntelligence(customerId: string, paymentId: st
         evidence: null,
         reassessment: failedPolicy,
         customerExplanation,
-        context: claimed.context.payment,
+        context: {
+          ...claimed.context.payment,
+          deterministicSignals: claimed.context.deterministicSignals,
+          slowBuildingEvidence: claimed.row.risk_context_snapshot.slowBuildingEvidence,
+        },
       });
       await client.query(`
         INSERT INTO fraud_intelligence_extractions

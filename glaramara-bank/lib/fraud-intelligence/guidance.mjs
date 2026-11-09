@@ -26,7 +26,7 @@ const templates = {
   UNEXPECTED_CONTACT_AND_PRESSURE: {
     templateId: "unexpected-contact-and-pressure",
     heading: "Take a moment to check this payment",
-    context: "Your answers describe unexpected contact or pressure to act quickly. That can be a warning sign of an impersonation scam.",
+    context: "Your answers describe unexpected contact or pressure to act quickly. Pause and independently check the request before making the payment.",
     steps: [
       "Stop the conversation and do not follow any more instructions.",
       "Use a trusted contact method to check who contacted you and why.",
@@ -132,12 +132,52 @@ function evidenceDrivenServiceGuidance(evidence, template) {
   };
 }
 
-function renderTemplate(category, evidence, template) {
+function slowBuildingPattern(context) {
+  if (!context?.deterministicSignals?.includes("SLOW_BUILDING_BENEFICIARY_RISK")) return null;
+  const observed = context.slowBuildingEvidence;
+  if (!observed
+      || !Number.isInteger(observed.payments30d)
+      || !Number.isFinite(observed.cumulativeAmount30d)
+      || !Number.isInteger(observed.successiveGrowthCount)
+      || !Number.isFinite(observed.currentToFirstAmountRatio)
+      || !Number.isFinite(observed.observedRelationshipAgeDays)) return null;
+  const exposure = new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: "GBP",
+    maximumFractionDigits: 2,
+  }).format(observed.cumulativeAmount30d);
+  return `Our payment history shows ${observed.payments30d} payments to the same beneficiary over ${observed.observedRelationshipAgeDays} days, totalling ${exposure}. The amount increased from one payment to the next ${observed.successiveGrowthCount} times, and this payment is ${observed.currentToFirstAmountRatio} times the first amount in that period.`;
+}
+
+function evidenceDrivenInvestmentGuidance(evidence, template, context) {
+  const reportedRisks = [
+    hasIndicator(evidence, "UNEXPECTED_CONTACT") ? "unexpected contact" : null,
+    hasIndicator(evidence, "URGENCY") ? "urgency" : null,
+    hasIndicator(evidence, "PRESSURE_OR_SECRECY") ? "pressure or secrecy" : null,
+    hasIndicator(evidence, "REMOTE_ACCESS") ? "a request for remote access" : null,
+    hasIndicator(evidence, "THIRD_PARTY_BENEFICIARY")
+      ? "a request to pay a different beneficiary" : null,
+  ].filter(Boolean);
+  const observedPattern = slowBuildingPattern(context);
+  if (reportedRisks.length === 0 && !observedPattern) return template;
+  const customerEvidence = reportedRisks.length > 0
+    ? `You told us this payment is for an investment and described ${reportedRisks.join(", and ")}.`
+    : "You told us this payment is for an investment.";
+  return {
+    ...template,
+    context: `${observedPattern ? `${observedPattern} ` : ""}${customerEvidence} These facts can increase the risk around an investment payment, but they do not establish fraud or prove anything beyond the cited payment history and your answers. Check the investment independently before sending money.`,
+  };
+}
+
+function renderTemplate(category, evidence, template, context) {
   if (category === "FAMILY_OR_TRUSTED_PERSON_IMPERSONATION") {
     return evidenceDrivenFamilyGuidance(evidence, template);
   }
   if (category === "SERVICE_PAYMENT_ADDITIONAL_VERIFICATION") {
     return evidenceDrivenServiceGuidance(evidence, template);
+  }
+  if (category === "INVESTMENT_INDEPENDENT_CHECKS") {
+    return evidenceDrivenInvestmentGuidance(evidence, template, context);
   }
   return template;
 }
@@ -170,15 +210,6 @@ function selectCategory(evidence, reassessment, context) {
     };
   }
 
-  const pressureSignals = ["UNEXPECTED_CONTACT", "URGENCY", "PRESSURE_OR_SECRECY"]
-    .filter((indicator) => hasIndicator(evidence, indicator));
-  if (pressureSignals.length > 0) {
-    return {
-      category: "UNEXPECTED_CONTACT_AND_PRESSURE",
-      findingIds: pressureSignals.map((item) => `scamIndicator:${item}`),
-    };
-  }
-
   if (evidence.uncertainty !== "LOW" || (evidence.missingEvidence?.length ?? 0) > 0) {
     return {
       category: "UNCERTAIN_OR_INCOMPLETE",
@@ -201,11 +232,26 @@ function selectCategory(evidence, reassessment, context) {
   }
 
   if (evidence.paymentPurpose === "INVESTMENT" && hasFinding(evidence, "paymentPurpose")) {
+    const investmentSignals = [
+      "INVESTMENT", "UNEXPECTED_CONTACT", "URGENCY", "PRESSURE_OR_SECRECY", "REMOTE_ACCESS",
+      "THIRD_PARTY_BENEFICIARY",
+    ]
+      .filter((indicator) => hasIndicator(evidence, indicator));
     return {
       category: "INVESTMENT_INDEPENDENT_CHECKS",
       findingIds: supportedFindingIds(evidence, [
         "paymentPurpose", "beneficiaryRelationship", "thirdPartyInfluence",
+        ...investmentSignals.map((item) => `scamIndicator:${item}`),
       ]),
+    };
+  }
+
+  const pressureSignals = ["UNEXPECTED_CONTACT", "URGENCY", "PRESSURE_OR_SECRECY"]
+    .filter((indicator) => hasIndicator(evidence, indicator));
+  if (pressureSignals.length > 0) {
+    return {
+      category: "UNEXPECTED_CONTACT_AND_PRESSURE",
+      findingIds: pressureSignals.map((item) => `scamIndicator:${item}`),
     };
   }
 
@@ -242,7 +288,7 @@ export function buildFraudPreventionGuidance({
   context = null,
 }) {
   const selection = selectCategory(evidence, reassessment, context);
-  const template = renderTemplate(selection.category, evidence, templates[selection.category]);
+  const template = renderTemplate(selection.category, evidence, templates[selection.category], context);
   const provenance = selection.findingIds
     .map((findingId) => provenanceFor(evidence, findingId))
     .filter(Boolean);

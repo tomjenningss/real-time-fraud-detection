@@ -1,6 +1,6 @@
 # Verified system overview
 
-Verified from repository code and deployment wiring on 3 November 2026. Runtime observations are identified
+Verified from repository code and deployment wiring on 7 November 2026. Runtime observations are identified
 separately; future intentions are not presented as implemented behaviour.
 
 ## Authority and end-to-end flow
@@ -52,19 +52,35 @@ Correlated/shadow messages are keyed by `transaction_id`. Shadow consumers must 
 ## Flink evidence
 
 The Java `TransactionEnrichmentJob` consumes raw payments with two-second bounded out-of-orderness and
-15-second idleness, keyed by user. `EnrichmentFunction` maintains event-time rolling evidence over one,
-two and ten minutes and emits one canonical assessment per accepted transaction. Deterministic signals are
+15-second idleness. A first managed-state operator is keyed by customer and beneficiary for bounded 30-day
+relationship features; its output is keyed by customer for the existing one, two and ten minute evidence.
+The pipeline emits one canonical assessment per accepted transaction. Deterministic signals are
 `HIGH_VELOCITY` (at least five transactions in two minutes), `MERCHANT_HOPPING` (that velocity across at
 least four merchants), and `NEW_BENEFICIARY_HIGH_VALUE` when a Glaramara raw event contains a server-derived
 booked-payment count of zero and meets the configurable GBP threshold (default £5,000), all with
-transaction-scoped IDs. Missing beneficiary history cannot trigger the new rule. Late records go to a logged
+transaction-scoped IDs. `SLOW_BUILDING_BENEFICIARY_RISK` requires the configured 30-day payment, cumulative
+amount, successive-growth, current/first ratio and observed-age thresholds and persists the exact features and
+thresholds. Missing beneficiary history cannot trigger the new-beneficiary rule. Late records go to a logged
 side output.
+
+The slow-building replay has separate raw/enriched/decision/investigation/DLQ topics, Flink job/operator
+identities, consumer groups and per-run state keys. Only its dedicated router can enable
+`fast-path-policy/1.2.0-slow-building-demo`; the live
+router retains `fast-path-policy/1.1.0` and treats the signal as observation-only. The replay's final simulated
+payment can therefore enter the existing questionnaire/Gemma flow without historical records touching the
+live payment topic, live watermark, booked transactions or balances.
+
+The investigation snapshot distinguishes the actual Flink signal from deterministic policy rule IDs. A
+slow-building challenge selects the existing contact/influence question even for a previously paid
+beneficiary, ensuring every required Gemma finding can cite a customer answer. Guidance combines validated,
+source-linked customer evidence with a separately labelled bounded copy of the Flink 30-day features; payment
+growth must not be used to infer pressure, promised returns or withdrawal difficulty.
 
 The separate SQL job reads raw payments into two-minute hopping windows every ten seconds. It emits aggregate
 alerts when count is at least five. Alerts can repeat across overlapping windows and are explicitly not
 decisions. The router does not consume this topic; it uses signals embedded by Java in each enriched record.
 
-Both jobs checkpoint every ten seconds and use at-least-once sinks. Checked-in fresh startup is `latest`;
+All Flink jobs checkpoint every ten seconds and use at-least-once sinks. Checked-in fresh startup is `latest`;
 root lifecycle scripts preserve established checkpoints/savepoints and never reset consumer groups.
 
 ## Deterministic decision and investigation
@@ -100,6 +116,9 @@ The Go correlator consumes deterministic decisions, ML risk, investigation reque
 each valid event it transactionally stores source position/payload, deduplicates, updates latest assessment,
 appends history and creates an outbox row. Assessments may be partial and gain revisions as branches arrive;
 a missing completion stays `PENDING_INVESTIGATION`. Invalid records use a durable DLQ outbox.
+The strict deterministic decoder accepts the optional producer-owned `baseline_payment_verdict` and
+`baseline_policy_version` audit fields without adding them to correlated decision semantics. A present
+baseline verdict is validated; legacy payloads remain valid and unrelated unknown fields remain rejected.
 
 The Go engine consumes assessment revisions. Pure `fraud-action-policy-v1` requires valid deterministic
 and supported ML branches:
@@ -228,7 +247,7 @@ the database caps the total at two.
 The tenant's primary agent model is `bedrock-mantle/google.gemma-4-31b`; model selection does not alter these
 authority, contract or invocation boundaries.
 
-Policy `customer-evidence-reassessment/1.1.0` consumes only validated evidence. High-risk scam indicators
+Policy `customer-evidence-reassessment/1.2.0` consumes only validated evidence. High-risk scam indicators
 take precedence and produce a simulated decline. One deliberately narrow new-beneficiary service-payment rule
 can produce `ADDITIONAL_VERIFICATION`, but it records that independent beneficiary verification remains
 mandatory. Incomplete, uncertain, contradictory, unmatched, invalid or unavailable evidence produces
@@ -240,7 +259,13 @@ historical v1.0 outcomes. Results are simulated and append-only. They do not upd
 After reassessment, `fraud-prevention-guidance/1.0.0` deterministically selects and composes an approved
 customer template from provenance-backed findings and the simulated outcome. Bank/safe-account,
 family/trusted-person impersonation, unexpected pressure, new high-value beneficiary, uncertain evidence and
-the narrow service-payment path have separate templates. Customer free text is inert quoted data and cannot
+the narrow service-payment and investment paths have separate templates. Investment purpose is evaluated
+before generic pressure guidance, and urgency or pressure alone never supplies impersonation evidence.
+For family-emergency narratives, explicit emergency travel, lost access to communications or money and a
+request for immediate assistance can support the existing `URGENCY` finding, while a friend or intermediary
+withdrawal instruction independently supports `THIRD_PARTY_BENEFICIARY`. Both remain customer-reported claims
+with verbatim answer provenance; neither establishes identity, impersonation or a genuine emergency.
+Customer free text is inert quoted data and cannot
 provide instructions or alter a template. Missing, invalid or contradictory evidence selects generic safe
 guidance. Alembic `0015_fraud_guidance` stores the complete rendered message, category, template versions,
 finding IDs and supporting provenance on the immutable reassessment row; nullable columns keep older rows
@@ -302,6 +327,13 @@ See `DEPLOYMENT.md`.
 
 Protected golden `confluent-flink`, `part3` and `fraud-observability` projects are separate. Never
 reuse, reset or implicitly stop their networks, offsets, state or volumes; see `docs/golden-reference.md`.
+
+The additive end-to-end load runner uses the signed-session Glaramara API and existing banking outbox only;
+it has no direct Kafka publication path. It identifies its immutable simulated attempts by a unique
+idempotency prefix and treats persisted `payment_decisions` as completion. Read-only reconciliation observes
+the existing outboxes, retained Flink evidence, LightGBM source events, correlated assessments and Go shadow
+history. It does not alter policy, thresholds, models, consumer offsets, Flink state, balances or booked
+transactions. See `docs/implementation/glaramara-load-testing.md`.
 
 ## Remaining boundaries
 

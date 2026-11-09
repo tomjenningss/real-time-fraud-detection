@@ -1,7 +1,76 @@
 # Current implementation state
 
-Handoff as of 5 November 2026. Start milestone work here; follow links for detail. Planned statements are not
+Handoff as of 8 November 2026. Start milestone work here; follow links for detail. Planned statements are not
 claims about deployed behaviour.
+
+## End-to-end load-test framework and initial smoke
+
+The additive standard-library runner in `deployment/glaramara_load_test.py` submits only through the real
+signed-session Glaramara payment API, creates clearly labelled run-scoped fictional beneficiaries through the
+existing API, rate-limits with bounded concurrency and same-key retries, and uses immutable PostgreSQL
+`payment_decisions` as completion. It samples Kafka lag, Flink REST state/checkpoints/operator metrics,
+PostgreSQL counters and Podman resources, then writes JSON and Markdown reconciliation reports. Counts/rates
+are allowlisted, the target must be an explicitly configured loopback isolated environment, and 50,000
+payments require a separate approval flag. The live API's server-owned event time means the increasing
+investment pattern cannot compress 30 elapsed days; this limitation is reported rather than bypassed.
+
+The separate `deployment/glaramara_orchestrate_load_test.py` mode selects only genuinely challenged payments
+from an existing run and exercises the questionnaire/evidence application path. It is disabled by default,
+bounded to 10–50 cases and concurrency one or two, and requires an explicit entitlement/cost acknowledgement.
+It never makes a direct model call or changes the immutable original verdict.
+
+Observed isolated smoke `smoke-20261107-codex01` used seed `20261107`, mixed traffic, 100 payments at target
+10/s and concurrency eight. All 100 requests were accepted without retry or HTTP failure at achieved 10.103
+submissions/s. All 100 raw and watermark outbox rows published on the first attempt, all 100 persisted Flink
+evidence and authoritative decisions completed in 13.508 s (7.403/s), with 12 approved, 40 challenged and 48
+blocked. API p50/p95/p99/max was 8.503/13.238/19.111/24.945 ms; persisted decision latency was
+611.546/875.185/981.445/3612.126 ms. PostgreSQL peaked at 15 connections, two active, with no waiting lock or
+deadlock. Nineteen Flink checkpoints completed with no failure or exception; all three jobs remained running.
+
+The first smoke did not fully reconcile. All 100 valid LightGBM scores existed,
+but the current Go correlator strict contract rejected all 100 deterministic events because the modified
+producer includes unknown field `baseline_payment_verdict`. It durably published 100 DLQ records, leaving
+100 ML-only partial assessments and no Go shadow action. Separately, Kafka was OOM-killed and restarted during
+submission; post-run inspect showed `oom_killed=true`, cumulative restart count four, and a new start at
+21:31:01 UTC. Lag later drained to zero and every service was healthy.
+
+Both blockers are now resolved narrowly. Podman kernel diagnostics showed repeated `CONSTRAINT_MEMCG` kills
+inside Kafka's 768 MiB cgroup, whose peak was exactly 805,306,368 bytes; the 12 GiB VM simultaneously had
+7,660 MiB available and zero current PSI pressure. Kafka's heap remains 256/512 MiB and only the configurable
+container limit changed to 1 GiB. The correlator now recognises optional baseline verdict/policy audit fields,
+validates a present baseline verdict and otherwise preserves strict unknown-field rejection and existing
+correlation semantics. The original 100 rejects remain committed and archived; offsets and DLQ were not
+replayed.
+
+Recovery run `smoke-20261108-recovery01` used the same seed/profile/rate with a unique identity. It accepted
+100/100 without retry or error at 10.100 submissions/s, persisted 100 authoritative decisions in 13.166 s
+(7.595/s), and reconciled in 4.948 s with 12 approved, 40 challenged and 48 blocked. Decision
+p50/p95/p99/max was 648.556/857.533/972.861/3265.336 ms. All 100 LightGBM and deterministic branches were
+correlated and all 100 transactions gained a latest Go shadow decision; seven differed from authority but
+none changed it. Twelve assessments were `COMPLETE` and 88 correctly remained `PENDING_INVESTIGATION` while
+still containing both policy inputs. There were zero new rejects, duplicate authoritative rows, duplicate
+shadow evaluation IDs or ledger effects.
+
+Kafka sampled at most 585.7 MB during the run; its cgroup peak including startup was 811,696,128 bytes of
+1,073,741,824, with zero `memory.events` max/OOM counters, zero restart and no new kernel OOM. Transient sampled
+lag peaked at 169 for Flink SQL and 94 for enrichment, then every required group drained to zero. All three
+Flink jobs stayed `RUNNING` with zero failed checkpoint, exception or sampled backpressure. PostgreSQL peaked
+at 14 connections/two active with no waits or deadlock. The original blockers are cleared for a separately
+approved 1,000-payment test; 50 tx/s remains unproven and requires the same progressive health gates.
+
+After explicit approval, 10 genuinely challenged smoke payments traversed the real Orchestrate application
+path serially. Ten persisted `watsonx-orchestrate-rest` / `bedrock-mantle/google.gemma-4-31b` invocations all
+validated and produced simulated reassessments plus personalised guidance, with zero retry, timeout or failure.
+Persisted model latency p50/p95/p99/max was 5,111/7,258.55/8,079.71/8,285 ms. All 10 original decisions remain
+`CHALLENGED`; all 100 load attempts remain simulated with `ledger_effect=NONE` and primary account balances
+unchanged. Reports and operating detail are in `reports/load-tests/` and
+[`glaramara-load-testing.md`](glaramara-load-testing.md).
+
+Focused verification: six load-runner tests, Ruff, `make config`, both Go modules' unit tests and `go vet`
+passed. Regression coverage includes current/legacy baseline fields, invalid and unknown fields, complete
+deterministic+ML correlation, duplicate input suppression and shadow-decision construction. The final live
+`make status` reported all required services healthy, three Flink jobs running and every reported consumer
+lag zero.
 
 ## TechZone and agentic investigation foundation
 
@@ -431,6 +500,24 @@ Observed verification on 3 November 2026:
 
 ## Personalised fraud-prevention guidance v1.0
 
+On 9 November 2026, persisted investigation `b16a81a8-435c-4faf-8a08-8e800c8580ed` exposed a family travel
+emergency extraction gap. The single Gemma call succeeded in 7,768 ms and returned schema-valid evidence with
+verbatim provenance, but emitted only `THIRD_PARTY_BENEFICIARY`. It preserved the bounded
+`beneficiary_relationship=UNSURE` as `UNCERTAIN` and therefore set uncertainty to `MEDIUM`; policy correctly
+matched `CER-REFER-UNRELIABLE-EVIDENCE`. Because no urgency finding reached guidance, the renderer selected
+`UNCERTAIN_OR_INCOMPLETE` and displayed its safe generic fallback. This was not a provider, retry, schema or
+excerpt-validation failure.
+
+Agent `1.2.1` now explicitly treats described travel emergencies, loss of access to phone or money and urgent
+financial or travel assistance as customer-reported urgency, and retains explicit friend/intermediary
+withdrawal arrangements as third-party-beneficiary evidence. The deterministic fixture mirrors those reusable
+semantics. Family guidance remains cautious about identity, uses a previously trusted contact method and adds
+a third-party-account warning when that source-linked finding is present. The evidence schema, reassessment
+policy, questionnaire, authoritative payment rules and ledger boundary are unchanged. Glaramara's 59 unit and
+contract tests and TypeScript check passed, including the exact family case, reported independent family
+verification, both investment paths, bank impersonation, legitimate payment and malformed/unsupported
+evidence fallbacks. No live provider call was made for this correction.
+
 Alembic `0015_fraud_guidance` adds nullable version and JSON payload fields to the immutable reassessment
 record. New reassessments persist `fraud-prevention-guidance/1.0.0`: selected category, source finding IDs and
 provenance, approved template identifiers/versions, exact customer statement (when one was saved), rendered
@@ -438,9 +525,11 @@ heading/context/steps/status and the simulated outcome. Historical rows remain r
 backfill. Replay reads the stored payload and performs no extraction or message generation.
 
 Guidance composition is deterministic and downstream of policy. High-risk bank/safe-account and
-family/trusted-person impersonation patterns take precedence, followed by unexpected pressure, the narrow
-service-payment path and a high-value first-beneficiary check. Unavailable, contradictory or insufficient
-evidence receives generic safe guidance. Free text is displayed only as escaped, explicitly customer-reported
+family/trusted-person impersonation patterns take precedence. Unavailable, contradictory or insufficient
+evidence falls back safely before purpose-specific selection; supported investment purpose then takes
+precedence over category-neutral unexpected-pressure copy. The narrow service-payment path and high-value
+first-beneficiary check remain distinct. Urgency and pressure can qualify investment wording but cannot
+independently select impersonation guidance. Free text is displayed only as escaped, explicitly customer-reported
 content and cannot change an approved template. Customer copy exposes no internal enums, confidence, rule IDs
 or callback promise; every message states that no payment was sent and the journey is simulated.
 
@@ -481,9 +570,13 @@ covering investment, bank impersonation, family emergency, romance/purchase, leg
 contradictory and adversarial cases. Every case declares structured expectations, required/forbidden
 indicators, uncertainty, provenance, deterministic policy and grounded-guidance assertions.
 
-Credential-free execution passed deterministic reassessment 30/30. Guidance passed 29/30 with the previously
-diagnosed influencer/promised-return/urgent-pressure case retained as a known failure: correct investment and
-pressure evidence selects copy that unsupportedly calls the situation an impersonation scam. No fix was made.
+The 6 November 2026 follow-up traced the declared 29/30 guidance failure to deterministic template priority,
+not Gemma extraction or deployment drift. The live row used questionnaire, agent, evidence and reassessment
+version `1.2.0`; Gemma persisted source-linked `INVESTMENT` and `URGENCY` without bank impersonation, while
+guidance `1.0.0` selected the earlier generic-pressure branch. Investment now takes precedence over that branch,
+supported urgency is rendered as an investment risk qualifier, and generic pressure copy no longer asserts
+impersonation. Six regression scenarios cover urgent and non-urgent investments, bank impersonation, a
+legitimate expected-contact investment, unknown-purpose pressure and insufficient investment evidence.
 
 A bounded live comparison used the standalone ADK path and Glaramara's REST chat-completions path for that
 same case. Both produced schema-valid v1.1 evidence in 5,829 ms / 5,922 ms, agreed on investment purpose,
@@ -586,6 +679,55 @@ bounded repeatable measurement path.
 
 ## Limitations and outstanding work
 
+### Slow-building APP beneficiary demonstrator
+
+On 6 November 2026, the Java DataStream pipeline added an incremental, event-time
+`SLOW_BUILDING_BENEFICIARY_RISK` assessment. A customer-beneficiary keyed stage retains an inclusive trailing
+30 days and emits exact payment count, cumulative GBP, successive-growth/pair counts, current-to-first ratio,
+observed relationship age, window bounds and applied thresholds into the single transaction assessment. State
+and transaction-ID deduplication are pruned after 30 days plus the two-second out-of-order allowance. The
+existing user-keyed 1/2/10-minute signals and their thresholds are unchanged.
+
+Default conditions require all of: four payments, £4,000 cumulative, three strictly growing successive pairs,
+a current/first ratio of four and 21 observed days. A checked-in 55-transaction, 12-scenario held-out fixture
+found four additional fraud-labelled payments and two additional legitimate challenges; candidate precision
+was 0.6667 and combined recall rose from 0.0938 to 0.2188. False positives were escalating family support and
+an unusual legitimate escalation. This evidence supports only a gated technical demonstration, not ordinary
+traffic or a production-ready control. The five-payment replay first signals on payment five (£3,000; £5,850
+rolling exposure, four growth pairs, 15x current/first and 28 observed days).
+
+The analyst-only control publishes real Kafka records through the transactional outbox to isolated replay
+raw/enriched topics. A separate Flink job, UIDs, consumer group, replay key and monotonically reserved synthetic
+event-time ranges prevent replay history from moving the live watermark and allow repeated runs without reset.
+Only the isolated router accepts `SLOW_BUILDING_DEMO_POLICY_ENABLED=true`; it refuses any non-replay input topic
+and records policy `fast-path-policy/1.2.0-slow-building-demo`. Live policy `1.1.0` observes but does not act on
+the new signal. The final replay record is a simulated, no-ledger payment attempt so an immutable challenged
+decision can reuse questionnaire 1.2.0 and the existing Gemma integration; no new AI agent or question was
+added.
+
+For a slow-building challenge, questionnaire routing also selects the existing bounded `contact_influence`
+question even though the beneficiary has been paid before. This closes a contract gap in which Gemma could
+correctly return `thirdPartyInfluence = UNCERTAIN` but could not cite a customer answer for the mandatory
+finding. The investigation snapshot now keeps the actual Flink signal separately from deterministic policy
+rule IDs and retains a bounded copy of the slow-building payment count, cumulative exposure, growth count,
+ratio and observed age. Validated customer evidence and those Flink-derived facts remain separate inputs to
+guidance: the former can support claims about influence or pressure, while the latter can describe only the
+observed repeated and increasing payment pattern.
+
+A live diagnostic replay of the previously failing request reproduced the exact rejected provenance item
+(`thirdPartyInfluence.sources = []`). The corrected canonical request returned source-linked
+`RECIPIENT_INFLUENCED`, citing the bounded `contact_influence` answer, with only the supported `INVESTMENT`
+indicator. No model or agent configuration was changed. This correction is implemented and verified locally;
+it has not been deployed to the running demonstration.
+
+Observed repository verification: Java build and 13 tests passed; Python unit/contract suite 115 passed with
+8 opt-in integration skips; Flink/generator/backtest suite 22 passed with 8 Kafka integration skips; deployment
+lifecycle suite 31 passed; Glaramara contract tests 56 passed; TypeScript typecheck, production build and
+Compose render passed. Live Gemma diagnostic requests were made against the unchanged agent to reproduce and
+verify the questionnaire contract correction, but no application image or Flink job was deployed as part of
+that investigation. The committed local timing is an in-process batch measurement, not Kafka/Flink latency
+evidence.
+
 ### Gemma primary-model promotion
 
 On 6 November 2026 the existing `fraud_intelligence` agent changed only its `llm` from
@@ -624,6 +766,8 @@ Kafka, verdict or ledger write path, so the acceptance created no payment or bal
 - Java enrichment still logs genuinely late events rather than publishing a durable late-event contract.
   Phase B closes each sporadic UI event with a delayed marker ordered after raw publication; it does not change
   the general late-event policy.
+- The isolated replay job restarts at the replay topic end rather than restoring replay state. A restart during
+  an in-flight run can leave that immutable run pending; a fresh run uses a new key and reserved event-time range.
 - `fraud.signals.demo` is not a router input; canonical signals are in `payments.enriched.demo`.
 - Root Compose enables the scorer and Glaramara but does not run the investigation worker.
 - Root Compose deliberately uses the deterministic Fraud Intelligence fixture. Native REST has completed a

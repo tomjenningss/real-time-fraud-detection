@@ -66,7 +66,7 @@ services:
     environment:
       FLINK_PROPERTIES: |
         jobmanager.rpc.address: jobmanager
-        taskmanager.numberOfTaskSlots: 2
+        taskmanager.numberOfTaskSlots: 3
         taskmanager.memory.process.size: 1728m
     restart: unless-stopped
 

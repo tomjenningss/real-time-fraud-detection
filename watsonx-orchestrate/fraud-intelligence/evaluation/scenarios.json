@@ -20,8 +20,8 @@
         "requiredProvenance": ["paymentRecognition", "beneficiaryRelationship", "paymentPurpose", "thirdPartyInfluence", "scamIndicator:INVESTMENT", "scamIndicator:UNEXPECTED_CONTACT", "scamIndicator:PRESSURE_OR_SECRECY", "scamIndicator:URGENCY"]
       },
       "expectedPolicy": {"outcome": "DECLINED", "ruleId": "CER-DECLINE-PRESSURE-SECRECY"},
-      "expectedGuidance": {"category": "UNEXPECTED_CONTACT_AND_PRESSURE", "requiredText": ["No money was sent", "act quickly"], "forbiddenText": ["impersonation scam", "bank contact", "safe account"]},
-      "knownFailingGuidanceRegression": true
+      "expectedGuidance": {"category": "INVESTMENT_INDEPENDENT_CHECKS", "requiredText": ["No money was sent", "investment", "urgency"], "forbiddenText": ["impersonation scam", "bank contact", "safe account"]},
+      "knownFailingGuidanceRegression": false
     },
     {
       "id": "investment-known-adviser-promised-return",
@@ -29,7 +29,7 @@
       "answers": {"payment_recognition": "YES", "beneficiary_relationship": "NEW_RECIPIENT", "payment_purpose": "INVESTMENT", "contact_influence": "EXPECTED", "payment_circumstances": "My investment adviser offered a bond and promised a fixed return. I arranged this payment with them.", "pressure_or_secrecy": "NO", "remote_access": "NO"},
       "expectedEvidence": {"paymentRecognition": "RECOGNISED", "beneficiaryRelationship": "NEW", "paymentPurpose": "INVESTMENT", "thirdPartyInfluence": "EXPECTED", "verificationClaims": [], "requiredIndicators": ["INVESTMENT"], "forbiddenIndicators": ["BANK_IMPERSONATION", "SAFE_ACCOUNT", "UNEXPECTED_CONTACT", "PRESSURE_OR_SECRECY", "URGENCY", "REMOTE_ACCESS", "NONE"], "uncertainty": "LOW", "requiredProvenance": ["paymentRecognition", "beneficiaryRelationship", "paymentPurpose", "thirdPartyInfluence", "scamIndicator:INVESTMENT"]},
       "expectedPolicy": {"outcome": "REFER_TO_ANALYST", "ruleId": "CER-REFER-NO-SAFE-INFERENCE"},
-      "expectedGuidance": {"category": "HIGH_VALUE_FIRST_TIME_BENEFICIARY", "requiredText": ["high-value payment", "No money has been sent"], "forbiddenText": ["impersonation scam", "genuine bank"]}
+      "expectedGuidance": {"category": "INVESTMENT_INDEPENDENT_CHECKS", "requiredText": ["investment", "No money has been sent"], "forbiddenText": ["impersonation scam", "genuine bank"]}
     },
     {
       "id": "investment-crypto-remote-access",
@@ -37,7 +37,7 @@
       "answers": {"payment_recognition": "YES", "beneficiary_relationship": "NEW_RECIPIENT", "payment_purpose": "INVESTMENT", "contact_influence": "UNEXPECTED", "payment_circumstances": "A crypto trader messaged me and said to act quickly while they connect to my laptop to set up the trade.", "pressure_or_secrecy": "NO", "remote_access": "YES"},
       "expectedEvidence": {"paymentRecognition": "RECOGNISED", "beneficiaryRelationship": "NEW", "paymentPurpose": "INVESTMENT", "thirdPartyInfluence": "UNEXPECTED", "verificationClaims": [], "requiredIndicators": ["INVESTMENT", "UNEXPECTED_CONTACT", "URGENCY", "REMOTE_ACCESS"], "forbiddenIndicators": ["BANK_IMPERSONATION", "SAFE_ACCOUNT", "PRESSURE_OR_SECRECY", "NONE"], "uncertainty": "LOW", "requiredProvenance": ["paymentRecognition", "beneficiaryRelationship", "paymentPurpose", "thirdPartyInfluence", "scamIndicator:INVESTMENT", "scamIndicator:UNEXPECTED_CONTACT", "scamIndicator:URGENCY", "scamIndicator:REMOTE_ACCESS"]},
       "expectedPolicy": {"outcome": "DECLINED", "ruleId": "CER-DECLINE-REMOTE-ACCESS"},
-      "expectedGuidance": {"category": "UNEXPECTED_CONTACT_AND_PRESSURE", "requiredText": ["unexpected contact", "No money was sent"], "forbiddenText": ["bank contact", "safe account"]}
+      "expectedGuidance": {"category": "INVESTMENT_INDEPENDENT_CHECKS", "requiredText": ["unexpected contact", "remote access", "No money was sent"], "forbiddenText": ["bank contact", "safe account"]}
     },
     {
       "id": "investment-third-party-beneficiary",
@@ -45,7 +45,7 @@
       "answers": {"payment_recognition": "YES", "beneficiary_relationship": "NEW_RECIPIENT", "payment_purpose": "INVESTMENT", "contact_influence": "UNEXPECTED", "payment_circumstances": "A social media broker told me the investment must be paid into their friend's account.", "pressure_or_secrecy": "NO", "remote_access": "NO"},
       "expectedEvidence": {"paymentRecognition": "RECOGNISED", "beneficiaryRelationship": "NEW", "paymentPurpose": "INVESTMENT", "thirdPartyInfluence": "UNEXPECTED", "verificationClaims": [], "requiredIndicators": ["INVESTMENT", "UNEXPECTED_CONTACT", "THIRD_PARTY_BENEFICIARY"], "forbiddenIndicators": ["BANK_IMPERSONATION", "SAFE_ACCOUNT", "PRESSURE_OR_SECRECY", "REMOTE_ACCESS", "NONE"], "uncertainty": "LOW", "requiredProvenance": ["paymentRecognition", "beneficiaryRelationship", "paymentPurpose", "thirdPartyInfluence", "scamIndicator:INVESTMENT", "scamIndicator:UNEXPECTED_CONTACT", "scamIndicator:THIRD_PARTY_BENEFICIARY"]},
       "expectedPolicy": {"outcome": "DECLINED", "ruleId": "CER-DECLINE-UNEXPECTED-THIRD-PARTY"},
-      "expectedGuidance": {"category": "UNEXPECTED_CONTACT_AND_PRESSURE", "requiredText": ["unexpected contact", "No money was sent"], "forbiddenText": ["bank contact", "safe account"]}
+      "expectedGuidance": {"category": "INVESTMENT_INDEPENDENT_CHECKS", "requiredText": ["unexpected contact", "different beneficiary", "No money was sent"], "forbiddenText": ["bank contact", "safe account"]}
     },
     {
       "id": "bank-safe-account-call",

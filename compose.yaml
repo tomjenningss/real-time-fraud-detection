@@ -52,7 +52,7 @@ services:
       timeout: 5s
       retries: 24
       start_period: 20s
-    mem_limit: 768m
+    mem_limit: ${KAFKA_MEMORY_LIMIT:-1024m}
     restart: unless-stopped
 
   postgres:
@@ -128,7 +128,7 @@ services:
     environment:
       FLINK_PROPERTIES: |
         jobmanager.rpc.address: jobmanager
-        taskmanager.numberOfTaskSlots: 2
+        taskmanager.numberOfTaskSlots: 3
         taskmanager.memory.process.size: ${TASKMANAGER_MEMORY}
         state.checkpoints.dir: file:///checkpoints
         state.savepoints.dir: file:///checkpoints/savepoints
@@ -185,6 +185,29 @@ services:
     env_file:
       - ./.runtime/offsets.env
     environment: *python-environment
+    healthcheck:
+      test: ["CMD", "python", "-m", "fraud_agents.healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    mem_limit: 256m
+
+  slow-building-replay-router:
+    <<: *python-service
+    command: ["fraud-router"]
+    env_file:
+      - ./.runtime/offsets.env
+    environment:
+      <<: *python-environment
+      ROUTER_GROUP_ID: fraud-platform-dev-slow-building-replay-router-v1
+      ROUTER_AUTO_OFFSET_RESET: latest
+      ROUTER_INPUT_TOPIC: payments.enriched.slow-building-replay
+      ROUTER_DECISION_TOPIC: fraud.decisions.slow-building-replay
+      ROUTER_INVESTIGATION_TOPIC: fraud.investigations.slow-building-replay
+      ROUTER_DLQ_TOPIC: fraud.decisions.slow-building-replay.dlq
+      SLOW_BUILDING_DEMO_POLICY_ENABLED: "true"
+      NORMAL_INVESTIGATION_SAMPLE_RATE: "0"
     healthcheck:
       test: ["CMD", "python", "-m", "fraud_agents.healthcheck"]
       interval: 10s

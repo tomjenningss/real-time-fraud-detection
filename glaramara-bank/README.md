@@ -16,8 +16,8 @@ from this application.
   separately labelled shadow evidence.
 - Submission never creates a booked transaction, ledger effect or balance change.
 - A genuine `CHALLENGED` payment can enter a short, versioned adaptive questionnaire with durable refresh
-  recovery. Questionnaire `1.1.0` adds a required, 500-character circumstances explanation for a first-time
-  beneficiary; conditional follow-ups remain selected from checked-in definitions, never generated freely.
+  recovery. Questionnaire `1.2.0` adds bounded investment origin and reason follow-ups while preserving the
+  required circumstances explanation; conditional follow-ups remain checked-in, never generated freely.
 - Saving the final selected answer automatically starts the existing server-side extraction and controlled
   reassessment. The customer sees a saved, refresh-safe review screen while the browser polls the durable
   pending/processing/completed/failed lifecycle; duplicate calls return the same work and stale processing is
@@ -104,11 +104,14 @@ customer-reported daughter-abroad request can name the daughter, unexpected cont
 and urgency while explicitly stating that identity and circumstances were not independently verified. The
 renderer never asks watsonx to decide an outcome, never interpolates arbitrary free text into approved advice,
 and falls back to generic safe guidance when provider evidence is missing, invalid or contradictory.
-
 Agent `1.2.1` treats an explicitly described travel emergency, loss of access to a phone or money and an
 immediate request for help as customer-reported urgency; it separately retains an explicit friend or other
 third-party withdrawal instruction. Neither finding proves the emergency or the caller's identity. Family
 guidance prioritises a previously trusted contact method and warns against third-party account instructions.
+
+Investment purpose is selected before generic pressure guidance, so supported urgency can qualify the
+investment checks without being relabelled as impersonation. Generic pressure copy remains category-neutral;
+bank impersonation wording requires source-linked bank or safe-account evidence.
 
 ## Local development
 
@@ -280,6 +283,43 @@ make glaramara-smoke-test
 It verifies same-key replay and conflict handling, the authoritative policy/version, Go shadow/model
 provenance and an unchanged fictional balance. It is opt-in because it publishes to Kafka and persists the
 immutable payment attempt.
+
+## Slow-building APP replay
+
+The Fraud Analyst Lab links to an analyst-only **Slow-building replay** page. Its control creates five
+weekly £200/£400/£750/£1,500/£3,000 events through the durable outbox and the isolated
+`payments.raw.slow-building-replay` topic. Polling reads persisted Flink evidence and immutable router decisions;
+the browser contains no verdict rule. Each run has fresh IDs and a reserved event-time range after the prior
+replay watermark, so it can be repeated without resetting state or sending historical timestamps to the live
+topic.
+
+The page shows rolling 30-day payments/exposure, growth pairs, current-to-first ratio, observed relationship
+age, baseline `fast-path-policy/1.1.0` and gated `fast-path-policy/1.2.0-slow-building-demo`. Only the fifth
+record is stored as a simulated payment attempt, with `ledger_effect = NONE`, so an actual replay-router
+`CHALLENGED` decision can use the existing questionnaire 1.2.0 and Gemma Fraud Intelligence integration.
+Ordinary customer traffic cannot enable the demo policy.
+
+For this signal, the existing `contact_influence` question is selected even though the relationship is not
+new. This gives the evidence contract a sourceable bounded answer for `thirdPartyInfluence`. The persisted
+investigation context sends `SLOW_BUILDING_BENEFICIARY_RISK` to the provider and keeps the Flink payment count,
+exposure, growth count, current/first ratio and observed age separate from customer statements. Personalised
+investment guidance may describe both sources explicitly, but payment growth alone never implies adviser
+pressure, guaranteed returns or withdrawal problems.
+
+To adopt the change in an existing stateful development deployment, read `DEPLOYMENT.md`, build the images,
+then use the state-aware stop/start so the established live Flink jobs receive savepoints:
+
+```sh
+make build
+make down
+make up
+```
+
+In Glaramara, switch to the fraud analyst persona, open `/fraud-operations/slow-building-demo`, and select
+**Replay slow-building investment scam**. After the fifth row is `CHALLENGED`, use **Continue as Alex Morgan**
+to create the customer session and open the exact simulated payment. The existing questionnaire and configured
+Gemma provider then run without a manual payment. Live provider calls remain subject to the repository's
+separate approval and credential gates.
 
 ## Design system
 

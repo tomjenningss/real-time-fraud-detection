@@ -564,6 +564,7 @@ export async function createPaymentAttempt(
       device_id: context.device_id,
       payment_channel: "OTHER",
       beneficiary_payment_count: Number(context.beneficiary_payment_count),
+      beneficiary_id: context.beneficiary_id,
       event_time: flinkEventTime(eventTime),
     };
     const trustedContext = {

@@ -144,6 +144,19 @@ export function FraudInvestigationClient() {
     );
   }
 
+  if (investigation.resolution && (investigation.status === "REASSESSED" || investigation.status === "FAILED")) {
+    return (
+      <ResolutionCard
+        investigation={investigation}
+        busy={busy}
+        onRetry={investigation.status === "FAILED" && investigation.canExtract
+          ? () => mutate("/extract")
+          : undefined}
+        reviewUnavailable={investigation.status === "FAILED"}
+      />
+    );
+  }
+
   if (investigation.status === "FAILED") {
     return <FailureCard investigation={investigation} busy={busy} error={error} onRetry={() => mutate("/extract")} />;
   }
@@ -231,8 +244,16 @@ function QuestionForm({ question, busy, onSubmit }: {
   );
 }
 
-function ResolutionCard({ investigation }: {
+function ResolutionCard({
+  investigation,
+  busy,
+  onRetry,
+  reviewUnavailable = false,
+}: {
   investigation: FraudInvestigation;
+  busy?: boolean;
+  onRetry?: () => void;
+  reviewUnavailable?: boolean;
 }) {
   const [reviewRequested, setReviewRequested] = useState(false);
   const resolution = investigation.resolution!;
@@ -272,6 +293,12 @@ function ResolutionCard({ investigation }: {
         </div>
       )}
       <p className="mt-4 text-sm leading-relaxed text-[#405b4b]">{guidance?.rendered.context ?? fallback.body}</p>
+      {reviewUnavailable && (
+        <p className="mt-4 rounded-xl border border-[#eadfbd] bg-[#fff9e9] p-4 text-xs leading-relaxed text-[#66542d]" role="status">
+          We could not validate the automated review response. This payment remains on hold; no money has moved.
+          {onRetry ? " You can try the review once more." : ""}
+        </p>
+      )}
       {guidance && (
         <ol className="mt-5 space-y-3">
           {guidance.rendered.steps.map((step, index) => (
@@ -304,6 +331,11 @@ function ResolutionCard({ investigation }: {
         </section>
       )}
       <div className="mt-6 flex flex-wrap gap-2.5">
+        {onRetry && (
+          <Button disabled={busy} onClick={onRetry}>
+            <RefreshCw className="mr-2 size-4" />{busy ? "Trying again…" : "Try the review again"}
+          </Button>
+        )}
         <Button variant="secondary" asChild><Link href={`/payments/status?paymentId=${encodeURIComponent(investigation.paymentId)}`}>View payment</Link></Button>
         <Button variant="secondary" asChild><Link href="/">Overview</Link></Button>
       </div>

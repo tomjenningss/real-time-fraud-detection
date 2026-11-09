@@ -26,6 +26,17 @@ function guidanceFor(answers) {
   });
 }
 
+function assessmentFor(answers) {
+  const evidence = buildMockEvidence(context(answers));
+  const guidance = buildFraudPreventionGuidance({
+    evidence,
+    reassessment: reassessFraudEvidence(evidence),
+    customerExplanation: answers.payment_circumstances ?? answers.investment_reason ?? null,
+    context: { amount: 5_000, beneficiaryPreviouslyPaid: false },
+  });
+  return { evidence, guidance };
+}
+
 test("family impersonation guidance is source-linked, practical and cautious about voice imitation", () => {
   const statement = "An unfamiliar number said my daughter abroad needed urgent help and told me to pay an unknown beneficiary.";
   const guidance = guidanceFor({
@@ -54,7 +65,6 @@ test("family impersonation guidance is source-linked, practical and cautious abo
   assert.ok(guidance.evidenceFindingIds.includes("paymentPurpose"));
   assert.ok(guidance.evidenceProvenance.length > 0);
 });
-
 
 test("family travel emergency with uncertain identity receives grounded verification guidance", () => {
   const statement = "My daughter is travelling in Thailand. She is panicked, has lost her phone and purse, needs emergency cash and says her friend will withdraw it for her.";
@@ -93,6 +103,7 @@ test("reported independent family verification remains a claim, not proof", () =
   assert.match(guidance.rendered.context, /not independently verified/i);
   assert.match(guidance.rendered.context, /does not prove that impersonation/i);
 });
+
 test("bank impersonation and safe-account evidence takes precedence", () => {
   const guidance = guidanceFor({
     payment_recognition: "YES",
@@ -230,4 +241,85 @@ test("legitimate and ambiguous investments receive proportionate investment guid
     assert.match(guidance.rendered.context, /does not mean it is fraudulent or safe/i);
     assert.doesNotMatch(guidance.rendered.context, /pressure|urgency|guaranteed returns/i);
   }
+});
+
+test("guidance categories remain grounded across investment, impersonation and ambiguous pressure", () => {
+  const investmentWithUrgency = assessmentFor({
+    payment_recognition: "YES",
+    beneficiary_relationship: "INDIVIDUAL_NOT_PERSONALLY_KNOWN",
+    payment_purpose: "INVESTMENT",
+    contact_influence: "DISCUSSION_ONLY",
+    investment_origin: "ONLINE_GROUP",
+    investment_reason: "Daniel showed me profits and said I must transfer £1,000 immediately.",
+    pressure_or_secrecy: "YES",
+    remote_access: "NO",
+  });
+  assert.deepEqual(
+    investmentWithUrgency.evidence.scamIndicators.sort(),
+    ["INVESTMENT", "PRESSURE_OR_SECRECY", "URGENCY"],
+  );
+  assert.equal(investmentWithUrgency.guidance.category, "INVESTMENT_INDEPENDENT_CHECKS");
+  assert.match(investmentWithUrgency.guidance.rendered.context, /investment and described .*urgency/i);
+  assert.doesNotMatch(investmentWithUrgency.guidance.rendered.context, /impersonation scam/i);
+
+  const investmentWithoutUrgency = assessmentFor({
+    payment_recognition: "YES",
+    beneficiary_relationship: "BUSINESS_OR_ORGANISATION",
+    payment_purpose: "INVESTMENT",
+    contact_influence: "SELF_DECIDED",
+    investment_origin: "KNOWN_PROVIDER",
+    investment_reason: "I am making my regular monthly contribution.",
+  });
+  assert.deepEqual(investmentWithoutUrgency.evidence.scamIndicators, ["INVESTMENT"]);
+  assert.equal(investmentWithoutUrgency.guidance.category, "INVESTMENT_INDEPENDENT_CHECKS");
+  assert.match(investmentWithoutUrgency.guidance.rendered.context, /alone does not mean it is fraudulent or safe/i);
+
+  const bankImpersonation = assessmentFor({
+    payment_recognition: "YES",
+    beneficiary_relationship: "NEW_RECIPIENT",
+    payment_purpose: "SAFE_ACCOUNT",
+    contact_influence: "UNEXPECTED",
+    payment_circumstances: "Someone from my bank said to move my money to a safe account urgently.",
+    pressure_or_secrecy: "YES",
+    remote_access: "NO",
+  });
+  assert.ok(bankImpersonation.evidence.scamIndicators.includes("BANK_IMPERSONATION"));
+  assert.equal(bankImpersonation.guidance.category, "BANK_IMPERSONATION_SAFE_ACCOUNT");
+  assert.match(bankImpersonation.guidance.rendered.context, /genuine bank will never ask/i);
+
+  const legitimateExpectedInvestment = assessmentFor({
+    payment_recognition: "YES",
+    beneficiary_relationship: "BUSINESS_OR_ORGANISATION",
+    payment_purpose: "INVESTMENT",
+    contact_influence: "EXPECTED",
+    investment_origin: "KNOWN_PROVIDER",
+    investment_reason: "My regulated provider confirmed the expected contribution schedule.",
+  });
+  assert.deepEqual(legitimateExpectedInvestment.evidence.scamIndicators, ["INVESTMENT"]);
+  assert.equal(legitimateExpectedInvestment.guidance.category, "INVESTMENT_INDEPENDENT_CHECKS");
+  assert.doesNotMatch(legitimateExpectedInvestment.guidance.rendered.context, /scam|pressure|urgency/i);
+
+  const unknownPurposeWithPressure = assessmentFor({
+    payment_recognition: "YES",
+    beneficiary_relationship: "PERSONALLY_KNOWN",
+    payment_purpose: "OTHER",
+    contact_influence: "UNEXPECTED",
+    payment_circumstances: "They told me to act immediately.",
+    pressure_or_secrecy: "YES",
+    remote_access: "NO",
+  });
+  assert.ok(unknownPurposeWithPressure.evidence.scamIndicators.includes("PRESSURE_OR_SECRECY"));
+  assert.equal(unknownPurposeWithPressure.guidance.category, "UNEXPECTED_CONTACT_AND_PRESSURE");
+  assert.doesNotMatch(unknownPurposeWithPressure.guidance.rendered.context, /impersonation|investment scam/i);
+
+  const insufficientInvestment = assessmentFor({
+    payment_recognition: "YES",
+    payment_purpose: "INVESTMENT",
+    contact_influence: "SELF_DECIDED",
+    investment_reason: "I want to invest.",
+  });
+  assert.ok(insufficientInvestment.evidence.scamIndicators.includes("INVESTMENT"));
+  assert.ok(insufficientInvestment.evidence.missingEvidence.includes("beneficiary_relationship"));
+  assert.equal(insufficientInvestment.guidance.category, "UNCERTAIN_OR_INCOMPLETE");
+  assert.match(insufficientInvestment.guidance.rendered.context, /could not safely personalise/i);
 });

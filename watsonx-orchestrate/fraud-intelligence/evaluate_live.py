@@ -107,7 +107,11 @@ def find_schema_evidence(value: Any) -> dict[str, Any] | None:
                 return evidence
         return None
     if isinstance(value, dict):
-        if value.get("schemaVersion") == "fraud-intelligence-evidence/1.1.0":
+        schema_version = value.get("schemaVersion")
+        if schema_version in {
+            "fraud-intelligence-evidence/1.1.0",
+            "fraud-intelligence-evidence/1.2.0",
+        }:
             return value
         for item in value.values():
             evidence = find_schema_evidence(item)

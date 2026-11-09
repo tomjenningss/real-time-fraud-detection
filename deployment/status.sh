@@ -34,6 +34,7 @@ check_health postgres PostgreSQL
 check_health jobmanager "Flink JobManager"
 check_health taskmanager "Flink TaskManager"
 check_health fraud-router "Python router"
+check_health slow-building-replay-router "Slow-building replay router"
 check_health outbox-publisher "Python outbox publisher"
 check_health lightgbm-scorer "LightGBM scorer"
 check_health fraud-lab-dataset-worker "Fraud Lab dataset worker"
@@ -102,10 +103,12 @@ fi
 echo "Consumer group offsets and lag (a group can be ready before its first committed record):"
 for group in \
   fraud-platform-dev-router-v1 \
+  fraud-platform-dev-slow-building-replay-router-v1 \
   fraud-platform-dev-lightgbm-v1 \
   fraud-platform-dev-correlator-v1 \
   fraud-platform-dev-decision-engine-v1 \
   flink-transaction-enrichment-v1 \
+  flink-slow-building-replay-v1 \
   flink-fraud-analytics-v1
 do
   compose exec -T kafka kafka-consumer-groups \

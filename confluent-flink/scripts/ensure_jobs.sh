@@ -29,6 +29,30 @@ case "
 $missing
 " in
   *"
+slow_building_replay
+"*)
+    if [ ! -f "$jar" ]; then
+      echo "Missing $jar; run scripts/build_enrichment.sh first." >&2
+      exit 2
+    fi
+    jobmanager_id=$(podman compose ps -q jobmanager)
+    podman cp "$jar" "$jobmanager_id:/tmp/transaction-enrichment.jar"
+    podman compose exec -T jobmanager /opt/flink/bin/flink run -d \
+      /tmp/transaction-enrichment.jar \
+      --input-topic payments.raw.slow-building-replay \
+      --output-topic payments.enriched.slow-building-replay \
+      --group-id flink-slow-building-replay-v1 \
+      --startup-mode latest \
+      --assessment-stream slow-building-replay \
+      --pipeline-id slow-building-replay-v1 \
+      --job-name "Slow-building beneficiary replay enrichment"
+    ;;
+esac
+
+case "
+$missing
+" in
+  *"
 sql
 "*)
     podman compose run --rm --entrypoint /opt/flink/bin/sql-client.sh sql-client \
@@ -44,5 +68,5 @@ while [ "$attempt" -lt 30 ]; do
   attempt=$((attempt + 1))
   sleep 2
 done
-echo "Expected Flink jobs did not both become RUNNING within 60 seconds." >&2
+echo "Expected Flink jobs did not become RUNNING within 60 seconds." >&2
 exit 1

@@ -45,6 +45,22 @@ func TestOutputPreservesProvenanceAndDoesNotUseInvestigation(t *testing.T) {
 	}
 }
 
+func TestCompleteMLAndDeterministicAssessmentProducesShadowDecision(t *testing.T) {
+	payload := `{"schema_version":"1.0.0","assessment_id":"assessment:tx-complete","transaction_id":"tx-complete","revision":2,"deterministic":{"verdict":"APPROVED","policy_version":"fast-path-policy/1.1.0","triggered_rule_ids":["FP-APPROVE-NO-SIGNAL"],"investigation_required":false,"evidence_sha256":"abc","source_evidence_references":["kafka:payments.enriched.demo:0:1"],"decided_at":"2026-10-28T12:00:00Z"},"ml":{"fraud_probability":0.8,"model_version":"lgbm-baseline-test","feature_schema_version":"fraud-features-1.0.0","model_timestamp":"2026-10-28T12:00:00Z","input_feature_provenance":{}},"provenance":[],"completeness":"COMPLETE","created_at":"2026-10-28T12:00:00Z","updated_at":"2026-10-28T12:00:01Z"}`
+	a, err := DecodeAssessment([]byte(payload))
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := policy.Evaluate(a.PolicyInput(), testPolicy())
+	decision, err := NewShadowDecision(a, result, testPolicy(), time.Unix(20, 0).UTC(), time.Microsecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decision.OriginalPaymentVerdict != policy.Approved || decision.ProposedAction != policy.Challenged {
+		t.Fatalf("unexpected shadow decision: %#v", decision)
+	}
+}
+
 func TestEvaluationIDIsStableAndPolicyVersioned(t *testing.T) {
 	one := EvaluationID("assessment:tx", 2, "fraud-action-policy-v1")
 	if one != EvaluationID("assessment:tx", 2, "fraud-action-policy-v1") {

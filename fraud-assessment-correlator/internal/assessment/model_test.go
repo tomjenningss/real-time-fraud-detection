@@ -1,6 +1,7 @@
 package assessment
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -78,5 +79,74 @@ func TestDecodeAllRepositoryContracts(t *testing.T) {
 		if _, err := Decode(topic, 0, 0, []byte(payload)); err != nil {
 			t.Errorf("%s: %v", topic, err)
 		}
+	}
+}
+
+func TestDecodeDecisionBaselineFieldsAreBackwardsCompatible(t *testing.T) {
+	ts := testTime.Format(time.RFC3339)
+	legacy := fmt.Sprintf(`{"schema_version":"1.0.0","event_id":"e","decision_id":"d","transaction_id":"t","correlation_id":"c","payment_verdict":"APPROVED","decision_source":"deterministic_fast_path","policy_version":"p","triggered_rule_ids":[],"investigation_required":false,"investigation_reason":null,"source_evidence_references":[],"evidence_sha256":"h","transaction_timestamp":"%s","ingested_at":"%s","decided_at":"%s","decision_processing_latency_ms":1,"ingestion_to_decision_ms":2}`, ts, ts, ts)
+
+	var withBaseline map[string]any
+	if err := json.Unmarshal([]byte(legacy), &withBaseline); err != nil {
+		t.Fatal(err)
+	}
+	withBaseline["baseline_payment_verdict"] = "CHALLENGED"
+	withBaseline["baseline_policy_version"] = "fast-path-policy/1.0.0"
+	current, err := json.Marshal(withBaseline)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for name, payload := range map[string][]byte{
+		"legacy without baseline fields": []byte(legacy),
+		"current with baseline fields":   current,
+	} {
+		t.Run(name, func(t *testing.T) {
+			event, decodeErr := Decode("fraud.decisions.demo", 0, 1, payload)
+			if decodeErr != nil || event.Kind != "DETERMINISTIC" {
+				t.Fatalf("event=%#v error=%v", event, decodeErr)
+			}
+		})
+	}
+
+	event, err := Decode("fraud.decisions.demo", 0, 1, current)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assessment, changed, err := Apply(nil, event, testTime)
+	if err != nil || !changed || assessment.Revision != 1 {
+		t.Fatalf("first apply: assessment=%#v changed=%v error=%v", assessment, changed, err)
+	}
+	again, changed, err := Apply(&assessment, event, testTime.Add(time.Second))
+	if err != nil || changed || again.Revision != 1 || again.Deterministic.Verdict != "APPROVED" {
+		t.Fatalf("duplicate apply: assessment=%#v changed=%v error=%v", again, changed, err)
+	}
+}
+
+func TestDecodeDecisionStillRejectsInvalidFields(t *testing.T) {
+	ts := testTime.Format(time.RFC3339)
+	base := fmt.Sprintf(`{"schema_version":"1.0.0","event_id":"e","decision_id":"d","transaction_id":"t","correlation_id":"c","payment_verdict":"APPROVED","decision_source":"deterministic_fast_path","policy_version":"p","triggered_rule_ids":[],"investigation_required":false,"investigation_reason":null,"source_evidence_references":[],"evidence_sha256":"h","transaction_timestamp":"%s","ingested_at":"%s","decided_at":"%s","decision_processing_latency_ms":1,"ingestion_to_decision_ms":2,%%s}`, ts, ts, ts)
+	for name, field := range map[string]string{
+		"invalid baseline verdict": `"baseline_payment_verdict":"REVIEW"`,
+		"unknown field":            `"unexpected_addition":true`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := Decode("fraud.decisions.demo", 0, 1, []byte(fmt.Sprintf(base, field))); err == nil {
+				t.Fatal("invalid decision event was accepted")
+			}
+		})
+	}
+}
+
+func TestDeterministicAndMLProduceCompleteCorrelatedAssessment(t *testing.T) {
+	ml := SourceEvent{Kind: "ML", EventID: "ml-complete", TransactionID: "tx-complete", SchemaVersion: SchemaVersion, EventTime: testTime, Topic: "fraud.risk.baseline.demo", Component: ML{FraudProbability: .2, ModelVersion: "lgbm-v1", FeatureSchemaVersion: "fraud-features-1.0.0", ModelTimestamp: testTime}}
+	a, _, err := Apply(nil, ml, testTime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deterministic := SourceEvent{Kind: "DETERMINISTIC", EventID: "decision-complete", TransactionID: "tx-complete", SchemaVersion: SchemaVersion, EventTime: testTime, Topic: "fraud.decisions.demo", Component: Deterministic{Verdict: "APPROVED", PolicyVersion: "fast-path/v1", EvidenceSHA256: "abc", DecidedAt: testTime}}
+	a, changed, err := Apply(&a, deterministic, testTime.Add(time.Second))
+	if err != nil || !changed || a.Deterministic == nil || a.ML == nil || a.Completeness != "COMPLETE" {
+		t.Fatalf("assessment=%#v changed=%v error=%v", a, changed, err)
 	}
 }

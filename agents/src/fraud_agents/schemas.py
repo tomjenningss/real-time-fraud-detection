@@ -33,8 +33,41 @@ class Verdict(StrEnum):
     BLOCKED = "BLOCKED"
 
 
+class SlowBuildingThresholds(StrictModel):
+    minimum_payments: int = Field(ge=2)
+    minimum_cumulative_amount: float = Field(gt=0)
+    minimum_successive_growth_count: int = Field(ge=1)
+    minimum_current_to_first_amount_ratio: float = Field(gt=1)
+    minimum_observed_relationship_age_days: float = Field(ge=0)
+
+
+class SlowBuildingBeneficiaryEvidence(StrictModel):
+    beneficiary_id: str = Field(min_length=1, max_length=128)
+    window_days: Literal[30]
+    payments_30d: int = Field(ge=1)
+    cumulative_amount_30d: float = Field(ge=0)
+    successive_growth_count: int = Field(ge=0)
+    successive_pair_count: int = Field(ge=0)
+    current_to_first_amount_ratio: float = Field(ge=0)
+    observed_relationship_age_days: float = Field(ge=0, le=30)
+    window_start: datetime
+    window_end: datetime
+    thresholds: SlowBuildingThresholds
+
+    @model_validator(mode="after")
+    def validate_feature_consistency(self) -> SlowBuildingBeneficiaryEvidence:
+        if self.successive_pair_count != self.payments_30d - 1:
+            raise ValueError("successive pair count must be payments_30d minus one")
+        if self.successive_growth_count > self.successive_pair_count:
+            raise ValueError("growth count cannot exceed successive pair count")
+        if self.window_start > self.window_end:
+            raise ValueError("slow-building window start must not follow its end")
+        return self
+
+
 class FlinkEvidence(StrictModel):
     assessment_type: Literal["transaction"] = "transaction"
+    assessment_stream: Literal["live", "slow-building-replay"] = "live"
     transaction_id: str = Field(min_length=1, max_length=128)
     user_id: str = Field(min_length=1, max_length=128)
     amount: float = Field(ge=0, le=100_000_000)
@@ -46,7 +79,15 @@ class FlinkEvidence(StrictModel):
     distinct_merchants_2m: int = Field(ge=1)
     total_amount_2m: float = Field(ge=0)
     beneficiary_payment_count: int | None = Field(default=None, ge=0)
-    signals: list[Literal["HIGH_VELOCITY", "MERCHANT_HOPPING", "NEW_BENEFICIARY_HIGH_VALUE"]]
+    slow_building_beneficiary_evidence: SlowBuildingBeneficiaryEvidence | None = None
+    signals: list[
+        Literal[
+            "HIGH_VELOCITY",
+            "MERCHANT_HOPPING",
+            "NEW_BENEFICIARY_HIGH_VALUE",
+            "SLOW_BUILDING_BENEFICIARY_RISK",
+        ]
+    ]
     signal_ids: list[str]
     risk_level: Literal["LOW", "HIGH"]
     assessment_timestamp: datetime
@@ -70,6 +111,23 @@ class FlinkEvidence(StrictModel):
             raise ValueError("signal_ids do not match canonical transaction signals")
         if (bool(self.signals)) != (self.risk_level == "HIGH"):
             raise ValueError("Flink risk_level is inconsistent with signals")
+        slow_signal = "SLOW_BUILDING_BENEFICIARY_RISK" in self.signals
+        if slow_signal and self.slow_building_beneficiary_evidence is None:
+            raise ValueError("slow-building signal requires its supporting evidence")
+        if slow_signal:
+            evidence = self.slow_building_beneficiary_evidence
+            assert evidence is not None
+            thresholds = evidence.thresholds
+            if not (
+                evidence.payments_30d >= thresholds.minimum_payments
+                and evidence.cumulative_amount_30d >= thresholds.minimum_cumulative_amount
+                and evidence.successive_growth_count >= thresholds.minimum_successive_growth_count
+                and evidence.current_to_first_amount_ratio
+                >= thresholds.minimum_current_to_first_amount_ratio
+                and evidence.observed_relationship_age_days
+                >= thresholds.minimum_observed_relationship_age_days
+            ):
+                raise ValueError("slow-building signal is inconsistent with its evidence")
         return self
 
 

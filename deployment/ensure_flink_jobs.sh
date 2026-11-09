@@ -22,7 +22,7 @@ while [ "$attempt" -lt 30 ]; do
     # podman-compose can allocate a TTY for `run`, producing CRLF, and Podman's
     # external-provider notice can share stdout with the container. Accept only
     # the planner's exact identifiers after removing carriage returns.
-    missing=$(tr -d '\r' <"$plan_output" | awk '$0 == "java" || $0 == "sql"')
+    missing=$(tr -d '\r' <"$plan_output" | awk '$0 == "java" || $0 == "slow_building_replay" || $0 == "sql"')
     rm -f "$plan_output" "$plan_error"
     break
   else
@@ -39,6 +39,7 @@ if [ "$attempt" -ge 30 ]; then
 fi
 
 java_mode=already-running
+slow_building_replay_mode=already-running
 sql_mode=already-running
 case "
 $missing
@@ -68,6 +69,31 @@ java
       fi
       java_mode=fresh
     fi
+    ;;
+esac
+
+case "
+$missing
+" in
+  *"
+slow_building_replay
+"*)
+    if compose exec -T jobmanager /opt/flink/bin/flink run -d \
+      /opt/flink/usrlib/transaction-enrichment.jar \
+      --input-topic payments.raw.slow-building-replay \
+      --output-topic payments.enriched.slow-building-replay \
+      --group-id flink-slow-building-replay-v1 \
+      --startup-mode latest \
+      --assessment-stream slow-building-replay \
+      --pipeline-id slow-building-replay-v1 \
+      --job-name "Slow-building beneficiary replay enrichment"
+    then :
+    else
+      result=$?
+      echo "Slow-building replay Flink job submission failed with status $result" >&2
+      exit "$result"
+    fi
+    slow_building_replay_mode=fresh
     ;;
 esac
 
@@ -110,6 +136,7 @@ while [ "$attempt" -lt 30 ]; do
   then
     {
       echo "java=$java_mode"
+      echo "slow_building_replay=$slow_building_replay_mode"
       echo "sql=$sql_mode"
       date -u '+verified_at=%Y-%m-%dT%H:%M:%SZ'
     } >"$repo_dir/.runtime/flink-start-status"
@@ -121,6 +148,6 @@ while [ "$attempt" -lt 30 ]; do
   attempt=$((attempt + 1))
   sleep 2
 done
-echo "Required Flink jobs did not both become RUNNING" >&2
+echo "Required Flink jobs did not become RUNNING" >&2
 exit 1
 

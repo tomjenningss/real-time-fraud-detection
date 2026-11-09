@@ -13,13 +13,14 @@ SPEC.loader.exec_module(flink_jobs)
 
 
 class FlinkJobHealthTests(unittest.TestCase):
-    def overview(self, slots=2, taskmanagers=1):
+    def overview(self, slots=3, taskmanagers=1):
         return {"slots-total": slots, "taskmanagers": taskmanagers}
 
     def test_both_running_are_healthy_even_when_slots_are_occupied(self):
         jobs = {
             "jobs": [
                 {"jid": "java-id", "name": flink_jobs.EXPECTED["java"], "state": "RUNNING"},
+                {"jid": "replay-id", "name": flink_jobs.EXPECTED["slow_building_replay"], "state": "RUNNING"},
                 {"jid": "sql-id", "name": flink_jobs.EXPECTED["sql"], "state": "RUNNING"},
             ]
         }
@@ -40,7 +41,7 @@ class FlinkJobHealthTests(unittest.TestCase):
             result = flink_jobs.report("plan", status)
 
         self.assertEqual(result, 0)
-        self.assertEqual(output.getvalue().splitlines(), ["java", "sql"])
+        self.assertEqual(output.getvalue().splitlines(), ["java", "slow_building_replay", "sql"])
 
     def test_restart_plan_with_both_jobs_running_is_idempotent(self):
         status = flink_jobs.assess(
@@ -48,6 +49,7 @@ class FlinkJobHealthTests(unittest.TestCase):
             {
                 "jobs": [
                     {"jid": "java-id", "name": flink_jobs.EXPECTED["java"], "state": "RUNNING"},
+                    {"jid": "replay-id", "name": flink_jobs.EXPECTED["slow_building_replay"], "state": "RUNNING"},
                     {"jid": "sql-id", "name": flink_jobs.EXPECTED["sql"], "state": "RUNNING"},
                 ]
             },
@@ -76,6 +78,29 @@ class FlinkJobHealthTests(unittest.TestCase):
 
         self.assertEqual(result, 1)
         self.assertEqual(output.getvalue(), "java=java-id\n")
+
+    def test_ids_allows_failed_replay_when_protected_jobs_are_running(self):
+        status = flink_jobs.assess(
+            self.overview(),
+            {
+                "jobs": [
+                    {"jid": "java-id", "name": flink_jobs.EXPECTED["java"], "state": "RUNNING"},
+                    {
+                        "jid": "replay-id",
+                        "name": flink_jobs.EXPECTED["slow_building_replay"],
+                        "state": "FAILED",
+                    },
+                    {"jid": "sql-id", "name": flink_jobs.EXPECTED["sql"], "state": "RUNNING"},
+                ]
+            },
+        )
+        output = io.StringIO()
+
+        with redirect_stdout(output):
+            result = flink_jobs.report("ids", status)
+
+        self.assertEqual(result, 0)
+        self.assertEqual(output.getvalue().splitlines(), ["java=java-id", "sql=sql-id"])
 
     def test_internal_rest_fetch_disables_environment_proxies(self):
         response = mock.MagicMock()

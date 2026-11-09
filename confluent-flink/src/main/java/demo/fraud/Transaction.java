@@ -10,7 +10,9 @@ public class Transaction implements Serializable {
     public String deviceId;
     public String paymentChannel;
     public Integer beneficiaryPaymentCount;
+    public String beneficiaryId;
     public long eventTimeMillis;
+    public SlowBuildingFeatures slowBuildingFeatures;
 
     public Transaction() {}
 }

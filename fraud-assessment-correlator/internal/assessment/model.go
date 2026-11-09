@@ -107,6 +107,9 @@ func Decode(topic string, partition int32, offset int64, payload []byte) (Source
 		if !validVerdict(v.PaymentVerdict) {
 			return SourceEvent{}, errors.New("invalid payment_verdict")
 		}
+		if v.BaselinePaymentVerdict != nil && !validVerdict(*v.BaselinePaymentVerdict) {
+			return SourceEvent{}, errors.New("invalid baseline_payment_verdict")
+		}
 		e.Kind, e.EventTime = "DETERMINISTIC", v.DecidedAt
 		e.Component = Deterministic{Verdict: v.PaymentVerdict, PolicyVersion: v.PolicyVersion,
 			TriggeredRuleIDs: v.TriggeredRuleIDs, InvestigationNeeded: v.InvestigationRequired,
@@ -260,8 +263,10 @@ type decisionEvent struct {
 	TransactionID               string    `json:"transaction_id"`
 	CorrelationID               string    `json:"correlation_id"`
 	PaymentVerdict              string    `json:"payment_verdict"`
+	BaselinePaymentVerdict      *string   `json:"baseline_payment_verdict"`
 	DecisionSource              string    `json:"decision_source"`
 	PolicyVersion               string    `json:"policy_version"`
+	BaselinePolicyVersion       *string   `json:"baseline_policy_version"`
 	TriggeredRuleIDs            []string  `json:"triggered_rule_ids"`
 	InvestigationRequired       bool      `json:"investigation_required"`
 	InvestigationReason         *string   `json:"investigation_reason"`

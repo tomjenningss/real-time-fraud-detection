@@ -57,9 +57,8 @@ node watsonx-orchestrate/fraud-intelligence/evaluation/run_suite.mjs \
   --output /tmp/glaramara-evaluation-local.json
 ```
 
-Expected baseline: 30 policy passes, 29 guidance passes, one `KNOWN_FAIL`, and 30 extraction `NOT_RUN`
-results. The command exits non-zero only for an unexpected failure; the declared guidance regression does
-not make automation lose the known-failure distinction.
+Expected baseline: 30 policy passes, 30 guidance passes and 30 extraction `NOT_RUN` results. The command
+exits non-zero for an unexpected deterministic policy or guidance failure.
 
 ## Native Orchestrate evaluation
 

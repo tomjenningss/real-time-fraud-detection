@@ -29,5 +29,16 @@ export function buildFraudPreventionGuidance(input: {
   evidence: unknown;
   reassessment: { outcome: string } | null;
   customerExplanation?: string | null;
-  context?: { amount: number; beneficiaryPreviouslyPaid: boolean } | null;
+  context?: {
+    amount: number;
+    beneficiaryPreviouslyPaid: boolean;
+    deterministicSignals?: string[];
+    slowBuildingEvidence?: {
+      payments30d: number;
+      cumulativeAmount30d: number;
+      successiveGrowthCount: number;
+      currentToFirstAmountRatio: number;
+      observedRelationshipAgeDays: number;
+    };
+  } | null;
 }): FraudPreventionGuidance;

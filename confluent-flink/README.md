@@ -11,13 +11,15 @@ The existing SQL job produces window-level alerts and remains unchanged. The Dat
 
 ## Topics and schemas
 
-- `payments.raw.demo`: input JSON with `transaction_id`, `user_id`, `merchant_id`, `amount`, `device_id`, `payment_channel`, and UTC `event_time` (`yyyy-MM-dd HH:mm:ss.SSS`).
+- `payments.raw.demo`: input JSON with `transaction_id`, `user_id`, `merchant_id`, `amount`, `device_id`, `payment_channel`, optional trusted `beneficiary_id`, and UTC `event_time` (`yyyy-MM-dd HH:mm:ss.SSS`). Producers without `beneficiary_id` bypass the slow-building relationship feature.
 - `fraud.signals.demo`: existing, potentially repeated window-level alerts from overlapping two-minute windows.
 - `payments.enriched.demo`: transaction-level assessments from the new job.
 
-An enriched record contains the original transaction identity and amount, UTC transaction and assessment timestamps, exact rolling `transactions_1m`, `transactions_2m`, `transactions_10m`, `distinct_merchants_2m`, `total_amount_2m`, the optional server-derived `beneficiary_payment_count`, all qualifying `signals`, stable `signal_ids`, `risk_level`, and `evidence_source: flink`.
+An enriched record contains the original transaction identity and amount, UTC transaction and assessment timestamps, exact rolling `transactions_1m`, `transactions_2m`, `transactions_10m`, `distinct_merchants_2m`, `total_amount_2m`, the optional server-derived `beneficiary_payment_count`, optional 30-day customer-beneficiary evidence, all qualifying `signals`, stable `signal_ids`, `risk_level`, and `evidence_source: flink`.
 
 `HIGH_VELOCITY` means at least five transactions in the inclusive two-minute interval ending at the current transaction. `MERCHANT_HOPPING` requires the same five-transaction minimum and at least four distinct merchants. `NEW_BENEFICIARY_HIGH_VALUE` requires a server-derived beneficiary payment count of zero and an amount at or above `NEW_BENEFICIARY_HIGH_VALUE_THRESHOLD_GBP` (default `5000`). Producers without beneficiary history cannot trigger it. All qualifying signals are retained. Amount alone is never a signal. `HIGH` means one or more prototype signals are present and `LOW` means none are present; these labels are evidence severity, not payment verdicts. Under this evidence contract, merchant hopping necessarily co-occurs with high velocity.
+
+`SLOW_BUILDING_BENEFICIARY_RISK` is evaluated incrementally over the inclusive trailing 30 days for one trusted `(user_id, beneficiary_id)` relationship. The defaults require all of: at least four payments, at least £4,000 cumulative exposure, at least three strictly increasing successive pairs, current amount at least four times the first in-window amount, and at least 21 observed relationship days. These are configurable demonstration thresholds, not production calibration. The evidence persists the beneficiary ID, exact counts, total, growth/pair counts, ratio, observed age, window bounds and the thresholds used.
 
 ## Why DataStream
 
@@ -25,10 +27,10 @@ Flink SQL hopping windows correctly serve the existing window analytics, but Fli
 
 ## Event-time, duplicates, and bounded state
 
-- Events are keyed by `user_id`. The source watermark allows two seconds of out-of-order arrival. Accepted records are buffered until the watermark passes their event time, then evaluated in event-time order. Equal timestamps are ordered by `transaction_id` for reproducibility.
+- The first operator is keyed by customer and beneficiary and retains 30-day relationship history. Its output is then keyed by customer for the unchanged 1/2/10-minute controls. The source watermark allows two seconds of out-of-order arrival. Accepted records are buffered until the watermark passes their event time, then evaluated in event-time order. Equal timestamps are ordered by `transaction_id` for reproducibility.
 - An event arriving at or behind the current watermark is too late. It produces no assessment and is written to the TaskManager log under `late-transaction`; the append-only history is not revised.
-- A repeated `transaction_id` for the same user is ignored and does not affect counts. IDs are retained for 10 minutes plus the two-second lateness allowance. Producers must treat `(transaction_id, user_id)` as immutable. Reuse outside the retention horizon is treated as a new event.
-- Rolling history is pruned after 10 minutes as event time advances. State can remain until the stream watermark advances. Finite fixtures and the sporadic Glaramara UI producer publish a later marker to close their event-time interval. Glaramara's transactional outbox makes that marker claimable only after Kafka acknowledges its raw payment, so a retry cannot advance the watermark ahead of the payment.
+- A repeated `transaction_id` for the same customer-beneficiary key is ignored and does not affect counts. IDs are retained for 30 days plus the two-second lateness allowance. Producers must treat transaction IDs as immutable. Reuse outside the retention horizon is treated as a new event.
+- Relationship history is pruned after 30 days and customer velocity history after 10 minutes as event time advances. State can remain until the stream watermark advances. Finite fixtures and the sporadic Glaramara UI producer publish a later marker to close their event-time interval. Glaramara's transactional outbox makes that marker claimable only after Kafka acknowledges its raw payment, so a retry cannot advance the watermark ahead of the payment.
 - The Kafka sink is deliberately configured for at-least-once delivery. Checkpoints run every 10 seconds with one concurrent checkpoint and JobManager checkpoint storage suitable for local development. A failure around a checkpoint can replay output, so consumers must deduplicate by `transaction_id`; no end-to-end exactly-once claim is made.
 
 ## Signal consolidation contract
@@ -52,7 +54,7 @@ only do so during an approved restart. Build the Java artifact with an ephemeral
 scripts/build_enrichment.sh
 ```
 
-Deploy both jobs idempotently and check their health:
+Deploy the SQL, live DataStream and isolated replay DataStream jobs idempotently and check their health:
 
 ```sh
 scripts/ensure_jobs.sh
@@ -70,7 +72,7 @@ timers and SQL windows begin empty, and payments produced while jobs are absent 
 ## Safe Part 3 bootstrap boundary
 
 Keep the router, outbox publisher and investigation worker stopped while ensuring Flink jobs. Once
-both jobs are `RUNNING`, capture the enriched-topic boundary:
+the required jobs are `RUNNING`, capture the live enriched-topic boundary:
 
 ```sh
 scripts/capture_topic_boundary.sh payments.enriched.demo
@@ -101,6 +103,25 @@ python3 scripts/generate_payments.py
 podman compose exec -T kafka kafka-console-consumer \
   --bootstrap-server kafka:29092 --topic payments.enriched.demo \
   --partition 0 --offset 0
+```
+
+## Isolated slow-building replay
+
+Root deployment also runs the same artifact with a distinct job name, operator UIDs, consumer group and topics:
+
+```text
+payments.raw.slow-building-replay -> Slow-building beneficiary replay enrichment
+                                     -> payments.enriched.slow-building-replay
+```
+
+The analyst-only Glaramara control publishes five weekly event-time records through the existing transactional outbox. Every run uses new transaction, customer-state and replay IDs. To support repeated runs without resetting Flink, the next run's first event time is reserved after the prior run's watermark while preserving seven-day spacing; historical replay records never enter `payments.raw.demo` and therefore cannot move the live watermark. The fifth record is a simulated no-ledger payment attempt so the genuine deterministic challenge can reuse questionnaire 1.2.0.
+
+The isolated router is the only process configured with `SLOW_BUILDING_DEMO_POLICY_ENABLED=true`; it additionally refuses to start unless its input is `payments.enriched.slow-building-replay`. Its decision, investigation-audit and DLQ outputs also use replay-only topics, so the correlator and legacy worker do not consume them. The live router leaves the new signal in observation mode.
+
+Run the independent deterministic evaluation without Kafka:
+
+```sh
+python3 -m backtest.slow_building --output backtest/slow-building-results.json
 ```
 
 Example fields for the sixth same-merchant payment are:
@@ -157,9 +178,12 @@ With the enrichment job running, execute Kafka-to-Kafka acceptance tests. Every 
 
 ```sh
 RUN_ENRICHMENT_INTEGRATION=1 python3 -m unittest tests.test_enrichment_integration -v
+RUN_SLOW_BUILDING_INTEGRATION=1 python3 -m unittest tests.test_enrichment_integration -v
 ```
 
 The integration tests publish real Kafka records and consume actual enriched messages. They cover normal £100–£150 payments, velocity, merchant hopping, simultaneous signals, duplicate IDs, user isolation, and bounded out-of-order arrival.
+The separately gated slow-building checks publish two consecutive five-week runs to the isolated topics and
+verify the fifth-payment evidence and clean per-run state.
 
 ## Known limitations
 
@@ -167,6 +191,8 @@ The integration tests publish real Kafka records and consume actual enriched mes
 - Transaction-ID deduplication is scoped to the immutable user ID and bounded retention horizon. Cross-user reuse violates the producer contract.
 - At-least-once recovery can duplicate Kafka output; downstream consumers must use the stable transaction ID.
 - Checkpoints remain JobManager-local and are not restored after a full cluster restart.
+- The replay job is intentionally restarted fresh at the replay topic end. A deployment restart during an
+  in-flight replay can leave that manifest pending; start a new uniquely keyed run after recovery.
 - A missing job starts at Kafka's current end and deliberately skips downtime/history. Rolling state,
   timers, deduplication state, windows and watermarks are not restored.
 - Never generate a new Part 3 router group automatically. Bootstrap its stable group once at an

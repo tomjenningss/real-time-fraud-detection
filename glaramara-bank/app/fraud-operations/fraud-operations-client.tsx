@@ -16,6 +16,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -332,6 +333,7 @@ export function FraudOperationsClient() {
             <Button onClick={() => void analyse()} disabled={busy || !dashboard?.waves.length} className="min-w-[210px] bg-[#d6e9b8] text-[#173f33] hover:bg-[#e4f2cc]">
               <BrainCircuit className="mr-2 size-4" />{busy ? "Analysing patterns…" : "Run new analysis"}
             </Button>
+            <Button variant="secondary" asChild><Link href="/fraud-operations/slow-building-demo">Slow-building replay</Link></Button>
           </div>
         </div>
       </section>
