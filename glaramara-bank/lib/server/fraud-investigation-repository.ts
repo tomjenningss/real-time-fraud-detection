@@ -36,7 +36,7 @@ import { ApiError } from "@/lib/server/api-errors";
 import { query, withTransaction } from "@/lib/server/db";
 
 const AGENT_NAME = "fraud_intelligence";
-const AGENT_VERSION = "1.2.0";
+const AGENT_VERSION = "1.2.1";
 const REQUIRED_EVIDENCE_KEYS = ["payment_recognition", "beneficiary_relationship", "payment_purpose"];
 
 type InvestigationStatus =

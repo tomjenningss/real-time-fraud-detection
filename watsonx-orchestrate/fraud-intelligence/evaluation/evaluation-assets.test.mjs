@@ -25,15 +25,16 @@ test("investment influencer regression requires grounded investment evidence", a
   assert.ok(scenario.expectedEvidence.forbiddenIndicators.includes("BANK_IMPERSONATION"));
 });
 
-test("agent instructions make the investment mapping invariant explicit", async () => {
+test("agent instructions make investment and emergency mappings explicit", async () => {
   const agent = await readFile(new URL("../agent.yaml", HERE), "utf8");
 
-  assert.match(agent, /version: 1\.1\.2/);
+  assert.match(agent, /version: 1\.2\.1/);
   assert.match(agent, /whenever paymentPurpose is INVESTMENT, scamIndicators must contain/);
   assert.match(agent, /scamIndicator:INVESTMENT/);
   assert.match(agent, /Never add BANK_IMPERSONATION unless the\s+customer explicitly described claimed bank contact/);
-  assert.match(agent, /EXPECTED means\s+expected contact and is not the same as NO\/NONE/);
-  assert.match(agent, /explicit third-party payment directions require\s+THIRD_PARTY_BENEFICIARY/);
+  assert.match(agent, /EXPECTED -> DISCUSSION_ONLY and UNEXPECTED -> THIRD_PARTY_INFLUENCED/);
+  assert.match(agent, /explicit emergency or immediate financial assistance requires\s+URGENCY/);
+  assert.match(agent, /explicit third-party payment or withdrawal directions require THIRD_PARTY_BENEFICIARY/);
 });
 
 test("application validation rejects bounded-answer and indicator invariant violations", async () => {

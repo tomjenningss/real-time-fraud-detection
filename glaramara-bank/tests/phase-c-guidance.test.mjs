@@ -55,6 +55,44 @@ test("family impersonation guidance is source-linked, practical and cautious abo
   assert.ok(guidance.evidenceProvenance.length > 0);
 });
 
+
+test("family travel emergency with uncertain identity receives grounded verification guidance", () => {
+  const statement = "My daughter is travelling in Thailand. She is panicked, has lost her phone and purse, needs emergency cash and says her friend will withdraw it for her.";
+  const guidance = guidanceFor({
+    payment_recognition: "YES",
+    beneficiary_relationship: "UNSURE",
+    payment_purpose: "FRIENDS_FAMILY",
+    contact_influence: "RECIPIENT_INFLUENCED",
+    payment_circumstances: statement,
+    pressure_or_secrecy: "UNSURE",
+    remote_access: "NO",
+  });
+
+  assert.equal(guidance.category, "FAMILY_OR_TRUSTED_PERSON_IMPERSONATION");
+  assert.equal(guidance.personalised, true);
+  assert.match(guidance.rendered.context, /asked to act urgently/i);
+  assert.match(guidance.rendered.context, /another beneficiary/i);
+  assert.match(guidance.rendered.context, /does not prove that impersonation/i);
+  assert.match(guidance.rendered.steps[1], /number you already have saved/i);
+  assert.match(guidance.rendered.steps[2], /third-party account/i);
+  assert.doesNotMatch(guidance.rendered.context, /your daughter is an impersonator/i);
+});
+
+test("reported independent family verification remains a claim, not proof", () => {
+  const guidance = guidanceFor({
+    payment_recognition: "YES",
+    beneficiary_relationship: "FRIEND_OR_FAMILY",
+    payment_purpose: "FRIENDS_FAMILY",
+    contact_influence: "RECIPIENT_INFLUENCED",
+    payment_circumstances: "I called my daughter on her saved number and checked her details before agreeing to emergency travel money.",
+    pressure_or_secrecy: "NO",
+    remote_access: "NO",
+  });
+
+  assert.equal(guidance.category, "FAMILY_OR_TRUSTED_PERSON_IMPERSONATION");
+  assert.match(guidance.rendered.context, /not independently verified/i);
+  assert.match(guidance.rendered.context, /does not prove that impersonation/i);
+});
 test("bank impersonation and safe-account evidence takes precedence", () => {
   const guidance = guidanceFor({
     payment_recognition: "YES",

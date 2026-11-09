@@ -59,6 +59,9 @@ savepoints/
 .runtime/
 audit_records/
 *.checkpoint.json
+
+# Generated local load-test snapshots; retain curated/redacted findings in docs instead.
+/reports/load-tests/
 /phoenix-tracing*.png
 fraud-decisioning/.env
 

@@ -52,8 +52,10 @@ export function buildMockEvidence(context) {
   if (paymentPurpose === "SAFE_ACCOUNT") indicators.add("SAFE_ACCOUNT");
   if (paymentPurpose === "INVESTMENT") indicators.add("INVESTMENT");
   if (thirdPartyInfluence === "BANK_IMPERSONATION") indicators.add("BANK_IMPERSONATION");
-  if (/urgent|urgently|immediately|right away|act quickly/.test(lower)) indicators.add("URGENCY");
-  if (/friend(?:'s| of (?:him|her|theirs))? (?:account|bank)|friend can (?:take|withdraw)|(?:third[- ]party|unknown) (?:account|beneficiary)/.test(lower)) {
+  if (/urgent|urgently|immediately|right away|act quickly|emergency|panick|stranded|has got nothing/.test(lower)) {
+    indicators.add("URGENCY");
+  }
+  if (/friend(?:'s| of (?:him|her|theirs))? (?:account|bank)|friend (?:can|will) (?:take|withdraw)|(?:third[- ]party|unknown) (?:account|beneficiary)/.test(lower)) {
     indicators.add("THIRD_PARTY_BENEFICIARY");
   }
   if (indicators.size === 0) indicators.add("NONE");

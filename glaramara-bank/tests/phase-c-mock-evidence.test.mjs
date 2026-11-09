@@ -86,6 +86,31 @@ test("unexpected family-help narrative keeps influence and indicators distinct",
   assert.equal(evidence.uncertainty, "MEDIUM");
 });
 
+test("traveller emergency extracts urgency and a third-party withdrawal without asserting identity", () => {
+  const statement = "My daughter is travelling abroad. She is panicked, has lost her phone and purse, needs emergency cash and says her friend will withdraw it for her.";
+  const evidence = buildMockEvidence(context({
+    payment_recognition: "YES",
+    beneficiary_relationship: "UNSURE",
+    payment_purpose: "FRIENDS_FAMILY",
+    contact_influence: "RECIPIENT_INFLUENCED",
+    payment_circumstances: statement,
+    pressure_or_secrecy: "UNSURE",
+    remote_access: "NO",
+  }));
+  assert.equal(evidence.beneficiaryRelationship, "UNCERTAIN");
+  assert.equal(evidence.thirdPartyInfluence, "RECIPIENT_INFLUENCED");
+  assert.deepEqual(new Set(evidence.scamIndicators), new Set([
+    "URGENCY", "THIRD_PARTY_BENEFICIARY",
+  ]));
+  assert.equal(evidence.uncertainty, "MEDIUM");
+  for (const findingId of ["scamIndicator:URGENCY", "scamIndicator:THIRD_PARTY_BENEFICIARY"]) {
+    const finding = evidence.provenance.find((item) => item.findingId === findingId);
+    assert.equal(finding?.sources[0].questionId, "payment_circumstances");
+    assert.equal(finding?.sources[0].excerpt, statement);
+  }
+  assert.doesNotMatch(JSON.stringify(evidence), /BANK_IMPERSONATION/);
+});
+
 test("investment answers preserve origin, reason, influence and relationship claims", () => {
   const reason = "I am investing with a regulated provider I already use for my pension.";
   const evidence = buildMockEvidence(context({

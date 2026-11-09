@@ -105,6 +105,11 @@ and urgency while explicitly stating that identity and circumstances were not in
 renderer never asks watsonx to decide an outcome, never interpolates arbitrary free text into approved advice,
 and falls back to generic safe guidance when provider evidence is missing, invalid or contradictory.
 
+Agent `1.2.1` treats an explicitly described travel emergency, loss of access to a phone or money and an
+immediate request for help as customer-reported urgency; it separately retains an explicit friend or other
+third-party withdrawal instruction. Neither finding proves the emergency or the caller's identity. Family
+guidance prioritises a previously trusted contact method and warns against third-party account instructions.
+
 ## Local development
 
 Dependencies are intentionally not vendored into the repository.

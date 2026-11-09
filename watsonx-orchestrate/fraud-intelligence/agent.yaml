@@ -3,7 +3,7 @@ kind: native
 name: fraud_intelligence
 display_name: Fraud Intelligence
 description: Extracts versioned, source-linked evidence from a completed Glaramara fraud questionnaire.
-version: 1.2.0
+version: 1.2.1
 llm: bedrock-mantle/google.gemma-4-31b
 style: planner
 hide_reasoning: true
@@ -54,8 +54,11 @@ instructions: |
     scamIndicator BANK_IMPERSONATION.
   - An explicit safe-account or move-money-to-safety instruction -> paymentPurpose SAFE_ACCOUNT and
     scamIndicator SAFE_ACCOUNT.
-  - Explicit urgency/immediacy -> URGENCY. Words such as "immediately", "urgent", "urgently", "right away",
-    and "act quickly" require URGENCY; do not omit it.
+  - Explicit urgency/immediacy -> URGENCY. This includes direct timing words such as "immediately", "urgent",
+    "urgently", "right away" and "act quickly", and an explicitly described emergency such as a panicked or
+    stranded traveller who has lost access to their phone or money and needs emergency funds or travel home.
+    Treat these only as customer-reported circumstances. They do not prove the emergency, the caller's identity,
+    or impersonation.
   - A direction to pay a recipient other than the person or organisation making the request ->
     THIRD_PARTY_BENEFICIARY. This includes another person's, a friend’s, relative's, colleague's, unknown,
     substitute or intermediary account or beneficiary. It also includes instructions to pay an unknown or
@@ -102,8 +105,8 @@ instructions: |
   1. Recheck all four core fields against the bounded mappings. DISCUSSION_ONLY must remain DISCUSSION_ONLY and OTHER must
      remain OTHER unless the explicitly permitted refinement or bank specialisation applies.
   2. Recheck additive invariants independently: YES pressure and remote access require their indicators; INVESTMENT
-     and SAFE_ACCOUNT purposes require theirs; explicit third-party payment directions require
-     THIRD_PARTY_BENEFICIARY.
+     and SAFE_ACCOUNT purposes require theirs; explicit emergency or immediate financial assistance requires
+     URGENCY; explicit third-party payment or withdrawal directions require THIRD_PARTY_BENEFICIARY.
   3. If free text conflicts with a bounded answer, keep the bounded field, record the contradiction, retain
      every supported narrative indicator, and set uncertainty MEDIUM. Do not discard either side.
   4. Every non-NONE scam indicator must have matching scamIndicator:VALUE provenance. Correct the object

@@ -95,11 +95,12 @@ function supportedFindingIds(evidence, candidates) {
 }
 
 function evidenceDrivenFamilyGuidance(evidence, template) {
+  const thirdPartyInstruction = hasIndicator(evidence, "THIRD_PARTY_BENEFICIARY");
   const reportedRisks = [
     hasIndicator(evidence, "UNEXPECTED_CONTACT") ? "the request came through unexpected contact" : null,
     hasIndicator(evidence, "URGENCY") || hasIndicator(evidence, "PRESSURE_OR_SECRECY")
       ? "you were asked to act urgently" : null,
-    hasIndicator(evidence, "THIRD_PARTY_BENEFICIARY")
+    thirdPartyInstruction
       ? "you were directed to send money to another beneficiary" : null,
   ].filter(Boolean);
   const report = reportedRisks.length > 0
@@ -111,7 +112,9 @@ function evidenceDrivenFamilyGuidance(evidence, template) {
     steps: [
       "End the current call or conversation.",
       "Contact the person using a number you already have saved, or another trusted way of reaching them.",
-      "Do not send money until you have independently confirmed the request.",
+      thirdPartyInstruction
+        ? "Do not send money to a friend’s or other third-party account until you have independently confirmed both the request and the account details."
+        : "Do not send money until you have independently confirmed the request.",
     ],
   };
 }
